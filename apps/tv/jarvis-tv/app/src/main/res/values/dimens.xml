@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TV overscan. The panel is 4K but the Android surface is 1920x1080, and the
+         outer ~3% of it can be cropped by the set, so nothing readable goes here. -->
+    <dimen name="overscan_h">48dp</dimen>
+    <dimen name="overscan_v">32dp</dimen>
+
+    <dimen name="section_gap">14dp</dimen>
+    <dimen name="tile_w">168dp</dimen>
+    <dimen name="tile_h">88dp</dimen>
+    <dimen name="tile_gap">14dp</dimen>
+
+    <!-- 10-foot UI: nothing below 16sp is legible from a sofa. -->
+    <dimen name="text_clock">42sp</dimen>
+    <dimen name="text_greeting">26sp</dimen>
+    <dimen name="text_section">14sp</dimen>
+    <dimen name="text_body">18sp</dimen>
+    <dimen name="text_metric">20sp</dimen>
+    <dimen name="panel_pad">12dp</dimen>
+</resources>

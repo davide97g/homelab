@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070B10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>JARVIS</title>
+<style>
+  :root {
+    --bg: #070B10;
+    --surface: #0E151E;
+    --raised: #152231;
+    --hairline: #1E3040;
+    --accent: #4DE8F4;
+    --accent-dim: #1C6E78;
+    --text: #E6F1F5;
+    --muted: #7C93A3;
+    --faint: #465B6B;
+    --ok: #4ADE80;
+    --err: #F87171;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font: 400 17px/1.5 ui-sans-serif, -apple-system, system-ui, sans-serif;
+    overscroll-behavior: none;
+  }
+
+  body {
+    display: flex; flex-direction: column;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    gap: 14px;
+  }
+
+  header { display: flex; align-items: center; justify-content: space-between; flex: none; }
+  .wordmark { font-size: 15px; font-weight: 600; letter-spacing: .22em; color: var(--accent); }
+  .link { display: flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: .14em; color: var(--faint); }
+  .link b { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .link.up { color: var(--ok); }
+
+  /* Tabs, because a phone screen cannot show a remote and a conversation at once
+     without one of them being uselessly small. */
+  .tabs { display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 4px; flex: none; }
+  .tabs button {
+    flex: 1; appearance: none; border: 0; background: transparent; color: var(--muted);
+    font: 600 14px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .1em;
+    text-transform: uppercase; padding: 11px 0; border-radius: 9px;
+  }
+  .tabs button[aria-selected="true"] { background: var(--raised); color: var(--accent); }
+
+  .pane { flex: 1; min-height: 0; display: none; flex-direction: column; gap: 14px; }
+  .pane[data-active] { display: flex; }
+
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px; }
+
+  /* ── now playing ───────────────────────────────────────────────────────────── */
+  .np-title { font-size: 19px; font-weight: 600; line-height: 1.3; }
+  .np-sub { color: var(--faint); font-size: 14px; margin-top: 3px; }
+  .bar { height: 4px; background: var(--hairline); border-radius: 2px; margin: 12px 0 6px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); width: 0; }
+  .times { display: flex; justify-content: space-between; color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  .transport { display: flex; gap: 10px; margin-top: 14px; }
+  .transport button {
+    flex: 1; appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
+    background: var(--raised); color: var(--text); height: 56px; font-size: 20px;
+  }
+  .transport button.primary { background: #10222B; border-color: var(--accent); color: var(--accent); }
+  .transport button:active { transform: scale(.97); }
+
+  .vol { display: flex; gap: 10px; margin-top: 10px; }
+  .vol button {
+    flex: 1; appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
+    background: var(--surface); color: var(--muted); height: 46px; font-size: 15px; font-weight: 600;
+  }
+  .vol button[data-on] { color: var(--accent); border-color: var(--accent-dim); }
+
+  /* ── remote ────────────────────────────────────────────────────────────────── */
+  .remote { display: flex; flex-direction: column; gap: 12px; }
+  .dpad {
+    position: relative; width: 216px; height: 216px; margin: 4px auto 0;
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 8px;
+  }
+  .dpad button {
+    appearance: none; border: 1px solid var(--hairline); background: var(--surface);
+    color: var(--muted); font-size: 20px; border-radius: 12px;
+  }
+  .dpad button:active { background: var(--raised); }
+  .dpad .ok { border-color: var(--accent-dim); color: var(--accent); font-size: 15px; font-weight: 700; }
+  .dpad .up { grid-area: 1 / 2; } .dpad .left { grid-area: 2 / 1; }
+  .dpad .ok { grid-area: 2 / 2; } .dpad .right { grid-area: 2 / 3; }
+  .dpad .down { grid-area: 3 / 2; }
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .keys button {
+    appearance: none; border: 1px solid var(--hairline); background: var(--surface);
+    color: var(--text); height: 50px; border-radius: 12px; font-size: 14px; font-weight: 600;
+  }
+  .keys button:active { background: var(--raised); }
+  .vol { display: flex; gap: 10px; }
+  .vol button {
+    flex: 1; appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
+    background: var(--surface); color: var(--muted); height: 52px; font-size: 16px; font-weight: 600;
+  }
+  .vol button:active { background: var(--raised); color: var(--accent); }
+
+  .apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .apps button {
+    appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
+    background: var(--surface); color: var(--text); padding: 14px 6px; font-size: 14px; font-weight: 600;
+  }
+  .apps button:active { background: var(--raised); }
+
+  .label { color: var(--faint); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; }
+
+  /* ── search ────────────────────────────────────────────────────────────────── */
+  .row { display: flex; gap: 10px; flex: none; }
+  .row input {
+    flex: 1; min-width: 0; background: var(--surface); color: var(--text);
+    border: 1px solid var(--hairline); border-radius: 12px; padding: 13px 14px;
+    font-size: 16px;   /* 16px or iOS zooms the page on focus */
+  }
+  .row input::placeholder { color: var(--faint); }
+  .row button {
+    appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
+    background: var(--surface); color: var(--accent); padding: 0 18px; font-size: 16px; font-weight: 600;
+  }
+
+  .results { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .result {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+    padding: 13px 14px; text-align: left; width: 100%; appearance: none; color: var(--text);
+  }
+  .result:active { background: var(--raised); }
+  .result span { font-size: 16px; }
+  .result em { color: var(--faint); font-style: normal; font-size: 13px; }
+
+  /* ── ask ───────────────────────────────────────────────────────────────────── */
+  .log { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; overflow-y: auto; min-height: 0; }
+  .bubble { border: 1px solid var(--hairline); background: var(--surface); border-radius: 14px; padding: 13px 15px; }
+  .bubble.you { color: var(--muted); font-size: 15px; }
+  .bubble.jarvis { font-size: 18px; line-height: 1.45; }
+  .bubble.error { border-color: var(--err); color: var(--err); font-size: 14px; }
+  .hint { color: var(--faint); font-size: 15px; text-align: center; }
+
+  .talk {
+    appearance: none; border: 2px solid var(--accent-dim); width: 100%; height: 96px;
+    border-radius: 18px; background: var(--surface); color: var(--accent);
+    font: 600 16px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    touch-action: none; user-select: none; flex: none;
+  }
+  .talk[data-state="recording"] { background: #10222B; border-color: var(--accent); transform: scale(.985); }
+  .talk[data-state="thinking"] { color: var(--muted); border-color: var(--hairline); }
+  .pip { width: 12px; height: 12px; border-radius: 50%; background: currentColor; }
+  .talk[data-state="recording"] .pip { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; transform: scale(.8); } }
+
+  .empty { color: var(--faint); text-align: center; padding: 22px 10px; font-size: 15px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">JARVIS</div>
+  <div class="link" id="link"><b></b><span>—</span></div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true"  data-tab="tv">TV</button>
+  <button role="tab" aria-selected="false" data-tab="remote">Remoto</button>
+  <button role="tab" aria-selected="false" data-tab="find">Cerca</button>
+  <button role="tab" aria-selected="false" data-tab="ask">Chiedi</button>
+</nav>
+
+<!-- ── TV ──────────────────────────────────────────────────────────────────── -->
+<section class="pane" data-tab="tv" data-active>
+  <div class="card" id="npCard">
+    <div class="empty" id="npEmpty">Niente in riproduzione.</div>
+    <div id="npBody" hidden>
+      <div class="np-title" id="npTitle"></div>
+      <div class="np-sub" id="npSub"></div>
+      <div class="bar"><i id="npBar"></i></div>
+      <div class="times"><span id="npPos">0:00</span><span id="npDur">0:00</span></div>
+      <div class="transport">
+        <button data-seek="-30" aria-label="Indietro 30 secondi">−30s</button>
+        <button class="primary" id="playPause" aria-label="Play o pausa">⏸</button>
+        <button data-seek="30" aria-label="Avanti 30 secondi">+30s</button>
+        <button data-playback="stop" aria-label="Ferma">⏹</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="label">Apri sulla TV</div>
+  <div class="apps" id="apps"></div>
+</section>
+
+<!-- ── Telecomando ─────────────────────────────────────────────────────────── -->
+<section class="pane" data-tab="remote">
+  <div class="vol">
+    <button data-key="VolumeDown">VOL −</button>
+    <button data-key="Mute">MUTO</button>
+    <button data-key="VolumeUp">VOL +</button>
+  </div>
+  <div class="remote">
+    <div class="dpad">
+      <button class="up"    data-key="CursorUp" aria-label="Su">▲</button>
+      <button class="left"  data-key="CursorLeft" aria-label="Sinistra">◀</button>
+      <button class="ok"    data-key="Confirm">OK</button>
+      <button class="right" data-key="CursorRight" aria-label="Destra">▶</button>
+      <button class="down"  data-key="CursorDown" aria-label="Giù">▼</button>
+    </div>
+    <div class="keys">
+      <button data-key="Back">Indietro</button>
+      <button data-key="Home">Home</button>
+      <button data-key="Options">Menu</button>
+      <button data-key="Rewind">⏪</button>
+      <button data-key="PlayPause">⏯</button>
+      <button data-key="FastForward">⏩</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── Cerca ───────────────────────────────────────────────────────────────── -->
+<section class="pane" data-tab="find">
+  <div class="row">
+    <input id="q" placeholder="Cerca un film o una serie" enterkeyhint="search" autocomplete="off">
+    <button id="qGo">Cerca</button>
+  </div>
+  <div class="results" id="results">
+    <div class="empty">Cerca un titolo, poi toccalo per farlo partire sulla TV.</div>
+  </div>
+</section>
+
+<!-- ── Chiedi ──────────────────────────────────────────────────────────────── -->
+<section class="pane" data-tab="ask">
+  <div class="log" id="log">
+    <div class="hint">Tieni premuto per parlare.<br>La risposta arriva sulla TV.</div>
+  </div>
+  <button class="talk" id="talk" data-state="idle">
+    <span class="pip"></span><span id="talkLabel">Tieni premuto</span>
+  </button>
+  <div class="row">
+    <input id="text" placeholder="…oppure scrivi" enterkeyhint="send" autocomplete="off">
+    <button id="send">Invia</button>
+  </div>
+</section>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const linkEl = $('link');
+
+const APPS = [
+  ['Jellyfin', 'org.jellyfin.androidtv'],
+  ['Spotify', 'com.spotify.tv.android'],
+  ['Twitch', 'tv.twitch.android.app'],
+  ['RaiPlay', 'it.rainet.androidtv'],
+  ['Disney+', 'com.disney.disneyplus'],
+  ['YouTube', 'com.google.android.youtube.tv'],
+];
+
+// ── tabs ───────────────────────────────────────────────────────────────────────
+document.querySelectorAll('[role="tab"]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[role="tab"]').forEach((b) =>
+      b.setAttribute('aria-selected', String(b === btn)));
+    document.querySelectorAll('.pane').forEach((p) =>
+      p.toggleAttribute('data-active', p.dataset.tab === btn.dataset.tab));
+  });
+});
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || res.statusText);
+  return out;
+}
+
+function post(path, body) {
+  return api(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+}
+
+// ── now playing ────────────────────────────────────────────────────────────────
+const clock = (s) => {
+  if (s == null) return '0:00';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = Math.floor(s % 60);
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`
+           : `${m}:${String(x).padStart(2, '0')}`;
+};
+
+let polling = false;
+
+async function refreshTv() {
+  // Skip while a command is in flight: the server reads state straight from
+  // Jellyfin, which lags a second behind a button press and would flip the icon back.
+  if (polling) return;
+  try {
+    const s = await api('/api/tv');
+    linkEl.className = 'link up';
+    linkEl.lastElementChild.textContent = s.session ? 'TV PRONTA' : 'TV INATTIVA';
+
+    const np = s.nowPlaying;
+    $('npEmpty').hidden = Boolean(np);
+    $('npBody').hidden = !np;
+    if (!np) return;
+
+    $('npTitle').textContent = np.name;
+    $('npSub').textContent = [np.year, np.type === 'Episode' ? 'Episodio' : null]
+      .filter(Boolean).join(' · ');
+    $('npPos').textContent = clock(np.position);
+    $('npDur').textContent = clock(np.duration);
+    $('npBar').style.width =
+      np.duration ? `${Math.min(100, (np.position / np.duration) * 100)}%` : '0';
+    $('playPause').textContent = np.paused ? '▶' : '⏸';
+  } catch {
+    linkEl.className = 'link';
+    linkEl.lastElementChild.textContent = 'OFFLINE';
+  }
+}
+
+async function guard(fn) {
+  polling = true;
+  try { await fn(); }
+  catch (err) { alert(err.message); }
+  finally { polling = false; refreshTv(); }
+}
+
+$('playPause').addEventListener('click', () => guard(async () => {
+  const action = $('playPause').textContent === '▶' ? 'resume' : 'pause';
+  $('playPause').textContent = action === 'resume' ? '⏸' : '▶';   // answer the thumb at once
+  await post('/api/playback', { action });
+}));
+
+document.querySelectorAll('[data-playback]').forEach((b) =>
+  b.addEventListener('click', () => guard(() => post('/api/playback', { action: b.dataset.playback }))));
+
+document.querySelectorAll('[data-seek]').forEach((b) =>
+  b.addEventListener('click', () => guard(() => post('/api/seek', { delta: Number(b.dataset.seek) }))));
+
+document.querySelectorAll('[data-key]').forEach((b) =>
+  b.addEventListener('click', () => {
+    // Fire and forget: a remote must feel instant, and a key press has no state to
+    // read back. A brief press feedback is enough.
+    b.style.opacity = '0.5';
+    post('/api/key', { key: b.dataset.key }).catch((e) => alert(e.message));
+    setTimeout(() => (b.style.opacity = ''), 120);
+  }));
+
+const appsEl = $('apps');
+for (const [label, pkg] of APPS) {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.addEventListener('click', () => guard(() => post('/api/launch', { package: pkg })));
+  appsEl.append(b);
+}
+
+// ── search ─────────────────────────────────────────────────────────────────────
+async function runSearch() {
+  const q = $('q').value.trim();
+  if (!q) return;
+  const box = $('results');
+  box.innerHTML = '<div class="empty">Cerco…</div>';
+  try {
+    const { results } = await api(`/api/search?q=${encodeURIComponent(q)}`);
+    box.innerHTML = '';
+    if (!results.length) {
+      box.innerHTML = '<div class="empty">Nessun risultato.</div>';
+      return;
+    }
+    for (const r of results) {
+      const b = document.createElement('button');
+      b.className = 'result';
+      b.innerHTML = '<span></span><em></em>';
+      b.firstChild.textContent = r.name;
+      b.lastChild.textContent = [r.year, r.type].filter(Boolean).join(' · ');
+      b.addEventListener('click', () => guard(async () => {
+        b.lastChild.textContent = 'parte…';
+        await post('/api/play', { itemId: r.id });
+        b.lastChild.textContent = 'in riproduzione';
+        document.querySelector('[data-tab="tv"][role="tab"]').click();
+      }));
+      box.append(b);
+    }
+  } catch (err) {
+    box.innerHTML = '<div class="empty"></div>';
+    box.firstChild.textContent = err.message;
+  }
+}
+$('qGo').addEventListener('click', runSearch);
+$('q').addEventListener('keydown', (e) => e.key === 'Enter' && runSearch());
+
+// ── ask ────────────────────────────────────────────────────────────────────────
+const logEl = $('log'), talk = $('talk'), talkLabel = $('talkLabel'), textEl = $('text');
+let recorder = null, chunks = [], busy = false;
+
+function bubble(cls, text) {
+  document.querySelector('.hint')?.remove();
+  const el = document.createElement('div');
+  el.className = `bubble ${cls}`;
+  el.textContent = text;
+  logEl.append(el);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function state(s, label) {
+  talk.dataset.state = s;
+  talkLabel.textContent = label;
+  talk.disabled = s === 'thinking';
+}
+
+async function send(form) {
+  busy = true;
+  state('thinking', 'Sto pensando');
+  try {
+    const res = await fetch('/api/ask', { method: 'POST', body: form });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || res.statusText);
+    bubble('you', out.question);
+    bubble('jarvis', out.answer);
+  } catch (err) {
+    bubble('error', String(err.message || err));
+  } finally {
+    busy = false;
+    state('idle', 'Tieni premuto');
+    refreshTv();
+  }
+}
+
+async function startRecording() {
+  if (busy || recorder) return;
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    // The usual cause is not a denied prompt but an insecure origin: Safari hides
+    // mediaDevices entirely on plain http, so say which of the two it was.
+    bubble('error', window.isSecureContext
+      ? `Microfono negato: ${err.name}`
+      : 'Il microfono richiede HTTPS. Apri questa pagina sul dominio pubblico, non sull\'IP di rete.');
+    return;
+  }
+  chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  recorder.onstop = () => {
+    stream.getTracks().forEach((t) => t.stop());
+    const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+    recorder = null;
+    if (blob.size < 2000) return state('idle', 'Tieni premuto');   // a tap, not a question
+    const form = new FormData();
+    // The extension has to match the container or OpenAI rejects the upload.
+    form.append('audio', blob, blob.type.includes('mp4') ? 'clip.mp4' : 'clip.webm');
+    send(form);
+  };
+  recorder.start();
+  state('recording', 'Sto ascoltando');
+}
+
+const stopRecording = () => { if (recorder?.state === 'recording') recorder.stop(); };
+
+talk.addEventListener('pointerdown', (e) => { e.preventDefault(); startRecording(); });
+talk.addEventListener('pointerup', stopRecording);
+talk.addEventListener('pointercancel', stopRecording);
+talk.addEventListener('pointerleave', stopRecording);
+// Long-press on iOS otherwise raises the selection/callout UI mid-recording.
+talk.addEventListener('contextmenu', (e) => e.preventDefault());
+
+function sendText() {
+  const text = textEl.value.trim();
+  if (!text || busy) return;
+  textEl.value = '';
+  const form = new FormData();
+  form.append('text', text);
+  send(form);
+}
+$('send').addEventListener('click', sendText);
+textEl.addEventListener('keydown', (e) => e.key === 'Enter' && sendText());
+
+refreshTv();
+setInterval(refreshTv, 4000);
+</script>
+</body>
+</html>

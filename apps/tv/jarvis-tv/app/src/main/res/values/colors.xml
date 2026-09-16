@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Near-black with a blue cast rather than pure black: OLED-style #000 on this
+         LCD panel shows the backlight edges, and Ambilight reads the frame's average
+         colour, so a flat black screen would leave the room dark. -->
+    <color name="bg">#070B10</color>
+    <color name="surface">#0E151E</color>
+    <color name="surface_raised">#152231</color>
+    <color name="hairline">#1E3040</color>
+
+    <color name="accent">#4DE8F4</color>
+    <color name="accent_dim">#1C6E78</color>
+    <color name="accent_glow">#334DE8F4</color>
+
+    <color name="text_primary">#E6F1F5</color>
+    <color name="text_secondary">#7C93A3</color>
+    <color name="text_faint">#465B6B</color>
+
+    <color name="ok">#4ADE80</color>
+    <color name="warn">#FBBF24</color>
+    <color name="err">#F87171</color>
+</resources>

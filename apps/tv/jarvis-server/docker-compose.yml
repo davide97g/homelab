@@ -1,0 +1,22 @@
+services:
+  jarvis:
+    build: .
+    container_name: jarvis
+    restart: unless-stopped
+    # Host networking, for two reasons that both matter: the mDNS advert the TV
+    # discovers has to reach the LAN, and the TCP service probes have to see the
+    # host's own ports rather than a bridge namespace's.
+    network_mode: host
+    env_file: .env
+    environment:
+      PORT: 8787
+      HOST_PROC: /host/proc
+      HOMELAB_HOST: 127.0.0.1
+      HOMELAB_NAME: debian
+    volumes:
+      - /proc:/host/proc:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

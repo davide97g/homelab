@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:paddingStart="@dimen/overscan_h"
+    android:paddingEnd="@dimen/overscan_h"
+    android:paddingTop="@dimen/overscan_v"
+    android:paddingBottom="@dimen/overscan_v">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-light"
+            android:text="@string/settings_title"
+            android:textColor="@color/text_primary"
+            android:textSize="34sp" />
+
+        <TextView
+            android:id="@+id/settingsMeta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="monospace"
+            android:textColor="@color/text_faint"
+            android:textSize="14sp" />
+
+        <!-- The safety escape. Kept first and prominent: if this launcher ever
+             misbehaves, this is how you get the Google launcher back from the couch,
+             no computer needed. -->
+        <TextView
+            style="@style/SectionLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/section_launcher" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/restore_help"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/restoreLauncher"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/tile_bg"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:minHeight="56dp"
+            android:text="@string/restore_button"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/openTvSettings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/tile_bg"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:minHeight="56dp"
+            android:text="@string/open_tv_settings"
+            android:textColor="@color/text_secondary"
+            android:textSize="18sp"
+            android:textAllCaps="false" />
+    </LinearLayout>
+</ScrollView>

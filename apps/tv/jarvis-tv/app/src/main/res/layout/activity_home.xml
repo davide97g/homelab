@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:paddingStart="@dimen/overscan_h"
+    android:paddingEnd="@dimen/overscan_h"
+    android:paddingTop="@dimen/overscan_v"
+    android:paddingBottom="@dimen/overscan_v">
+
+    <!-- ── top bar ─────────────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-thin"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_clock"
+        android:includeFontPadding="false"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="18dp"
+        android:layout_marginBottom="10dp"
+        android:fontFamily="sans-serif"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/text_body"
+        app:layout_constraintBaseline_toBaselineOf="@id/clock"
+        app:layout_constraintStart_toEndOf="@id/clock" />
+
+    <ImageView
+        android:id="@+id/gear"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@drawable/gear_bg"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="9dp"
+        android:src="@drawable/ic_gear"
+        android:contentDescription="@string/settings_title"
+        android:nextFocusDown="@id/appsRow"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/clock"
+        app:layout_constraintBottom_toBottomOf="@id/clock" />
+
+    <LinearLayout
+        android:id="@+id/linkBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintEnd_toStartOf="@id/gear"
+        app:layout_constraintTop_toTopOf="@id/clock"
+        app:layout_constraintBottom_toBottomOf="@id/clock">
+
+        <View
+            android:id="@+id/linkDot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/dot" />
+
+        <TextView
+            android:id="@+id/linkText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.14"
+            android:text="@string/status_offline"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_section" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/greeting"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:fontFamily="sans-serif-light"
+        android:letterSpacing="0.04"
+        android:textColor="@color/accent"
+        android:textSize="@dimen/text_greeting"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/clock" />
+
+    <!-- ── apps ────────────────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/appsLabel"
+        style="@style/SectionLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/section_gap"
+        android:text="@string/section_apps"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/greeting" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/appsRow"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:clipToPadding="false"
+        android:focusable="false"
+        android:nextFocusUp="@id/gear"
+        android:paddingBottom="6dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appsLabel" />
+
+    <!-- ── homelab ─────────────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/homelabLabel"
+        style="@style/SectionLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/section_gap"
+        android:text="@string/section_homelab"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appsRow" />
+
+    <LinearLayout
+        android:id="@+id/homelabPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/panel_bg"
+        android:orientation="vertical"
+        android:padding="@dimen/panel_pad"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/homelabLabel">
+
+        <TextView
+            android:id="@+id/hostLine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:text="@string/homelab_unreachable"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_metric" />
+
+        <LinearLayout
+            android:id="@+id/servicesRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- ── jarvis ──────────────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/jarvisPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/panel_bg"
+        android:orientation="vertical"
+        android:padding="@dimen/panel_pad"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/jarvisPrompt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif"
+            android:maxLines="1"
+            android:text="@string/jarvis_idle"
+            android:textColor="@color/text_faint"
+            android:textSize="@dimen/text_body" />
+
+        <TextView
+            android:id="@+id/jarvisReply"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-light"
+            android:maxLines="2"
+            android:textColor="@color/text_primary"
+            android:textSize="22sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

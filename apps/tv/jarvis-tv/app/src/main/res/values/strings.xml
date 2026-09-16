@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JARVIS</string>
+    <string name="section_apps">APPS</string>
+    <string name="section_homelab">HOMELAB</string>
+    <string name="jarvis_idle">Ask JARVIS anything…</string>
+    <string name="jarvis_offline">JARVIS offline — no link to the mini PC</string>
+    <string name="status_online">ONLINE</string>
+    <string name="status_offline">OFFLINE</string>
+    <string name="homelab_unreachable">Cannot reach the mini PC</string>
+    <string name="settings_title">Impostazioni</string>
+    <string name="section_launcher">Launcher</string>
+    <string name="restore_help">JARVIS è impostato come schermata principale. Per tornare al launcher Google, apri i dettagli dell\'app e premi "Attiva".</string>
+    <string name="restore_button">Ripristina launcher Google</string>
+    <string name="open_tv_settings">Impostazioni della TV</string>
+</resources>
