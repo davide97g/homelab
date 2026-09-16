@@ -25,7 +25,13 @@ const HOST = process.env.HOMELAB_HOST || '127.0.0.1';
 function probe(port, timeout = 1200) {
   return new Promise((resolve) => {
     const sock = new net.Socket();
-    const done = (up) => { sock.destroy(); resolve(up); };
+    const t0 = process.hrtime.bigint();
+    // the handshake time is worth keeping: the launcher prints it, and a service that
+    // answers in 400 ms is a different kind of healthy from one that answers in 3
+    const done = (up) => {
+      sock.destroy();
+      resolve({ up, ms: Math.round(Number(process.hrtime.bigint() - t0) / 1e6) });
+    };
     sock.setTimeout(timeout);
     sock.once('connect', () => done(true));
     sock.once('timeout', () => done(false));
@@ -75,7 +81,7 @@ export async function snapshot() {
     cpuPercent(),
     memory(),
     uptime(),
-    Promise.all(SERVICES.map(async (s) => ({ name: s.name, up: await probe(s.port) }))),
+    Promise.all(SERVICES.map(async (s) => ({ name: s.name, port: s.port, ...(await probe(s.port)) }))),
   ]);
 
   return {

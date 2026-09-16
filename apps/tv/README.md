@@ -19,6 +19,8 @@ Two pieces:
 - [`jarvis-tv/`](jarvis-tv/) — the Android TV launcher. Kotlin, plain Views, ~3.5 MB.
 - [`jarvis-server/`](jarvis-server/) — Node on the mini PC. Serves the phone webapp,
   transcribes, asks OpenAI, pushes the answer to the TV.
+- [`tv-preview/`](tv-preview/) — the home screen mocked in a browser at the TV's real
+  1920×1080 surface, so design changes are judged without a build + install round trip.
 
 ## The TV
 
@@ -261,9 +263,61 @@ Philips EasyLink** handshake, not something reachable here: Android reports
 `mIsCecAvailable: false` because Philips runs CEC on its Linux side. Fix it in the
 menus — TV EasyLink + ARC + auto-power on, and HDMI-CEC / TV-wake in the Bose Music app.
 
+## The home screen
+
+Three screens on one reel, `↓` and `↑` between them. The design is drawn first in
+[`tv-preview/`](tv-preview/) and then ported; every measurement in `dimens.xml` is a
+value from that 1920x1080 preview, halved, because the panel runs at 320 dpi and one
+preview pixel is half a dp (`Ui.px`).
+
+| | |
+|---|---|
+| **apps** | the showcase, the hero and the app rail |
+| **JARVIS** | the orb, alone on the screen |
+| **homelab** | host gauges and the TCP probes, port and handshake time each |
+
+**The artwork is real.** Cards use the leanback banner every Android TV app ships, and
+the colour each card, each sweep and the Ambilight take is computed from that banner
+(`Ui.dominantColour` — one 32x32 downscale weighted by saturation, not androidx.palette).
+The Jellyfin card and the showcase behind it are the film the TV is actually part way
+through: the server reads `/Users/{id}/Items/Resume`, and since the TV has **no route to
+that Jellyfin at all** — it is on the NAS, reached over Tailscale from the mini PC — the
+stills come back through `GET /api/image/:id`, resized on the way.
+
+**Opening an app** is one move: the sweep round the focused card charges for 420 ms, the
+card grows into the frame carrying its own still, and the sweep carries on round the
+whole frame over the app's icon and an indeterminate bar while the activity starts. A
+cold start here is 300–900 ms, so that animation *is* the loading state.
+
+**The orb** is `OrbView`: one closed curve, `r(θ) = R · (1 + Σ aₖ·sin(fₖθ + drift))` over
+four coprime harmonics, sampled 96 times and joined through the midpoints with
+`Path.quadTo`, filled with two `RadialGradient`s. It carries five states — idle,
+listening, thinking, speaking, error — each lerping over ~600 ms into the next, and the
+set's Ambilight takes its colour, so the wall goes violet while it thinks. It is
+modelled on [desertcache/samantha-ui](https://github.com/desertcache/samantha-ui) but
+ports none of it: that orb is a Three.js sphere displaced by simplex noise in a vertex
+shader, and **`RuntimeShader` (AGSL) needs API 33 while this set is Android 12** — with
+2 GB of RAM and four A53s, a WebGL canvas in a WebView was not a bet worth making for
+the screen the assistant lives on. The canvas loop runs only while its screen is showing.
+
+### Four things this cost, which the next change will cost again
+
+- **Gradle's file watching lies on this machine.** It reported every task UP-TO-DATE
+  against edited sources and shipped the previous APK three times in a row.
+  `deploy-tv.sh` now passes `-Dorg.gradle.vfs.watch=false`; do not remove it.
+- **A `RadialGradient` with radius 0 throws**, and a throw inside `onDraw` takes the
+  whole launcher down — the TV falls back to live TV. Every radius here is
+  `coerceAtLeast(1f)`, and the views return early before their first layout.
+- **Views past the first screen are laid out below the reel's own bounds**, so both
+  `ReelLayout` and the frame holding it set `clipChildren=false`. Without it the second
+  and third screens draw and are thrown away, and the reel looks empty.
+- **A view with a click listener is focusable by default on API 26+.** The gear took the
+  initial focus and swallowed OK on the apps screen. Nothing in the tree is focusable
+  now: every key is read by the activity and the picked card is the launcher's own state.
+
 ## Known, not yet fixed
 
-- The nine-service row clips its last entry. It needs a two-row flow layout.
 - The launcher opens **two** WebSocket connections on start. Harmless — the server
   broadcasts to every TV client — but wrong.
-- `renderReply` never clears, so the last answer stays on screen until the next one.
+- The speaking envelope is a smoothed random walk, not a real level: Android's TTS
+  exposes nothing but word boundaries (`onRangeStart`) while it speaks.

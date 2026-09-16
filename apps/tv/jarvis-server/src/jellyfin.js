@@ -24,6 +24,86 @@ async function req(path, { method = 'GET' } = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+/**
+ * What the viewer is part-way through, newest first — the launcher's showcase.
+ * `Resume` is the same list the Jellyfin app's own "Continue watching" row shows,
+ * so the TV is not inventing a shelf of its own.
+ */
+export async function resume(limit = 6) {
+  const qs = new URLSearchParams({
+    limit: String(limit),
+    mediaTypes: 'Video',
+    fields: 'ProductionYear,RunTimeTicks,UserData,Genres',
+    enableImageTypes: 'Backdrop,Primary,Thumb',
+  });
+  const out = await req(`/Users/${USER}/Items/Resume?${qs}`);
+  const secs = (t) => (typeof t === 'number' ? Math.round(t / 10_000_000) : null);
+  return (out?.Items ?? []).map((i) => ({
+    id: i.Id,
+    name: i.Name,
+    seriesName: i.SeriesName ?? null,
+    year: i.ProductionYear ?? null,
+    type: i.Type,
+    position: secs(i.UserData?.PlaybackPositionTicks),
+    duration: secs(i.RunTimeTicks),
+    // a backdrop when the item has one, its own poster otherwise, and for an episode
+    // the series' backdrop, which is the only image an episode reliably carries
+    image: i.BackdropImageTags?.length
+      ? { id: i.Id, type: 'Backdrop', tag: i.BackdropImageTags[0] }
+      : i.ParentBackdropImageTags?.length
+        ? { id: i.ParentBackdropItemId, type: 'Backdrop', tag: i.ParentBackdropImageTags[0] }
+        : i.ImageTags?.Primary
+          ? { id: i.Id, type: 'Primary', tag: i.ImageTags.Primary }
+          : null,
+  }));
+}
+
+/** The newest thing in the library, for when nothing is part-way watched. */
+export async function latest(limit = 6) {
+  const qs = new URLSearchParams({
+    limit: String(limit),
+    includeItemTypes: 'Movie',
+    fields: 'ProductionYear,RunTimeTicks',
+    enableImageTypes: 'Backdrop,Primary',
+  });
+  const out = await req(`/Users/${USER}/Items/Latest?${qs}`);
+  return (out ?? []).map((i) => ({
+    id: i.Id,
+    name: i.Name,
+    year: i.ProductionYear ?? null,
+    type: i.Type,
+    position: null,
+    duration: typeof i.RunTimeTicks === 'number' ? Math.round(i.RunTimeTicks / 10_000_000) : null,
+    image: i.BackdropImageTags?.length
+      ? { id: i.Id, type: 'Backdrop', tag: i.BackdropImageTags[0] }
+      : i.ImageTags?.Primary
+        ? { id: i.Id, type: 'Primary', tag: i.ImageTags.Primary }
+        : null,
+  }));
+}
+
+/**
+ * Jellyfin's image bytes, fetched here and handed on.
+ *
+ * The TV cannot reach this Jellyfin at all: it lives on the NAS and the box gets to it
+ * over Tailscale. So the server is the only thing on the LAN that can hand the
+ * launcher a picture, and it resizes on the way through — 1280 px is more than a
+ * 1920x1080 surface needs behind a scrim, and the set has 2 GB of RAM.
+ */
+export async function image(id, { type = 'Backdrop', tag, maxWidth = 1280 } = {}) {
+  const qs = new URLSearchParams({ maxWidth: String(maxWidth), quality: '82' });
+  if (tag) qs.set('tag', tag);
+  const res = await fetch(`${BASE}/Items/${id}/Images/${type}?${qs}`, {
+    headers: auth,
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`Jellyfin image ${id} -> ${res.status}`);
+  return {
+    contentType: res.headers.get('content-type') || 'image/jpeg',
+    body: Buffer.from(await res.arrayBuffer()),
+  };
+}
+
 export async function search(query, limit = 8) {
   const qs = new URLSearchParams({
     searchTerm: query,

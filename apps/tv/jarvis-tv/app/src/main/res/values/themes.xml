@@ -12,8 +12,15 @@
     <style name="SectionLabel">
         <item name="android:textSize">@dimen/text_section</item>
         <item name="android:textColor">@color/text_faint</item>
-        <item name="android:letterSpacing">0.18</item>
+        <item name="android:letterSpacing">0.22</item>
         <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <style name="Wayfind">
+        <item name="android:textSize">@dimen/text_wayfind</item>
+        <item name="android:textColor">@color/text_faint</item>
+        <item name="android:letterSpacing">0.18</item>
         <item name="android:textAllCaps">true</item>
     </style>
 </resources>

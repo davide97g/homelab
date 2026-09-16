@@ -1,0 +1,513 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   JARVIS TV — design preview
+   The .stage below is exactly 1920x1080, the surface Android renders on this set
+   (the panel is 4K but the compositor is forced to 1080p). Every value inside the
+   stage is therefore a real device pixel: divide by 2 to get the Android dp value,
+   because the TV runs at 320 dpi.
+   ────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* mirrors res/values/colors.xml, one shade cooler and darker */
+  --bg:            #05080C;
+  --surface:       rgba(255,255,255,.055);
+  --surface-hi:    rgba(255,255,255,.10);
+  --hairline:      rgba(255,255,255,.10);
+  --text:          #F2F7FA;
+  --text-2:        rgba(242,247,250,.66);
+  --text-3:        rgba(242,247,250,.40);
+  --accent:        #4DE8F4;
+  --ok:            #4ADE80;
+  --err:           #F87171;
+
+  /* one easing for everything: slow out, no bounce, reads calm on a big screen */
+  --ease:   cubic-bezier(.16,1,.3,1);
+  --fast:   180ms var(--ease);
+  --medium: 340ms var(--ease);
+  --slow:   620ms var(--ease);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+body {
+  background: #0b0d10;
+  color: #cfd8e0;
+  font-family: Roboto, "Helvetica Neue", system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── chrome around the TV (never shown on the set) ──────────────────────────── */
+.toolbar {
+  display: flex; align-items: center; gap: 24px;
+  padding: 10px 18px;
+  background: #121519;
+  border-bottom: 1px solid #1d2229;
+  font-size: 12px;
+  flex: none;
+}
+.toolbar__title { font-weight: 500; color: #e6edf3; letter-spacing: .04em; }
+.toolbar__title span { color: #64707c; font-weight: 400; margin-left: 12px; letter-spacing: 0; }
+.toolbar__group { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.toolbar button {
+  background: #1b2027; color: #c6d0da; border: 1px solid #262d35;
+  border-radius: 7px; padding: 5px 10px; font: inherit; cursor: pointer;
+  transition: background var(--fast);
+}
+.toolbar button:hover { background: #242b34; }
+.toolbar label { display: flex; align-items: center; gap: 5px; color: #8b97a3; cursor: pointer; }
+
+.room {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+  padding: 22px;
+  min-height: 0;
+}
+.room__caption { color: #4f5a65; font-size: 12px; }
+
+/* ── the set ────────────────────────────────────────────────────────────────── */
+.tv { position: relative; }
+.tv.no-bezel .tv__panel { padding: 0; background: none; box-shadow: none; }
+
+.tv__panel {
+  /* content-box on purpose: fit() sizes this to the stage, and the bezel padding has
+     to sit outside that number or the right edge of the picture is cut off */
+  box-sizing: content-box;
+  position: relative;
+  padding: 10px 10px 26px;
+  border-radius: 6px;
+  background: linear-gradient(#1a1e23, #0e1114);
+  box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px #23282e;
+}
+
+/* Ambilight: 3-sided on this set (left 4, top 9, right 4, bottom 0), so the bottom
+   glow is deliberately absent here too. */
+.tv__ambilight {
+  position: absolute; inset: -6% -5% 4%;
+  background:
+    radial-gradient(60% 50% at 0% 50%,   var(--ambi, #4DE8F4) 0%, transparent 70%),
+    radial-gradient(60% 50% at 100% 50%, var(--ambi, #4DE8F4) 0%, transparent 70%),
+    radial-gradient(70% 55% at 50% 0%,   var(--ambi, #4DE8F4) 0%, transparent 70%);
+  filter: blur(46px);
+  opacity: .30;
+  transition: background var(--slow), opacity var(--slow);
+  pointer-events: none;
+}
+.tv.no-ambi .tv__ambilight { opacity: 0; }
+.tv.ambi-pulse .tv__ambilight { animation: ambiPulse 1.6s ease-in-out infinite; }
+@keyframes ambiPulse { 0%,100% { opacity: .22 } 50% { opacity: .55 } }
+
+/* ── 1920x1080 stage ────────────────────────────────────────────────────────── */
+.stage {
+  position: relative;
+  width: 1920px; height: 1080px;
+  transform-origin: top left;
+  overflow: hidden;
+  background: var(--bg);
+  border-radius: 2px;
+  color: var(--text);
+}
+
+/* The showcase is a framed picture, inset from the bezel, not wallpaper: the dark
+   margin gives the type a quiet edge to start from and keeps the panel's backlight
+   bloom off the photograph. 32 px here = 16dp on the set. */
+.showcase {
+  position: absolute; inset: 32px;
+  border-radius: 34px; overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 40px 120px -20px rgba(0,0,0,.9);
+}
+.backdrop { position: absolute; inset: 0; }
+.backdrop__layer {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0;
+  transform: scale(1.06);
+  transition: opacity var(--slow);
+  animation: kenburns 26s ease-in-out infinite alternate;
+}
+.backdrop__layer.is-on { opacity: 1; }
+.backdrop { filter: saturate(.92) brightness(.82); }
+@keyframes kenburns {
+  from { transform: scale(1.05) translate3d(0,0,0); }
+  to   { transform: scale(1.14) translate3d(-1.2%, -1.6%, 0); }
+}
+.backdrop__scrim {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(100deg, rgba(5,8,12,.94) 0%, rgba(5,8,12,.72) 34%, rgba(5,8,12,.12) 62%, rgba(5,8,12,.45) 100%),
+    linear-gradient(0deg,  rgba(5,8,12,.96) 0%, rgba(5,8,12,.35) 34%, transparent 62%),
+    linear-gradient(180deg, rgba(5,8,12,.75) 0%, transparent 22%);
+}
+/* film grain keeps the big flat gradients from banding on an 8-bit panel */
+.grain {
+  position: absolute; inset: 0; pointer-events: none; opacity: .30; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='.5'/></svg>");
+}
+
+/* the 5% the set can crop */
+.safe { position: absolute; inset: 32px; border: 1px dashed rgba(77,232,244,.45); display: none; pointer-events: none; }
+.stage.show-safe .safe { display: block; }
+
+/* ── vertical reel: home / jarvis ───────────────────────────────────────────── */
+.reel { position: absolute; inset: 0; transition: transform var(--slow); will-change: transform; }
+.screen {
+  position: absolute; left: 0; width: 1920px; height: 1080px;
+  padding: 72px 108px;
+  display: flex; flex-direction: column;
+}
+.screen--home   { top: 0; }
+
+/* off the home screen the showcase steps back: blurred behind the homelab, all but
+   gone behind the orb */
+.stage.at-jarvis .backdrop,
+.stage.at-homelab .backdrop { filter: blur(26px) saturate(.75); transform: scale(1.06); }
+.backdrop { transition: filter var(--slow), transform var(--slow); }
+.stage.at-jarvis .backdrop__scrim,
+.stage.at-homelab .backdrop__scrim { background: linear-gradient(180deg, rgba(5,8,12,.88), rgba(5,8,12,.94)); }
+.stage.at-homelab .scrollhint { opacity: 0; }
+
+/* ── top bar ────────────────────────────────────────────────────────────────── */
+.topbar { display: flex; align-items: center; justify-content: space-between; flex: none; }
+.who { display: flex; align-items: center; gap: 18px; }
+.who__avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 24px; font-weight: 500; letter-spacing: .02em;
+  background: linear-gradient(140deg, rgba(77,232,244,.9), rgba(77,232,244,.25));
+  color: #04262b;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.12);
+}
+.who__greeting { font-size: 28px; font-weight: 300; letter-spacing: .01em; }
+.who__sub { font-size: 17px; color: var(--text-3); margin-top: 2px; text-transform: capitalize; }
+
+.topbar__right { display: flex; align-items: center; gap: 22px; }
+.pill {
+  display: flex; align-items: center; gap: 10px;
+  height: 40px; padding: 0 18px; border-radius: 20px;
+  background: var(--surface); border: 1px solid var(--hairline);
+  font-size: 14px; font-weight: 500; letter-spacing: .14em; color: var(--text-2);
+  backdrop-filter: blur(20px);
+}
+.pill .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 12px var(--ok); }
+.pill.is-down { color: var(--text-3); }
+.pill.is-down .dot { background: var(--err); box-shadow: none; }
+.clock { font-size: 30px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.gear {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface); border: 1px solid var(--hairline); color: var(--text-2);
+  cursor: pointer; transition: transform var(--fast), background var(--fast), color var(--fast);
+}
+.gear.is-focused {
+  background: #fff; color: #05080C; transform: scale(1.1);
+  box-shadow: 0 0 0 5px rgba(255,255,255,.18);
+}
+
+/* ── hero ───────────────────────────────────────────────────────────────────── */
+.hero { margin-top: auto; max-width: 900px; }
+.hero__kicker {
+  font-size: 15px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--accent);
+}
+.hero__title {
+  font-size: 76px; font-weight: 300; line-height: 1.04; letter-spacing: -.015em;
+  margin-top: 14px;
+  text-shadow: 0 4px 40px rgba(0,0,0,.55);
+}
+.hero__meta { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.hero__meta span {
+  font-size: 16px; color: var(--text-2);
+  padding: 5px 13px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--hairline);
+}
+.hero__progress { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
+.hero__progressBar { width: 320px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
+.hero__progressBar i { display: block; height: 100%; background: var(--accent); box-shadow: 0 0 14px var(--accent); transition: width var(--medium); }
+.hero__progress span { font-size: 15px; color: var(--text-3); }
+.hero__cta { display: flex; align-items: center; gap: 12px; margin-top: 24px; font-size: 18px; color: var(--text-2); }
+.hero__cta kbd {
+  font: 500 14px/1 Roboto, sans-serif; letter-spacing: .08em;
+  padding: 7px 12px; border-radius: 7px;
+  background: rgba(255,255,255,.92); color: #05080C;
+}
+/* content swap: fade up, never slide sideways — sideways reads as a page change */
+.hero.is-swapping .hero__kicker,
+.hero.is-swapping .hero__title,
+.hero.is-swapping .hero__meta,
+.hero.is-swapping .hero__progress,
+.hero.is-swapping .hero__cta { opacity: 0; transform: translateY(14px); }
+.hero__kicker, .hero__title, .hero__meta, .hero__progress, .hero__cta {
+  transition: opacity var(--medium), transform var(--medium);
+}
+.hero__title   { transition-delay: 30ms; }
+.hero__meta    { transition-delay: 60ms; }
+.hero__progress{ transition-delay: 80ms; }
+.hero__cta     { transition-delay: 100ms; }
+
+/* ── app rail ───────────────────────────────────────────────────────────────── */
+.rail {
+  margin-top: 44px; flex: none; overflow: visible;
+  /* the row continues past the frame; fade it rather than cut it */
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 88%, transparent 99%);
+  mask-image: linear-gradient(90deg, #000 0, #000 88%, transparent 99%);
+  padding: 18px 0 24px; margin-bottom: -24px;
+}
+.rail__track { display: flex; gap: 24px; transition: transform var(--medium); will-change: transform; }
+
+.card {
+  position: relative; flex: none;
+  width: 266px; height: 150px;
+  border-radius: 22px; overflow: hidden;
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+  transform-origin: 50% 100%;
+  transition: transform var(--medium), box-shadow var(--medium), border-color var(--medium);
+}
+.card__art {
+  position: absolute; inset: 0;
+  /* the still is tiny at this size, so it is pushed a stop brighter and punchier —
+     a card has to read as a place, not as a dark rectangle */
+  filter: saturate(1.2) contrast(1.06) brightness(1.12);
+  transform: scale(1.12);
+}
+.card__gloss {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.24), transparent 32%),
+              linear-gradient(0deg, rgba(4,7,11,.95) 0%, rgba(4,7,11,.78) 22%,
+                              rgba(4,7,11,.34) 46%, transparent 68%);
+}
+/* a wash of the app's own colour so two photographic cards never read as one */
+.card__tint { position: absolute; inset: 0; mix-blend-mode: soft-light; opacity: .38; }
+.card__mark {
+  position: absolute; top: 18px; left: 20px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.45);
+  width: 44px; height: 44px; border-radius: 13px;
+  display: grid; place-items: center;
+  font-size: 22px; font-weight: 500; color: #fff;
+  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22);
+  backdrop-filter: blur(10px);
+}
+.card__label {
+  position: absolute; left: 20px; right: 20px; bottom: 26px;
+  font-size: 19px; font-weight: 500; letter-spacing: .01em;
+  text-shadow: 0 1px 14px rgba(0,0,0,.75);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card__badge {
+  position: absolute; top: 20px; right: 20px;
+  font-size: 12px; font-weight: 500; letter-spacing: .12em;
+  padding: 4px 9px; border-radius: 6px;
+  background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.2); color: #fff;
+}
+.card__resume {
+  position: absolute; left: 20px; right: 20px; bottom: 12px;
+  height: 3px; border-radius: 2px; background: rgba(255,255,255,.22); overflow: hidden;
+}
+.card__resume i { display: block; height: 100%; border-radius: 2px; background: #fff; }
+
+.card.is-focused {
+  transform: translateY(-10px) scale(1.07);
+  border-color: transparent;              /* the ring is the edge now */
+  box-shadow: 0 24px 60px rgba(0,0,0,.65),
+              0 0 80px -12px var(--card-accent, #4DE8F4);
+}
+.card.is-focused .card__art { filter: saturate(1.3) contrast(1.08) brightness(1.24); transform: scale(1.16); }
+.card__art { transition: transform var(--medium), filter var(--medium); }
+.rail:not(.is-active) .card.is-focused { box-shadow: 0 0 0 2px rgba(255,255,255,.35), 0 18px 44px rgba(0,0,0,.5); transform: translateY(-4px) scale(1.03); }
+
+/* The sweep. A conic gradient rotated by an animatable custom property, masked to a
+   3 px ring — the same shape a SweepGradient + ValueAnimator draws on Android, which
+   is how this ports to the launcher. */
+@property --angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+.card__ring {
+  position: absolute; inset: 0;
+  border-radius: 22px; padding: 2px;
+  /* the steady rim and the travelling light are the same ring, so the edge never
+     doubles up */
+  background:
+    conic-gradient(from var(--angle),
+      transparent 0deg, transparent 200deg,
+      var(--card-accent, #4DE8F4) 300deg,
+      #ffffff 340deg,
+      var(--card-accent, #4DE8F4) 352deg,
+      transparent 360deg),
+    linear-gradient(rgba(255,255,255,.5), rgba(255,255,255,.5));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity var(--medium);
+  pointer-events: none;
+}
+.card.is-focused .card__ring { opacity: 1; animation: sweep 5.5s linear infinite; }
+.card.is-launching .card__ring { opacity: 1; animation: sweep .45s linear infinite; filter: drop-shadow(0 0 10px var(--card-accent)); }
+@keyframes sweep { to { --angle: 360deg; } }
+
+/* everything that is not the launching card steps back */
+.stage.is-launching .topbar,
+.stage.is-launching .hero,
+.stage.is-launching .scrollhint { opacity: 0; transform: translateY(10px); transition: opacity 260ms var(--ease), transform 260ms var(--ease); }
+.stage.is-launching .card:not(.is-launching) { opacity: 0; transform: translateY(14px) scale(.96); transition: opacity 260ms var(--ease), transform 260ms var(--ease); }
+.card.is-launching { z-index: 3; }
+.card.is-handed-off { opacity: 0; transition: opacity 200ms var(--ease); }
+
+/* the card, grown to the frame: same picture, same corner radius, so the eye reads
+   one object moving rather than two things crossfading */
+.takeover {
+  position: absolute; left: 32px; top: 32px; width: 1856px; height: 1016px;
+  border-radius: 34px; overflow: hidden;
+  transform-origin: 0 0; z-index: 4;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.7), 0 60px 140px -30px #000;
+}
+/* the still keeps drifting in while the app starts: the screen is never frozen */
+.takeover__img {
+  position: absolute; inset: -2%;
+  background-size: cover; background-position: center;
+  animation: takeoverPush 2.4s var(--ease) forwards;
+}
+@keyframes takeoverPush { from { transform: scale(1) } to { transform: scale(1.08) } }
+.takeover__veil {
+  position: absolute; inset: 0;
+  background: radial-gradient(70% 60% at 50% 55%, rgba(5,8,12,.55), rgba(5,8,12,.86));
+}
+.takeover__ring {
+  position: absolute; inset: 0;
+  border-radius: 34px; padding: 4px;
+  background: conic-gradient(from var(--angle),
+    transparent 0deg, transparent 180deg,
+    var(--take-accent, #4DE8F4) 300deg, #fff 345deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  filter: drop-shadow(0 0 16px var(--take-accent, #4DE8F4));
+  animation: sweep 1.15s linear infinite;
+  opacity: 0; transition: opacity 260ms var(--ease);
+  pointer-events: none;
+}
+.takeover.is-open .takeover__ring { opacity: 1; }
+
+.takeover__content {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 26px; opacity: 0; transform: translateY(16px);
+  transition: opacity 280ms var(--ease) 60ms, transform 280ms var(--ease) 60ms;
+}
+.takeover.is-open .takeover__content { opacity: 1; transform: none; }
+.takeover__mark {
+  width: 116px; height: 116px; border-radius: 32px;
+  display: grid; place-items: center;
+  font-size: 52px; font-weight: 400; color: #fff;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 0 60px -10px var(--take-accent, #4DE8F4);
+}
+.takeover__name { font-size: 46px; font-weight: 300; letter-spacing: -.01em; }
+.takeover__hint { font-size: 17px; letter-spacing: .2em; text-transform: uppercase; color: var(--text-3); margin-top: -12px; }
+/* an indeterminate bar, because the launcher cannot know how long the app will take */
+.takeover__bar { width: 280px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.16); overflow: hidden; }
+.takeover__bar i {
+  display: block; width: 40%; height: 100%; border-radius: 2px;
+  background: var(--take-accent, #4DE8F4);
+  animation: slide 1.15s var(--ease) infinite;
+}
+@keyframes slide { 0% { transform: translateX(-110%) } 100% { transform: translateX(360%) } }
+
+/* ── scroll hint ────────────────────────────────────────────────────────────── */
+.scrollhint {
+  position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3);
+  animation: nudge 2.4s ease-in-out infinite;
+  transition: opacity var(--medium);
+}
+@keyframes nudge { 0%,100% { transform: translate(-50%,0) } 50% { transform: translate(-50%,6px) } }
+.stage.at-jarvis .scrollhint { opacity: 0; }
+
+/* ── screen 2 : the orb owns the frame ──────────────────────────────────────── */
+.screen--jarvis {
+  top: 1080px;
+  align-items: center; justify-content: center;
+  padding: 72px 108px 96px;
+}
+/* the showcase gets out of the way entirely here — the orb is the only lit thing */
+.stage.at-jarvis .showcase { opacity: .06; }
+.showcase { transition: opacity var(--slow); }
+
+.orbstate {
+  position: absolute; top: 92px; left: 0; right: 0; text-align: center;
+  font-size: 18px; font-weight: 400; letter-spacing: .46em; text-transform: uppercase;
+  color: rgba(242,247,250,.55);
+  transition: color var(--slow);
+}
+.orb { width: 900px; height: 900px; display: block; }
+/* the same grain that sits over the showcase, over the orb: without it the gradient
+   bands visibly on an 8-bit panel */
+.screen--jarvis::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  opacity: .30; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='.5'/></svg>");
+}
+
+.orbtext { position: absolute; left: 0; right: 0; bottom: 118px; text-align: center; }
+.orbtext__prompt {
+  font-size: 30px; font-weight: 300; color: var(--text-2);
+  transition: opacity var(--medium);
+}
+.orbtext__reply {
+  margin-top: 18px; font-size: 40px; font-weight: 300; line-height: 1.3;
+  max-width: 1320px; margin-inline: auto;
+  transition: opacity var(--medium);
+}
+
+.wayfind {
+  position: absolute; left: 0; right: 0; bottom: 46px;
+  display: flex; justify-content: center; gap: 36px;
+  font-size: 14px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3);
+}
+.wayfind b { font-weight: 400; color: var(--text-2); margin-right: 8px; }
+
+/* ── screen 3 : homelab ─────────────────────────────────────────────────────── */
+.screen--homelab { top: 2160px; padding: 96px 108px 108px; }
+.homelab__head { display: flex; align-items: baseline; gap: 22px; }
+.homelab__host { font-size: 22px; font-weight: 300; color: var(--text-2); font-family: monospace; }
+
+.gauges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 28px; }
+.gauge {
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: 26px; padding: 38px 36px; backdrop-filter: blur(24px);
+}
+.gauge span { font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: var(--text-3); }
+.gauge b {
+  display: block; margin-top: 18px;
+  font-size: 60px; font-weight: 200; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.gauge b i { font-size: 20px; font-style: normal; color: var(--text-3); margin-left: 6px; }
+.gauge .bar { margin-top: 26px; }
+
+.section-label--spaced { margin-top: 48px; }
+/* a grid, not a row: nine services used to clip off the right edge */
+.services {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 20px;
+  /* the rows share out whatever is left, so the screen has no dead half */
+  flex: 1; grid-auto-rows: 1fr; margin-bottom: 44px;
+}
+.service {
+  display: flex; align-items: center; gap: 16px;
+  padding: 26px 30px; border-radius: 20px;
+  background: var(--surface); border: 1px solid var(--hairline);
+}
+.service__name { font-size: 21px; color: var(--text); }
+.service__meta { font-size: 15px; color: var(--text-3); margin-top: 4px; font-family: monospace; }
+.service.is-down .service__name { color: var(--err); }
+.service i { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); }
+.service.is-down { color: var(--err); border-color: rgba(248,113,113,.35); }
+.service.is-down i { background: var(--err); box-shadow: 0 0 12px var(--err); }
+
+.bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); transition: width var(--medium); }
+
+/* Someone who asked the system for less motion gets the same information, no drift,
+   no sweep, no Ken Burns. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}

@@ -69,7 +69,10 @@ esac
 
 if [ "$build" = 1 ]; then
   echo "Building release APK..."
-  ( cd "$app" && JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@17}" ./gradlew -q :app:assembleRelease )
+  # vfs.watch off on purpose: with it on, Gradle here has reported every task
+  # UP-TO-DATE against edited sources and quietly shipped the previous APK.
+  ( cd "$app" && JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@17}" \
+      ./gradlew -q :app:assembleRelease -Dorg.gradle.vfs.watch=false )
 fi
 [ -f "$apk" ] || { echo "APK not found at $apk"; exit 1; }
 

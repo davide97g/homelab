@@ -286,6 +286,56 @@ app.post('/api/play', guard(async (req) => {
   return { ok: true, ...out };
 }));
 
+/**
+ * What the launcher puts behind its app rail: the films this TV is part-way through,
+ * with the artwork proxied through here because the TV has no route to that Jellyfin.
+ */
+app.get('/api/showcase', async (_req, res) => {
+  if (!jf.configured) return res.json({ items: [] });
+  try {
+    // resume first, topped up with the newest films: one half-watched film is a thin
+    // showcase, and this library usually has exactly one
+    const items = await jf.resume(5);
+    if (items.length < 4) {
+      const seen = new Set(items.map((i) => i.id));
+      for (const i of await jf.latest(6)) {
+        if (!seen.has(i.id) && items.length < 5) items.push(i);
+      }
+    }
+    res.json({
+      items: items.map((i) => ({
+        id: i.id,
+        package: JELLYFIN_PACKAGE,
+        title: i.seriesName ? `${i.seriesName} · ${i.name}` : i.name,
+        kicker: i.position ? 'Continua a guardare · Jellyfin' : 'Da vedere · Jellyfin',
+        year: i.year,
+        durationSeconds: i.duration,
+        positionSeconds: i.position,
+        image: i.image ? `/api/image/${i.image.id}?type=${i.image.type}&tag=${i.image.tag}` : null,
+      })),
+    });
+  } catch (err) {
+    console.error('showcase failed:', err.message);
+    res.json({ items: [] });
+  }
+});
+
+app.get('/api/image/:id', async (req, res) => {
+  try {
+    const out = await jf.image(req.params.id, {
+      type: req.query.type || 'Backdrop',
+      tag: req.query.tag,
+      maxWidth: Math.min(1920, Number(req.query.w) || 1280),
+    });
+    // the launcher re-reads these on every resume; a day of caching keeps that free
+    res.set('Content-Type', out.contentType);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(out.body);
+  } catch (err) {
+    res.status(502).send(err.message);
+  }
+});
+
 app.get('/api/status', async (_req, res) => res.json(await snapshot()));
 app.get('/healthz', (_req, res) => res.send('ok'));
 

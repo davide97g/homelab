@@ -1,20 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- TV overscan. The panel is 4K but the Android surface is 1920x1080, and the
-         outer ~3% of it can be cropped by the set, so nothing readable goes here. -->
+    <!-- Every value here is a measurement from the 1920x1080 preview in tv-preview/,
+         halved: that stage is exactly the surface Android composites on this set, and
+         the panel runs at 320 dpi, so one preview pixel is half a dp. See Ui.px. -->
+
+    <!-- the picture is framed, not full-bleed: 32 px of bezel margin -->
+    <dimen name="frame_inset">16dp</dimen>
+    <dimen name="frame_radius">17dp</dimen>
+
+    <!-- content clears the frame by another 40/76 px -->
+    <dimen name="screen_pad_h">54dp</dimen>
+    <dimen name="screen_pad_v">36dp</dimen>
+
+    <dimen name="card_w">133dp</dimen>
+    <dimen name="card_h">75dp</dimen>
+    <dimen name="card_gap">12dp</dimen>
+
+    <dimen name="text_greeting">14sp</dimen>
+    <dimen name="text_sub">8.5sp</dimen>
+    <dimen name="text_clock">15sp</dimen>
+    <dimen name="text_pill">7sp</dimen>
+    <dimen name="text_kicker">7.5sp</dimen>
+    <dimen name="text_hero">38sp</dimen>
+    <dimen name="text_chip">8sp</dimen>
+    <dimen name="text_cta">9sp</dimen>
+    <dimen name="text_orb_state">9sp</dimen>
+    <dimen name="text_orb_prompt">15sp</dimen>
+    <dimen name="text_orb_reply">26sp</dimen>
+    <dimen name="text_section">7sp</dimen>
+    <dimen name="text_gauge">30sp</dimen>
+    <dimen name="text_gauge_unit">10sp</dimen>
+    <dimen name="text_service">10.5sp</dimen>
+    <dimen name="text_service_meta">7.5sp</dimen>
+    <dimen name="text_wayfind">7sp</dimen>
+
+    <!-- the settings screen keeps the old overscan margins: it is a plain list and
+         never sits under the framed picture -->
     <dimen name="overscan_h">48dp</dimen>
     <dimen name="overscan_v">32dp</dimen>
-
-    <dimen name="section_gap">14dp</dimen>
-    <dimen name="tile_w">168dp</dimen>
-    <dimen name="tile_h">88dp</dimen>
-    <dimen name="tile_gap">14dp</dimen>
-
-    <!-- 10-foot UI: nothing below 16sp is legible from a sofa. -->
-    <dimen name="text_clock">42sp</dimen>
-    <dimen name="text_greeting">26sp</dimen>
-    <dimen name="text_section">14sp</dimen>
-    <dimen name="text_body">18sp</dimen>
-    <dimen name="text_metric">20sp</dimen>
-    <dimen name="panel_pad">12dp</dimen>
 </resources>

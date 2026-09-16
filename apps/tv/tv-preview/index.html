@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>JARVIS TV — design preview</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Roboto is what Android TV actually renders with; matching it here keeps the
+     preview honest about line lengths and weights. -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css?v=1789568665">
+</head>
+<body>
+
+<header class="toolbar">
+  <div class="toolbar__title">JARVIS TV<span>65PUS8505 · surface 1920×1080 · 16:9</span></div>
+  <div class="toolbar__group">
+    <button data-key="ArrowLeft" title="D-pad sinistra">◀</button>
+    <button data-key="ArrowUp" title="D-pad su">▲</button>
+    <button data-key="ArrowDown" title="D-pad giù">▼</button>
+    <button data-key="ArrowRight" title="D-pad destra">▶</button>
+    <button data-key="Enter" title="OK">OK</button>
+  </div>
+  <div class="toolbar__group">
+    <label><input type="checkbox" id="tglSafe"> safe area</label>
+    <label><input type="checkbox" id="tglAmbi" checked> ambilight</label>
+    <label><input type="checkbox" id="tglBezel" checked> cornice</label>
+    <button id="btnSay">ciclo completo</button>
+    <button data-state="LISTENING">ascolto</button>
+    <button data-state="THINKING">pensa</button>
+    <button data-state="SPEAKING">parla</button>
+    <button data-state="ERROR">errore</button>
+  </div>
+</header>
+
+<div class="room">
+  <div class="tv" id="tv">
+    <div class="tv__ambilight" id="ambilight"></div>
+    <div class="tv__panel">
+      <div class="stage" id="stage">
+
+        <!-- the showcase sits inside a margin, so the photograph reads as a framed
+             picture instead of wallpaper, and the set's edge backlight has somewhere
+             dark to sit -->
+        <div class="showcase" id="showcase">
+          <div class="backdrop" id="backdrop"></div>
+          <div class="backdrop__scrim"></div>
+          <div class="grain"></div>
+        </div>
+
+        <div class="safe" id="safe"></div>
+
+        <div class="reel" id="reel">
+
+          <!-- ── screen 1 : home ──────────────────────────────────────────── -->
+          <section class="screen screen--home">
+
+            <div class="topbar">
+              <div class="who">
+                <div class="who__avatar">D</div>
+                <div class="who__text">
+                  <div class="who__greeting" id="greeting">Buonasera, Davide</div>
+                  <div class="who__sub" id="dateLine">martedì 16 settembre</div>
+                </div>
+              </div>
+              <div class="topbar__right">
+                <div class="pill" id="linkPill"><i class="dot"></i><span>HOMELAB ONLINE</span></div>
+                <div class="clock" id="clock">21:40</div>
+                <button class="gear" id="gear" data-focus="gear" aria-label="Impostazioni">
+                  <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5m7.43-2.53a7.6 7.6 0 0 0 0-1.94l2.03-1.58a.5.5 0 0 0 .12-.62l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.68-.97l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54a7.3 7.3 0 0 0-1.68.97l-2.39-.96a.5.5 0 0 0-.6.22L2.42 8.83a.5.5 0 0 0 .12.62l2.03 1.58a7.6 7.6 0 0 0 0 1.94l-2.03 1.58a.5.5 0 0 0-.12.62l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.52.4 1.08.73 1.68.97l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.6-.24 1.16-.57 1.68-.97l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.62Z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="hero" id="hero">
+              <div class="hero__kicker" id="heroKicker">Jellyfin</div>
+              <h1 class="hero__title" id="heroTitle">Dune: Parte Due</h1>
+              <div class="hero__meta" id="heroMeta"></div>
+              <div class="hero__progress" id="heroProgress" hidden>
+                <div class="hero__progressBar"><i></i></div>
+                <span id="heroProgressText"></span>
+              </div>
+              <div class="hero__cta"><kbd>OK</kbd><span id="heroCta">Riprendi</span></div>
+            </div>
+
+            <div class="rail" id="rail">
+              <div class="rail__track" id="railTrack"></div>
+            </div>
+
+            <div class="scrollhint" id="scrollHint">
+              <span>JARVIS &amp; homelab</span>
+              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 16 6 10h12z"/></svg>
+            </div>
+          </section>
+
+          <!-- ── screen 2 : jarvis, and nothing else ──────────────────────── -->
+          <section class="screen screen--jarvis">
+            <div class="orbstate" id="orbState">IN ASCOLTO</div>
+            <canvas class="orb" id="orb" width="900" height="900"></canvas>
+            <div class="orbtext">
+              <div class="orbtext__prompt" id="jarvisPrompt">“ok fai partire jellyfin con harry potter”</div>
+              <div class="orbtext__reply" id="jarvisReply">È partito Harry Potter e la Pietra Filosofale. Buona visione!</div>
+            </div>
+            <div class="wayfind">
+              <span><b>↑</b> app</span><span><b>↓</b> homelab</span>
+            </div>
+          </section>
+
+          <!-- ── screen 3 : homelab ───────────────────────────────────────── -->
+          <section class="screen screen--homelab">
+            <div class="homelab__head">
+              <div class="section-label">Homelab</div>
+              <div class="homelab__host" id="hostName">debian.fritz.box</div>
+            </div>
+
+            <div class="gauges">
+              <div class="gauge"><span>CPU</span><b>14<i>%</i></b><div class="bar"><i style="width:14%"></i></div></div>
+              <div class="gauge"><span>RAM</span><b>7<i>/15 G</i></b><div class="bar"><i style="width:47%"></i></div></div>
+              <div class="gauge"><span>Disco</span><b>2.1<i>/4 T</i></b><div class="bar"><i style="width:53%"></i></div></div>
+              <div class="gauge"><span>Uptime</span><b>12<i>g 4h</i></b><div class="bar"><i style="width:100%"></i></div></div>
+            </div>
+
+            <div class="section-label section-label--spaced">Servizi · sonda TCP</div>
+            <div class="services" id="services"></div>
+
+            <div class="wayfind"><span><b>↑</b> JARVIS</span></div>
+          </section>
+
+        </div><!-- /reel -->
+      </div><!-- /stage -->
+    </div>
+  </div>
+  <div class="room__caption">Frecce / click per muoverti · ↓ per JARVIS · le misure sono quelle reali del pannello</div>
+</div>
+
+<script src="data.js?v=1789568665"></script>
+<script src="orb.js"></script>
+<script src="app.js?v=1789568665"></script>
+</body>
+</html>

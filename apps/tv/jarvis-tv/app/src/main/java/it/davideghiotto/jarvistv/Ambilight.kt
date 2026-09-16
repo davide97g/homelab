@@ -39,6 +39,9 @@ class Ambilight(private val scope: CoroutineScope) {
     private var savedMode: String? = null
     private var savedConfig: JSONObject? = null
     private var pulseJob: Job? = null
+    private var lastR = -1
+    private var lastG = -1
+    private var lastB = -1
 
     /** Remember the viewer's settings so a pulse can hand them back. */
     fun capture() = scope.launch(Dispatchers.IO) {
@@ -53,6 +56,7 @@ class Ambilight(private val scope: CoroutineScope) {
      */
     fun startPulse(r: Int = 0x4D, g: Int = 0xE8, b: Int = 0xF4) {
         stopPulse(restore = false)
+        lastR = -1; lastG = -1; lastB = -1        // a held colour is no longer current
         pulseJob = scope.launch(Dispatchers.IO) {
             post("ambilight/mode", JSONObject().put("current", "manual"))
             var t = 0.0
@@ -71,6 +75,27 @@ class Ambilight(private val scope: CoroutineScope) {
                 // a Restlet stack that is not built for a frame loop.
                 delay(125)
             }
+        }
+    }
+
+    /**
+     * Hold one colour: the set's own backlight follows whatever the launcher is
+     * showing — the focused app's artwork, or the orb while JARVIS is talking.
+     *
+     * Each call is an HTTP round trip through the TV's Restlet stack, so an unchanged
+     * colour is dropped rather than re-sent; moving along the rail otherwise posts once
+     * per card.
+     */
+    fun setColour(argb: Int) {
+        val r = (argb shr 16) and 0xFF
+        val g = (argb shr 8) and 0xFF
+        val b = argb and 0xFF
+        if (pulseJob != null) return               // a pulse is already driving it
+        if (r == lastR && g == lastG && b == lastB) return
+        lastR = r; lastG = g; lastB = b
+        scope.launch(Dispatchers.IO) {
+            post("ambilight/mode", JSONObject().put("current", "manual"))
+            post("ambilight/cached", JSONObject().put("r", r).put("g", g).put("b", b))
         }
     }
 

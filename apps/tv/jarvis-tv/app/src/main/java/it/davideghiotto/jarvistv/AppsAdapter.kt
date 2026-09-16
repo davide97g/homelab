@@ -2,15 +2,24 @@ package it.davideghiotto.jarvistv
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-data class LaunchableApp(val label: String, val pkg: String, val icon: Drawable)
+/**
+ * @param banner the app's own leanback banner — real artwork, from the TV itself
+ * @param accent the colour that banner is "about", used for the card wash, the sweep
+ *               and the Ambilight while this app is the one being looked at
+ */
+data class LaunchableApp(
+    val label: String,
+    val pkg: String,
+    val banner: Drawable?,
+    val icon: Drawable,
+    val accent: Int,
+)
 
 /**
  * The apps the TV itself considers launchable, in the order the user is likeliest to
@@ -22,11 +31,15 @@ object Apps {
     private val FAVOURITES = listOf(
         "org.jellyfin.androidtv",
         "com.spotify.tv.android",
+        "com.netflix.ninja",
         "tv.twitch.android.app",
         "it.rainet.androidtv",
         "com.disney.disneyplus",
+        "com.amazon.amazonvideo.livingroom",
         "com.google.android.youtube.tv",
     )
+
+    private const val FALLBACK_ACCENT = 0xFF4DE8F4.toInt()
 
     fun load(ctx: Context): List<LaunchableApp> {
         val pm = ctx.packageManager
@@ -35,11 +48,14 @@ object Apps {
             .mapNotNull { info ->
                 val pkg = info.activityInfo.packageName
                 if (pkg == ctx.packageName) return@mapNotNull null   // never list ourselves
+                val banner = runCatching { info.activityInfo.loadBanner(pm) }.getOrNull()
+                val icon = runCatching { info.loadIcon(pm) }.getOrNull() ?: return@mapNotNull null
                 LaunchableApp(
                     label = info.loadLabel(pm).toString(),
                     pkg = pkg,
-                    icon = info.activityInfo.loadBanner(pm)
-                        ?: info.loadIcon(pm),
+                    banner = banner,
+                    icon = icon,
+                    accent = Ui.dominantColour(banner ?: icon, FALLBACK_ACCENT),
                 )
             }
             .sortedWith(
@@ -63,34 +79,58 @@ object Apps {
     }
 }
 
+/**
+ * The rail. Selection is this launcher's own state rather than Android focus: with the
+ * cards drawn by one custom view each, driving the sweep, the showcase and the hero off
+ * a focus search that a RecyclerView can re-run at any moment is more moving parts than
+ * the screen needs.
+ */
 class AppsAdapter(
     private val apps: List<LaunchableApp>,
-    private val onClick: (LaunchableApp) -> Unit,
 ) : RecyclerView.Adapter<AppsAdapter.VH>() {
 
-    class VH(view: View) : RecyclerView.ViewHolder(view) {
-        val icon: ImageView = view.findViewById(R.id.appIcon)
-        val label: TextView = view.findViewById(R.id.appLabel)
-    }
+    class VH(val card: AppCardView) : RecyclerView.ViewHolder(card)
+
+    var selected = 0
+        set(value) {
+            if (field == value) return
+            val old = field
+            field = value
+            notifyItemChanged(old)
+            notifyItemChanged(value)
+        }
+
+    /** Artwork and resume state the server knows about, by package. */
+    var art: Map<String, Bitmap> = emptyMap()
+    var progress: Map<String, Float> = emptyMap()
+
+    var sweepAngle = 0f
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_app, parent, false)
-        (v.layoutParams as RecyclerView.LayoutParams).marginEnd =
-            v.resources.getDimensionPixelSize(R.dimen.tile_gap)
-        return VH(v)
+        val card = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_app, parent, false) as AppCardView
+        (card.layoutParams as RecyclerView.LayoutParams).marginEnd =
+            card.resources.getDimensionPixelSize(R.dimen.card_gap)
+        return VH(card)
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val app = apps[position]
-        holder.icon.setImageDrawable(app.icon)
-        holder.label.text = app.label
-        holder.itemView.setOnClickListener { onClick(app) }
-        // A focused card lifts slightly. Scale only — a shadow costs a layer on a set
+        val card = holder.card
+        card.label = app.label
+        card.icon = app.icon
+        card.accent = app.accent
+        card.art = art[app.pkg] ?: Ui.toBitmap(app.banner, 320, 180)
+        card.progress = progress[app.pkg] ?: 0f
+        card.badge = if ((progress[app.pkg] ?: 0f) > 0f) card.context.getString(R.string.resume_badge) else null
+        card.picked = position == selected
+        card.sweepAngle = sweepAngle
+        // A picked card lifts slightly. Scale only — a shadow costs a layer on a set
         // with 2 GB of RAM and no compositor headroom to spare.
-        holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-            val s = if (hasFocus) 1.06f else 1f
-            v.animate().scaleX(s).scaleY(s).setDuration(120).start()
-        }
+        val lift = if (card.picked) 1.07f else 1f
+        card.animate().scaleX(lift).scaleY(lift)
+            .translationY(if (card.picked) -Ui.px(card, 10f) else 0f)
+            .setDuration(340).start()
     }
 
     override fun getItemCount() = apps.size
