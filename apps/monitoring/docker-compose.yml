@@ -1,0 +1,2055 @@
+# Homelab monitoring stack — Prometheus + Grafana + node_exporter + cAdvisor.
+#
+# GENERATED FILE — do not edit. Edit compose.base.yml and dashboards/*.json,
+# then run ./build.py.
+#
+# Everything is inlined as compose `configs`, so docker-compose.yml is fully
+# self-contained: paste it into Dokploy as a Raw compose app, no side files.
+#
+# Environment (set in the Dokploy Environment tab):
+#   GRAFANA_ADMIN_PASSWORD  required
+#   GRAFANA_ROOT_URL        optional, e.g. https://grafana.davideghiotto.it
+#   GRAFANA_COOKIE_SECURE   optional, set true once served over HTTPS
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: homelab-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=180d
+      - --storage.tsdb.retention.size=30GB
+      - --web.enable-lifecycle
+    extra_hosts:
+      # node_exporter runs on the host network, so reach it via the bridge gateway.
+      - host.docker.internal:host-gateway
+    volumes:
+      - prometheus-data:/prometheus
+    configs:
+      - source: prometheus_yml
+        target: /etc/prometheus/prometheus.yml
+      - source: prometheus_rules_yml
+        target: /etc/prometheus/rules/homelab.rules.yml
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.12.1
+    container_name: homelab-node-exporter
+    restart: unless-stopped
+    # Host network + host PID so interface, process and sensor metrics are the
+    # host's own, not the container's. Root is required to read the hwmon and
+    # powercap sensor files.
+    network_mode: host
+    pid: host
+    user: root
+    command:
+      - --path.rootfs=/host
+      - --collector.hwmon
+      - --collector.rapl
+      - --collector.systemd
+      - --collector.processes
+      - --collector.netdev.device-exclude=^(veth|docker|br-|lo).*$$
+    volumes:
+      - /:/host:ro,rslave
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    container_name: homelab-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    command:
+      - --housekeeping_interval=15s
+      - --docker_only=true
+      - --store_container_labels=false
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - monitoring
+
+  json-exporter:
+    image: prometheuscommunity/json-exporter:v0.8.0
+    container_name: homelab-json-exporter
+    restart: unless-stopped
+    # Bridges the Tasmota smart plug into Prometheus. The plug speaks JSON over
+    # HTTP (/cm?cmnd=Status 10) and has no /metrics of its own, so this maps its
+    # ENERGY object onto metrics. Prometheus scrapes this, not the plug.
+    command:
+      - --config.file=/config.yml
+    configs:
+      - source: json_exporter_yml
+        target: /config.yml
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    container_name: homelab-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in the Dokploy Environment tab}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/homelab-overview.json
+      # Set GRAFANA_ROOT_URL once a domain fronts this, otherwise redirects,
+      # share links and alert links all point at localhost:3001.
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+      GF_SERVER_ENFORCE_DOMAIN: "false"
+      # Cloudflare and Traefik both sit in front, so trust the forwarded headers.
+      GF_SERVER_ROUTER_LOGGING: "false"
+      GF_SECURITY_COOKIE_SECURE: ${GRAFANA_COOKIE_SECURE:-false}
+      GF_SECURITY_COOKIE_SAMESITE: lax
+    volumes:
+      - grafana-data:/var/lib/grafana
+    configs:
+      - source: grafana_datasource_yml
+        target: /etc/grafana/provisioning/datasources/prometheus.yml
+      - source: grafana_dashboard_provider_yml
+        target: /etc/grafana/provisioning/dashboards/homelab.yml
+      - source: grafana_dashboard_overview_json
+        target: /var/lib/grafana/dashboards/homelab-overview.json
+    networks:
+      - monitoring
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  monitoring:
+    driver: bridge
+
+configs:
+  prometheus_yml:
+    content: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+        external_labels:
+          host: debian
+
+      rule_files:
+        - /etc/prometheus/rules/*.yml
+
+      scrape_configs:
+        - job_name: prometheus
+          static_configs:
+            - targets: ["localhost:9090"]
+
+        - job_name: node
+          static_configs:
+            - targets: ["host.docker.internal:9100"]
+              labels:
+                instance: homelab
+
+        - job_name: cadvisor
+          static_configs:
+            - targets: ["cadvisor:8080"]
+              labels:
+                instance: homelab
+
+        # NOUS A1T smart plug (Tasmota) feeding the box, via json-exporter.
+        # The plug is DHCP-reserved at 192.168.15.132 on the Fritz!Box.
+        - job_name: smartplug
+          metrics_path: /probe
+          scrape_interval: 15s
+          scrape_timeout: 10s
+          params:
+            module: [tasmota]
+          static_configs:
+            - targets: ["http://192.168.15.132/cm?cmnd=Status%2010"]
+          relabel_configs:
+            - source_labels: [__address__]
+              target_label: __param_target
+            - target_label: instance
+              replacement: homelab
+            - target_label: __address__
+              replacement: json-exporter:7979
+
+  prometheus_rules_yml:
+    content: |
+      # Power for the GMKtec M6 Ultra (Ryzen 5 7640HS).
+      #
+      # Real wall watts now come from a NOUS A1T metering plug (Tasmota) that the
+      # box is plugged into, scraped through json-exporter. The old model is kept
+      # as :model and used as a fallback whenever the plug is unreachable, so the
+      # dashboard never goes blank.
+      #
+      # The model exists because the only power sensor this board exposes is the
+      # amdgpu PPT rail — CPU cores and iGPU only. It does NOT see the NVMe
+      # drive, the DIMMs, the 2.5G NIC, the fan, the board, or the loss in the
+      # external power brick, so it reads well below actual wall draw.
+      #   PLATFORM_OFFSET  10 W  — NVMe idle ~1.5, 2x DDR5 SODIMM ~3,
+      #                            RTL8125B at 2.5G ~1.5, fan ~1, board ~3
+      #   PSU_EFFICIENCY   0.89  — typical external 19V brick under light load
+      groups:
+        - name: homelab-power
+          interval: 15s
+          rules:
+            - record: homelab:power_package_watts
+              expr: |
+                node_hwmon_power_watt
+                  * on(instance, chip) group_left(chip_name)
+                node_hwmon_chip_names{chip_name="amdgpu"}
+
+            - record: homelab:power_package_watts:avg
+              expr: |
+                node_hwmon_power_average_watt
+                  * on(instance, chip) group_left(chip_name)
+                node_hwmon_chip_names{chip_name="amdgpu"}
+
+            - record: homelab:power_wall_watts:model
+              expr: (homelab:power_package_watts + 10) / 0.89
+
+            # Measured first, model second. `or` only evaluates the right side
+            # when the left has no series, i.e. when the plug scrape is failing.
+            # Both sides are reduced to a bare instance="homelab" label set so
+            # the recorded series does not change shape when it switches source.
+            - record: homelab:power_wall_watts:estimate
+              expr: |
+                max by (instance) (tasmota_active_power_watts{job="smartplug"})
+                  or
+                max by (instance) (homelab:power_wall_watts:model)
+
+            - record: homelab:energy_total_kwh
+              expr: max by (instance) (tasmota_energy_total_kilowatt_hours{job="smartplug"})
+
+        - name: homelab-alerts
+          interval: 30s
+          rules:
+            - alert: HostDown
+              expr: up{job="node"} == 0
+              for: 2m
+              labels:
+                severity: critical
+              annotations:
+                summary: node_exporter unreachable — the box may be down or asleep again
+
+            - alert: EthernetLinkFlapping
+              expr: changes(node_network_up{device="enp3s0"}[15m]) > 2
+              for: 1m
+              labels:
+                severity: warning
+              annotations:
+                summary: enp3s0 link flapped more than twice in 15 minutes
+
+            - alert: EthernetErrors
+              expr: rate(node_network_receive_errs_total{device="enp3s0"}[10m]) > 0
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: enp3s0 is logging receive errors
+
+            - alert: MemoryPressure
+              expr: |
+                (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.90
+              for: 15m
+              labels:
+                severity: warning
+              annotations:
+                summary: less than 10% of RAM available for 15 minutes
+
+            - alert: DiskFillingUp
+              expr: |
+                node_filesystem_avail_bytes{mountpoint="/"}
+                  / node_filesystem_size_bytes{mountpoint="/"} < 0.10
+              for: 30m
+              labels:
+                severity: warning
+              annotations:
+                summary: root filesystem is over 90% full
+
+            - alert: SmartPlugDown
+              expr: up{job="smartplug"} == 0
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: smart plug unreachable — wall power has fallen back to the model
+
+            - alert: CPUHot
+              expr: |
+                node_hwmon_temp_celsius
+                  * on(chip) group_left(chip_name)
+                node_hwmon_chip_names{chip_name="k10temp"} > 90
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: CPU die sustained above 90C
+
+  json_exporter_yml:
+    content: |
+      # Maps the Tasmota ENERGY object onto Prometheus metrics.
+      # Sample payload: {"StatusSNS":{"ENERGY":{"Power":21,"Voltage":230,...}}}
+      modules:
+        tasmota:
+          metrics:
+            - name: tasmota
+              help: Tasmota ENERGY sensor reading from the smart plug
+              type: object
+              path: '{ .StatusSNS.ENERGY }'
+              values:
+                active_power_watts: '{.Power}'
+                apparent_power_voltamperes: '{.ApparentPower}'
+                power_factor_ratio: '{.Factor}'
+                voltage_volts: '{.Voltage}'
+                current_amperes: '{.Current}'
+                energy_today_kilowatt_hours: '{.Today}'
+                energy_total_kilowatt_hours: '{.Total}'
+
+  grafana_datasource_yml:
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          uid: prometheus
+          type: prometheus
+          access: proxy
+          url: http://prometheus:9090
+          isDefault: true
+          jsonData:
+            timeInterval: 15s
+            httpMethod: POST
+
+  grafana_dashboard_provider_yml:
+    content: |
+      apiVersion: 1
+      providers:
+        - name: homelab
+          orgId: 1
+          type: file
+          disableDeletion: false
+          updateIntervalSeconds: 30
+          allowUiUpdates: true
+          options:
+            path: /var/lib/grafana/dashboards
+            foldersFromFilesStructure: false
+
+  grafana_dashboard_overview_json:
+    content: |
+      {
+        "uid": "homelab-overview",
+        "title": "Homelab Overview",
+        "tags": [
+          "homelab"
+        ],
+        "timezone": "browser",
+        "schemaVersion": 39,
+        "version": 4,
+        "refresh": "30s",
+        "time": {
+          "from": "now-6h",
+          "to": "now"
+        },
+        "editable": true,
+        "graphTooltip": 1,
+        "templating": {
+          "list": [
+            {
+              "name": "cost_per_kwh",
+              "label": "Cost per kWh (EUR, all-in marginal)",
+              "type": "textbox",
+              "query": "0.27",
+              "current": {
+                "text": "0.27",
+                "value": "0.27"
+              },
+              "options": [],
+              "hide": 0
+            },
+            {
+              "name": "smooth",
+              "label": "Smoothing",
+              "type": "interval",
+              "query": "1m,2m,5m,10m,30m,1h",
+              "current": {
+                "text": "5m",
+                "value": "5m"
+              },
+              "options": [
+                {
+                  "text": "1m",
+                  "value": "1m",
+                  "selected": false
+                },
+                {
+                  "text": "2m",
+                  "value": "2m",
+                  "selected": false
+                },
+                {
+                  "text": "5m",
+                  "value": "5m",
+                  "selected": true
+                },
+                {
+                  "text": "10m",
+                  "value": "10m",
+                  "selected": false
+                },
+                {
+                  "text": "30m",
+                  "value": "30m",
+                  "selected": false
+                },
+                {
+                  "text": "1h",
+                  "value": "1h",
+                  "selected": false
+                }
+              ],
+              "auto": false,
+              "hide": 0
+            }
+          ]
+        },
+        "panels": [
+          {
+            "id": 20,
+            "type": "stat",
+            "title": "CPU",
+            "description": "Busy percentage across all threads. Big number is the latest sample, the sparkline is the selected range. Legend under it: mean / max over the range.",
+            "gridPos": {
+              "h": 6,
+              "w": 4,
+              "x": 0,
+              "y": 0
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                "legendFormat": "busy",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "value",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "decimals": 1,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 50
+                    },
+                    {
+                      "color": "red",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 21,
+            "type": "stat",
+            "title": "Memory",
+            "description": "RAM in use (total minus available) as a percentage.",
+            "gridPos": {
+              "h": 6,
+              "w": 4,
+              "x": 4,
+              "y": 0
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+                "legendFormat": "used",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "value",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "decimals": 1,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 75
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 22,
+            "type": "stat",
+            "title": "Temperature",
+            "description": "Hottest hwmon sensor on the box, whichever one it is at that moment.",
+            "gridPos": {
+              "h": 6,
+              "w": 4,
+              "x": 8,
+              "y": 0
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "max(node_hwmon_temp_celsius)",
+                "legendFormat": "hottest sensor",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "value",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "celsius",
+                "decimals": 1,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "red",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 23,
+            "type": "stat",
+            "title": "Power",
+            "description": "Estimated wall power: APU package scaled for PSU loss plus the fixed platform offset.",
+            "gridPos": {
+              "h": 6,
+              "w": 4,
+              "x": 12,
+              "y": 0
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "homelab:power_wall_watts:estimate",
+                "legendFormat": "wall",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "value",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "watt",
+                "decimals": 1,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 35
+                    },
+                    {
+                      "color": "red",
+                      "value": 60
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 24,
+            "type": "stat",
+            "title": "Network",
+            "description": "enp3s0 receive plus transmit, in bits per second.",
+            "gridPos": {
+              "h": 6,
+              "w": 4,
+              "x": 16,
+              "y": 0
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "(rate(node_network_receive_bytes_total{device=\"enp3s0\"}[5m]) + rate(node_network_transmit_bytes_total{device=\"enp3s0\"}[5m])) * 8",
+                "legendFormat": "rx + tx",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "value",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bps",
+                "decimals": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 500000000
+                    },
+                    {
+                      "color": "red",
+                      "value": 900000000
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 25,
+            "type": "stat",
+            "title": "Disk",
+            "description": "Root filesystem usage.",
+            "gridPos": {
+              "h": 6,
+              "w": 4,
+              "x": 20,
+              "y": 0
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "max(100 * (1 - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}))",
+                "legendFormat": "root used",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "value",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "decimals": 1,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 75
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 100,
+            "type": "row",
+            "title": "Power & energy",
+            "collapsed": false,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 6
+            },
+            "panels": []
+          },
+          {
+            "id": 1,
+            "type": "stat",
+            "title": "Wall power (estimated)",
+            "description": "APU package power scaled for PSU loss plus a fixed platform offset (NVMe, RAM, NIC, fan). See the recording rule in prometheus for the constants.",
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 0,
+              "y": 7
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "homelab:power_wall_watts:estimate",
+                "legendFormat": "wall",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "watt",
+                "decimals": 1,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 35
+                    },
+                    {
+                      "color": "red",
+                      "value": 60
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 2,
+            "type": "stat",
+            "title": "APU package power",
+            "description": "Measured directly from the amdgpu PPT sensor. CPU + integrated GPU only.",
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 6,
+              "y": 7
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "homelab:power_package_watts",
+                "legendFormat": "package",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "watt",
+                "decimals": 1,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 25
+                    },
+                    {
+                      "color": "red",
+                      "value": 45
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 3,
+            "type": "stat",
+            "title": "Energy per day",
+            "description": "24h average wall power projected over a full day.",
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 12,
+              "y": 7
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "avg_over_time(homelab:power_wall_watts:estimate[24h]) * 24 / 1000",
+                "legendFormat": "kWh/day",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "none",
+              "colorMode": "value",
+              "textMode": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "kwatth",
+                "decimals": 2,
+                "color": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 4,
+            "type": "stat",
+            "title": "Cost per month",
+            "description": "30d projection at the cost_per_kwh dashboard variable.",
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 18,
+              "y": 7
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "avg_over_time(homelab:power_wall_watts:estimate[24h]) * 720 / 1000 * $$cost_per_kwh",
+                "legendFormat": "EUR/month",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "none",
+              "colorMode": "value",
+              "textMode": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currencyEUR",
+                "decimals": 2,
+                "color": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 5,
+            "type": "timeseries",
+            "title": "Power draw",
+            "gridPos": {
+              "h": 8,
+              "w": 24,
+              "x": 0,
+              "y": 11
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "homelab:power_wall_watts:estimate",
+                "legendFormat": "wall (estimated)",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "homelab:power_package_watts",
+                "legendFormat": "APU package (instant)",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "C",
+                "expr": "homelab:power_package_watts:avg",
+                "legendFormat": "APU package (rolling avg)",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "watt",
+                "decimals": 1,
+                "custom": {
+                  "fillOpacity": 10,
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "gradientMode": "opacity"
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "bottom",
+                "calcs": [
+                  "min",
+                  "mean",
+                  "max",
+                  "lastNotNull"
+                ]
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 101,
+            "type": "row",
+            "title": "Compute & thermals",
+            "collapsed": false,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 19
+            },
+            "panels": []
+          },
+          {
+            "id": 6,
+            "type": "timeseries",
+            "title": "CPU utilisation",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 20
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                "legendFormat": "TOTAL",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "100 - (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]) * 100)",
+                "legendFormat": "cpu{{cpu}}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "min": 0,
+                "max": 100,
+                "decimals": 1,
+                "custom": {
+                  "fillOpacity": 0,
+                  "lineWidth": 1,
+                  "showPoints": "never"
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "TOTAL"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed",
+                        "fixedColor": "text"
+                      }
+                    },
+                    {
+                      "id": "custom.lineWidth",
+                      "value": 3
+                    },
+                    {
+                      "id": "custom.fillOpacity",
+                      "value": 8
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "legend": {
+                "displayMode": "list",
+                "placement": "bottom",
+                "calcs": [],
+                "sortBy": "Max",
+                "sortDesc": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 7,
+            "type": "timeseries",
+            "title": "Memory",
+            "description": "`used` is total minus MemAvailable, so it excludes reclaimable page cache \u2014 this is the number to watch. `cache + buffers` is free RAM the kernel is borrowing for file cache and will hand back under pressure. `swap used` climbing while `used` stays low means vm.swappiness is evicting cold pages for no reason.",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 20
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+                "legendFormat": "used",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "node_memory_Cached_bytes + node_memory_Buffers_bytes",
+                "legendFormat": "cache + buffers",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "D",
+                "expr": "node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes",
+                "legendFormat": "swap used",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "C",
+                "expr": "node_memory_MemTotal_bytes",
+                "legendFormat": "total",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bytes",
+                "min": 0,
+                "custom": {
+                  "fillOpacity": 10,
+                  "lineWidth": 2,
+                  "showPoints": "never"
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "total"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.fillOpacity",
+                      "value": 0
+                    },
+                    {
+                      "id": "custom.lineStyle",
+                      "value": {
+                        "fill": "dash",
+                        "dash": [
+                          10,
+                          10
+                        ]
+                      }
+                    },
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed",
+                        "fixedColor": "text"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "bottom",
+                "calcs": [
+                  "mean",
+                  "max",
+                  "lastNotNull"
+                ]
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 9,
+            "type": "timeseries",
+            "title": "Temperatures",
+            "gridPos": {
+              "h": 8,
+              "w": 16,
+              "x": 0,
+              "y": 28
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "max(node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names)",
+                "legendFormat": "MAX (all sensors)",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names",
+                "legendFormat": "{{chip_name}} {{sensor}}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "celsius",
+                "decimals": 1,
+                "custom": {
+                  "fillOpacity": 0,
+                  "lineWidth": 1,
+                  "showPoints": "never"
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "red",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "MAX (all sensors)"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed",
+                        "fixedColor": "text"
+                      }
+                    },
+                    {
+                      "id": "custom.lineWidth",
+                      "value": 3
+                    },
+                    {
+                      "id": "custom.fillOpacity",
+                      "value": 8
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "bottom",
+                "calcs": [
+                  "mean",
+                  "max",
+                  "lastNotNull"
+                ],
+                "sortBy": "Max",
+                "sortDesc": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            },
+            "description": "Every hwmon sensor, with the max across all of them drawn as a thick white line."
+          },
+          {
+            "id": 14,
+            "type": "stat",
+            "title": "Host",
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 16,
+              "y": 28
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "time() - node_boot_time_seconds",
+                "legendFormat": "uptime",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "node_load1",
+                "legendFormat": "load 1m",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "C",
+                "expr": "count(count by (cpu) (node_cpu_seconds_total))",
+                "legendFormat": "threads",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "options": {
+              "graphMode": "none",
+              "colorMode": "none",
+              "textMode": "auto",
+              "orientation": "horizontal",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "decimals": 2
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "uptime"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "s"
+                    },
+                    {
+                      "id": "decimals",
+                      "value": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": 15,
+            "type": "timeseries",
+            "title": "Temperature min / avg / max (smoothed)",
+            "gridPos": {
+              "h": 8,
+              "w": 24,
+              "x": 0,
+              "y": 36
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "max(avg_over_time(node_hwmon_temp_celsius[$$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+                "legendFormat": "max",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "avg(avg_over_time(node_hwmon_temp_celsius[$$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+                "legendFormat": "avg",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "C",
+                "expr": "min(avg_over_time(node_hwmon_temp_celsius[$$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+                "legendFormat": "min",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "celsius",
+                "decimals": 1,
+                "custom": {
+                  "fillOpacity": 0,
+                  "lineWidth": 2,
+                  "showPoints": "never"
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "red",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "max"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed",
+                        "fixedColor": "red"
+                      }
+                    },
+                    {
+                      "id": "custom.lineWidth",
+                      "value": 2
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "avg"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed",
+                        "fixedColor": "yellow"
+                      }
+                    },
+                    {
+                      "id": "custom.lineWidth",
+                      "value": 2
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "min"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "mode": "fixed",
+                        "fixedColor": "blue"
+                      }
+                    },
+                    {
+                      "id": "custom.lineWidth",
+                      "value": 2
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "bottom",
+                "calcs": [
+                  "min",
+                  "mean",
+                  "max",
+                  "lastNotNull"
+                ]
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            },
+            "description": "Min, average and max across every hwmon sensor, each sensor first averaged over the Smoothing window. Raw per-sensor detail and true peaks are in the Temperatures panel above."
+          },
+          {
+            "id": 102,
+            "type": "row",
+            "title": "Network & storage",
+            "collapsed": false,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 44
+            },
+            "panels": []
+          },
+          {
+            "id": 8,
+            "type": "timeseries",
+            "title": "Ethernet enp3s0 throughput",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 45
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "rate(node_network_receive_bytes_total{device=\"enp3s0\"}[5m]) * 8",
+                "legendFormat": "receive",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "rate(node_network_transmit_bytes_total{device=\"enp3s0\"}[5m]) * 8",
+                "legendFormat": "transmit",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bps",
+                "custom": {
+                  "fillOpacity": 10,
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "gradientMode": "opacity"
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "transmit"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.transform",
+                      "value": "negative-Y"
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "bottom",
+                "calcs": [
+                  "mean",
+                  "max",
+                  "lastNotNull"
+                ]
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 13,
+            "type": "timeseries",
+            "title": "Disk",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 45
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}",
+                "legendFormat": "used",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "rate(node_disk_read_bytes_total{device=\"nvme0n1\"}[5m])",
+                "legendFormat": "read",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "C",
+                "expr": "rate(node_disk_written_bytes_total{device=\"nvme0n1\"}[5m])",
+                "legendFormat": "write",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bytes",
+                "min": 0,
+                "custom": {
+                  "fillOpacity": 0,
+                  "lineWidth": 2,
+                  "showPoints": "never"
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "used"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.axisPlacement",
+                      "value": "right"
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "bottom",
+                "calcs": [
+                  "mean",
+                  "max",
+                  "lastNotNull"
+                ]
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 12,
+            "type": "timeseries",
+            "title": "enp3s0 errors and drops",
+            "description": "Should stay flat at zero. A rising line means the NIC or the link is unhealthy.",
+            "gridPos": {
+              "h": 6,
+              "w": 24,
+              "x": 0,
+              "y": 53
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "rate(node_network_receive_errs_total{device=\"enp3s0\"}[5m])",
+                "legendFormat": "rx errors",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "B",
+                "expr": "rate(node_network_transmit_errs_total{device=\"enp3s0\"}[5m])",
+                "legendFormat": "tx errors",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "C",
+                "expr": "rate(node_network_receive_drop_total{device=\"enp3s0\"}[5m])",
+                "legendFormat": "rx drops",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              },
+              {
+                "refId": "D",
+                "expr": "changes(node_network_up{device=\"enp3s0\"}[5m])",
+                "legendFormat": "link flaps",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "min": 0,
+                "custom": {
+                  "fillOpacity": 0,
+                  "lineWidth": 2,
+                  "showPoints": "never"
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "displayMode": "list",
+                "placement": "bottom",
+                "calcs": []
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 103,
+            "type": "row",
+            "title": "Containers",
+            "collapsed": false,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 59
+            },
+            "panels": []
+          },
+          {
+            "id": 10,
+            "type": "timeseries",
+            "title": "Container CPU",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 60
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "topk(10, sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m])) * 100)",
+                "legendFormat": "{{name}}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "decimals": 2,
+                "custom": {
+                  "fillOpacity": 20,
+                  "lineWidth": 1,
+                  "showPoints": "never",
+                  "stacking": {
+                    "mode": "normal",
+                    "group": "A"
+                  }
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "bottom",
+                "calcs": [
+                  "mean",
+                  "max"
+                ],
+                "sortBy": "Max",
+                "sortDesc": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 11,
+            "type": "timeseries",
+            "title": "Container memory (RSS)",
+            "description": "Anonymous memory the container actually owns. Page cache is deliberately excluded: container_memory_working_set_bytes counts the kernel's file cache against the container, so an I/O-heavy container like qbittorrent reads as multiple GiB when its real footprint is a few MiB. That cache is reclaimable and is already shown on the host Memory panel.",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 60
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "topk(10, sum by (name) (container_memory_rss{name!=\"\"}))",
+                "legendFormat": "{{name}}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                }
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bytes",
+                "custom": {
+                  "fillOpacity": 20,
+                  "lineWidth": 1,
+                  "showPoints": "never",
+                  "stacking": {
+                    "mode": "normal",
+                    "group": "A"
+                  }
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "bottom",
+                "calcs": [
+                  "mean",
+                  "max"
+                ],
+                "sortBy": "Max",
+                "sortDesc": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          }
+        ]
+      }
