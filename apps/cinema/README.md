@@ -81,6 +81,15 @@ database, so it never notices, and keeps claiming the film is directly playable.
 for itself with a one-byte range request and shows an offline state instead of a Play button.
 See [`docs/ARCHITECTURE.md` § 7](docs/ARCHITECTURE.md).
 
+## Not done yet
+
+- **Deploy the web app.** It runs against the NAS Jellyfin in development but is not published
+  anywhere: `cinema.davideghiotto.it` still has to be added to the Cloudflare tunnel and the
+  compose app deployed. Everything it needs is written down in
+  [`docs/DEPLOY.md`](docs/DEPLOY.md); nothing about it is blocked.
+- **iOS and Android.** Both are scaffolding plus a generated palette; the forks are not attached
+  yet.
+
 ## Reading on
 
 - [`docs/DESIGN.md`](docs/DESIGN.md) — Reel, the design language, and the rules that keep the
