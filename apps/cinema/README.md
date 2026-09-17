@@ -101,3 +101,4 @@ picking any of it up needs to know. The two headlines:
 - [`docs/LICENSING.md`](docs/LICENSING.md) — what forking Swiftfin and Findroid commits us to,
   and the one rule that keeps the iOS app shippable.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — everything still open, in the order worth doing it.
+- [`docs/CLEANUP.md`](docs/CLEANUP.md) — measured complexity and slowness, one brief per task.

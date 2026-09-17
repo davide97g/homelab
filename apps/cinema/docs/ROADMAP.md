@@ -1,7 +1,8 @@
 # Roadmap
 
 What is done, what is next, and what a future session needs to know to pick any of it up. Ordered
-by what unblocks the most.
+by what unblocks the most. Features only — complexity worth removing and slowness worth fixing are
+in [CLEANUP.md](CLEANUP.md), written so the tasks can be picked up cold and in parallel.
 
 Status as of **2026-09-17**.
 
