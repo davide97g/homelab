@@ -1,21 +1,24 @@
-# Cinema's front end, deployed the way every other web app on the box is: a
-# compose app in Dokploy, published on the Cloudflare tunnel. See docs/DEPLOY.md.
+# Cinema's front end. Portable between the two boxes it might live on, because
+# where Jellyfin is and which port is free differ per host:
+#
+#   NAS (beside Jellyfin, the real deployment):
+#     JELLYFIN_UPSTREAM=http://172.17.0.1:8899 CINEMA_PORT=8898 docker compose up -d --build
+#
+#   mini PC (Dokploy, mediarr's Jellyfin):
+#     JELLYFIN_UPSTREAM=http://jellyfin:8096 CINEMA_PORT=3003 docker compose up -d --build
+#
+# See docs/DEPLOY.md.
 services:
   cinema-web:
     build:
       context: ../..
       dockerfile: apps/web/Dockerfile
+    container_name: cinema-web
     restart: unless-stopped
     environment:
-      # Jellyfin runs in the mediarr compose project; this container joins that
-      # network so it can address the container by name instead of by LAN IP.
-      JELLYFIN_UPSTREAM: http://jellyfin:8096
+      # Where nginx sends /jf/. On the NAS Jellyfin sits on the default bridge
+      # with no DNS alias, so it is reached through the bridge gateway rather
+      # than by name.
+      JELLYFIN_UPSTREAM: ${JELLYFIN_UPSTREAM:-http://172.17.0.1:8899}
     ports:
-      - "3003:80"
-    networks:
-      - mediarr
-
-networks:
-  mediarr:
-    external: true
-    name: mediarr_default
+      - "${CINEMA_PORT:-8898}:80"
