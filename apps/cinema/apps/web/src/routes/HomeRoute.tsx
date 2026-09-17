@@ -5,20 +5,35 @@ import { HeroBanner } from '@/components/media/HeroBanner'
 import { LibraryRail } from '@/components/media/LibraryRail'
 import { MediaCard } from '@/components/media/MediaCard'
 import { MediaRow } from '@/components/media/MediaRow'
-import { useLatestItems, useNextUp, useResumeItems, useUserViews } from '@/lib/jellyfin/queries'
+import {
+  useLatestItems,
+  useNextUp,
+  useResumeItems,
+  useSuggestions,
+  useUserViews,
+} from '@/lib/jellyfin/queries'
 
 export function HomeRoute() {
   const views = useUserViews()
   const resume = useResumeItems()
   const nextUp = useNextUp()
   const latest = useLatestItems()
+  const suggested = useSuggestions()
 
-  // What you were watching leads; the newest arrivals fill the rest of the
-  // pager. Deduped, because a film can legitimately be in both.
-  const hero = dedupe([...(resume.data ?? []), ...(latest.data ?? [])]).slice(0, 5)
-  const suggestions = dedupe(latest.data ?? [])
-    .filter((item) => !hero.some((h) => h.Id === item.Id))
-    .slice(0, 4)
+  // What you were watching leads, then the newest arrivals, then anything at
+  // all -- a library imported in one go has no meaningful "latest", and the
+  // hero must never be empty. Deduped: a film can legitimately be in two.
+  const hero = dedupe([
+    ...(resume.data ?? []),
+    ...(latest.data ?? []),
+    ...(suggested.data ?? []),
+  ]).slice(0, 5)
+
+  // Prefer things the hero is not already showing, but a small library would
+  // filter itself down to nothing -- an empty row is worse than a repeat.
+  const pool = dedupe(suggested.data ?? [])
+  const unseen = pool.filter((item) => !hero.some((h) => h.Id === item.Id))
+  const suggestions = (unseen.length >= 4 ? unseen : pool).slice(0, 4)
 
   return (
     <div className="flex flex-col gap-7">
@@ -30,6 +45,7 @@ export function HomeRoute() {
             <StickerSkeleton className="h-[clamp(22rem,46vh,32rem)] w-full rounded-3xl" />
           )}
 
+          {(suggested.isLoading || suggestions.length > 0) && (
           <section className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-bold tracking-tight">You might also like</h2>
@@ -43,7 +59,7 @@ export function HomeRoute() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {latest.isLoading
+              {suggested.isLoading
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <StickerSkeleton key={i} shape="poster" delay={i * 90} className="rounded-2xl" />
                   ))
@@ -52,12 +68,13 @@ export function HomeRoute() {
                   ))}
             </div>
           </section>
+          )}
         </div>
 
         <LibraryRail
           title="In library"
-          items={nextUp.data?.length ? nextUp.data : latest.data}
-          isLoading={nextUp.isLoading && latest.isLoading}
+          items={firstNonEmpty(nextUp.data, latest.data, suggested.data)}
+          isLoading={nextUp.isLoading && latest.isLoading && suggested.isLoading}
         />
       </div>
 
@@ -87,6 +104,10 @@ function LibraryLatestRow({ viewId, name }: { viewId: string; name: string }) {
       seeAllTo={`/library/${viewId}`}
     />
   )
+}
+
+function firstNonEmpty(...lists: (BaseItemDto[] | undefined)[]) {
+  return lists.find((list) => list?.length) ?? []
 }
 
 function dedupe(items: BaseItemDto[]) {

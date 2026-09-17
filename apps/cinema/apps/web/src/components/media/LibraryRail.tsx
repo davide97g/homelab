@@ -22,7 +22,7 @@ export function LibraryRail({ title, items, isLoading, limit = 6 }: Props) {
   if (!isLoading && !items?.length) return null
 
   return (
-    <aside className="panel flex flex-col gap-3 rounded-3xl p-4">
+    <aside className="panel flex flex-col gap-3 self-start rounded-3xl p-4">
       <h2 className="px-1 text-base font-bold tracking-tight">{title}</h2>
 
       <div className="flex flex-col gap-1">

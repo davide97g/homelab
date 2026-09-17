@@ -30,6 +30,7 @@ export const queryKeys = {
   latest: (userId: string, parentId?: string) => ['latest', userId, parentId ?? null] as const,
   nextUp: (userId: string) => ['nextUp', userId] as const,
   items: (userId: string, params: unknown) => ['items', userId, params] as const,
+  suggestions: (userId: string) => ['suggestions', userId] as const,
   item: (userId: string, itemId: string) => ['item', userId, itemId] as const,
 }
 
@@ -94,6 +95,36 @@ export function useNextUp(limit = 12) {
       })
       return data.Items ?? []
     },
+  })
+}
+
+/**
+ * Something to watch, drawn at random from the whole library.
+ *
+ * "Recently added" is a poor recommender on a library that was imported in one
+ * go -- every film shares a date, and Jellyfin's own latest-media endpoint
+ * collapses and filters it further. Random over everything always has
+ * something to show, which is the job of the home screen.
+ */
+export function useSuggestions(limit = 12) {
+  const { api, userId } = useSession()
+  return useQuery({
+    queryKey: queryKeys.suggestions(userId),
+    queryFn: async () => {
+      const { data } = await getItemsApi(api).getItems({
+        userId,
+        recursive: true,
+        fields: [...CARD_FIELDS],
+        includeItemTypes: [BaseItemKind.Movie, BaseItemKind.Series],
+        sortBy: [ItemSortBy.Random],
+        limit,
+        enableTotalRecordCount: false,
+      })
+      return data.Items ?? []
+    },
+    // Random, so re-running it on a refocus would reshuffle the page under
+    // the reader. One draw per session is the point.
+    staleTime: Infinity,
   })
 }
 

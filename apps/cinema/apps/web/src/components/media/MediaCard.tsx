@@ -63,7 +63,8 @@ export function MediaCard({ item, shape = 'poster', className }: Props) {
         </span>
       )}
 
-      <span className="absolute inset-0 bg-gradient-to-t from-canvas-deep via-canvas-deep/25 to-transparent" />
+      {/* Deep enough that title and chips never sit on bright artwork. */}
+      <span className="absolute inset-0 bg-gradient-to-t from-canvas-deep from-5% via-canvas-deep/65 via-40% to-transparent" />
 
       {corner && (
         <span className="absolute top-2.5 right-2.5 rounded-pill border border-[var(--hairline)] bg-scrim/70 px-2 py-0.5 text-[0.6875rem] font-medium text-foreground/85 backdrop-blur">
@@ -74,11 +75,13 @@ export function MediaCard({ item, shape = 'poster', className }: Props) {
       <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 p-3">
         <span className="line-clamp-2 text-sm leading-snug font-semibold">{title}</span>
         {!!chips.length && (
-          <span className="flex flex-wrap gap-1.5">
+          // One line of chips, clipped. Wrapping them stacks the card's text
+          // block and pushes the title off the artwork it belongs to.
+          <span className="flex gap-1.5 overflow-hidden">
             {chips.map((chip) => (
               <span
                 key={chip}
-                className="max-w-full truncate rounded-pill bg-white/10 px-2 py-0.5 text-[0.6875rem] text-foreground/80 backdrop-blur"
+                className="shrink-0 truncate rounded-pill bg-white/10 px-2 py-0.5 text-[0.6875rem] whitespace-nowrap text-foreground/80 backdrop-blur"
               >
                 {chip}
               </span>
