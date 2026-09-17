@@ -88,6 +88,28 @@ so keychain writes fail silently and the app crashes in `User.accessToken` right
 `assertionFailure("access token missing in keychain")`. Ad-hoc simulator signing is the default
 and needs no development team; just leave the flag off.
 
+### Installing on a real iPhone
+
+```sh
+xcrun devicectl list devices                    # find the UDID
+xcrun devicectl device info lockState --device <UDID>
+xcodebuild -project Swiftfin.xcodeproj -scheme Swiftfin -configuration Debug \
+  -skipMacroValidation -allowProvisioningUpdates -destination "id=<UDID>" build
+xcrun devicectl device install app --device <UDID> <path>.app
+xcrun devicectl device process launch --device <UDID> it.davideghiotto.cinema
+```
+
+- **The phone must be unlocked**, or the build dies before compiling with *"needs to be unlocked
+  to enable development services"*. The signal to wait on is
+  `devicectl device info lockState` → `passcodeRequired: false`. Do **not** poll for the
+  developer-disk-image error to clear: it clears while the device is still locked, and the build
+  then times out waiting for the destination.
+- Keep the screen awake for the whole build, or it can stall the same way.
+- Signing: team `<team-id>` has a wildcard profile (`<team-id>.*`) that already covers
+  `it.davideghiotto.cinema`. The team id goes in
+  `apps/ios/Swiftfin/XcodeConfig/DevelopmentTeam.xcconfig`, which the fork gitignores, so it never
+  reaches the public repository.
+
 ### Housekeeping
 
 - SwiftFormat is not installed on the dev Mac, so every build prints
