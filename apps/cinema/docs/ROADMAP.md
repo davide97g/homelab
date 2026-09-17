@@ -38,12 +38,17 @@ for how to build it and how the palette gets there.
 
 - Reel palette in, accent colour repointed, bundle id `it.davideghiotto.cinema`, display name
   Cinema. Verified in a simulator: the app installs as "Cinema" and its buttons are Cinema red.
+- The feature band, verified against the NAS library: backdrop, logo art, kind tag, match
+  percentage, fact line, Play and Details, page dots. The rows underneath already matched Reel
+  upstream — chevron headings and dot-separated details — so they needed nothing.
+- Dark-only. Reel has no light values; the app now declares `preferredColorScheme(.dark)` at the
+  root scene. Upstream's own `setAppearance` cannot do this at startup: it guards on `keyWindow`,
+  which does not exist yet, and fails silently.
 
 ### Next, cheapest visual delta first
 
-1. **Home screen.** Mirror the web's feature band. See the architecture notes in
-   `apps/ios/README.md` — upstream composes the home screen declaratively, so this is mostly a
-   matter of adding one group type and reordering, not writing a screen.
+1. **Feature band polish.** It is edge-to-edge while the rows are inset, and its page dots sit
+   outside the card rather than on it.
 2. **Navigation chrome.** Rail on iPad, tab row on iPhone.
 3. **Strings.** Upstream says "Swiftfin" in user-facing copy in a few places.
 4. **App icon.** `apps/ios/Swiftfin/Swiftfin/Resources/Assets.xcassets` — still Jellyfin's, which
@@ -70,8 +75,18 @@ So: to verify anything that needs a signed-in session, either sign in by hand on
 Screen Recording first. A deep link cannot do it — Swiftfin's `swiftfin://` handler only resolves
 sessions that already exist.
 
-**The feature band has not been seen with real data yet** for exactly this reason. It compiles,
-it is wired into the provider, and the palette and app identity were confirmed on screen.
+Driving it *is* possible without either, and this is how the feature band was verified: find the
+device canvas in DeviceHub's accessibility tree (an `AXGroup` with the device's aspect ratio —
+it was at `(839, 255)` size `297x647`, not where window arithmetic suggested), then post real
+CGEvent mouse and key events at coordinates mapped into it. Three traps: synthetic AX clicks do
+not reach the Metal canvas, `keyboardSetUnicodeString` is ignored so every character needs its
+real keycode, and event modifier *flags* are ignored so shift must be a held key. The simulator's
+hardware keyboard is also on an **Italian** layout, where `:` is shift+`.` and `/` is shift+`7`.
+
+**Never build with `CODE_SIGNING_ALLOWED=NO`.** It produces an unsigned app with no entitlements,
+so keychain writes fail silently and the app crashes in `User.accessToken` right after sign-in —
+`assertionFailure("access token missing in keychain")`. Ad-hoc simulator signing is the default
+and needs no development team; just leave the flag off.
 
 ### Housekeeping
 
