@@ -1,6 +1,6 @@
 # Cinema
 
-A custom front end for [Jellyfin](https://jellyfin.org) — web today, iOS and Android next —
+A custom front end for [Jellyfin](https://jellyfin.org) — on the web, on iOS and on Android —
 talking to an unmodified Jellyfin server over its REST API.
 
 Jellyfin's own clients can be reskinned with custom CSS, but only within the markup they
@@ -12,7 +12,7 @@ transcoding and playback, and every pixel in front of it is ours.
 ```
 apps/web                 React + Vite SPA. The reference implementation of the design.
 apps/ios                 Swiftfin (MPL-2.0) fork. Bootstrap script + generated palette.
-apps/android             Findroid (GPLv3) fork. Bootstrap script + generated palette.
+apps/android             Findroid (GPLv3) fork. Submodule, generated palette, icon script.
 packages/design-tokens   tokens.json -> CSS custom properties, Swift, Kotlin.
 services/jellyfin        Local Jellyfin in Docker for development.
 services/web             Production image + compose for the NAS.
@@ -91,7 +91,9 @@ picking any of it up needs to know. The two headlines:
   `/jf`. The old `jellyfin.davideghiotto.it` no longer resolves, so anything still pointed at it
   has to be repointed by hand.
 - **iOS is the palette, the home screen, the chrome and the icon.** What is left there is the
-  poster rows and the other locales' copy. Android has not been started.
+  poster rows and the other locales' copy.
+- **Android carries the same band, on the phone and on the TV**, and is dark-only like the rest.
+  Its poster rows are still upstream's.
 
 ## Reading on
 

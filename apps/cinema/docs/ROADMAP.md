@@ -143,14 +143,72 @@ xcrun devicectl device process launch --device <UDID> it.davideghiotto.cinema
 
 ---
 
-## 3. Android — not started
+## 3. Android — the surface is Cinema's, phone and TV
 
-`apps/android/bootstrap.sh <your-findroid-fork>` attaches a Findroid fork the same way iOS works.
-`generated/CinemaTokens.kt` is already emitted and ready to feed a Compose `darkColorScheme`.
+The fork is [davide97g/findroid](https://github.com/davide97g/findroid), branch `cinema`, attached
+as a submodule at `apps/android/findroid`. See [`../apps/android/README.md`](../apps/android/README.md)
+for how to build it and how the palette gets there.
 
-**Do not copy code between `apps/ios` and `apps/android`** — Findroid is GPLv3 and Swiftfin is
-MPL-2.0, and mixing them would make the iOS app unshippable on the App Store. See
-[LICENSING.md](LICENSING.md).
+### Done
+
+- Reel palette in both app modules' Material 3 schemes, application id
+  `it.davideghiotto.cinema`, app name Cinema, and the Lucide `film` mark as launcher icon, TV
+  banner and in-app logo. Verified on a Pixel 8 emulator: the app installs as Cinema with Cinema's
+  icon.
+- Dark-only. Android decides appearance in **four** places and all four needed changing: the
+  Compose theme (where `dynamicColor` defaulted to `true`, so Material You would have replaced the
+  palette wholesale on any Android 12+ device), the stored `pref_theme`/`pref_dynamic_colors`
+  defaults, `AppCompatDelegate` in `BaseApplication`, and `core/res/values/themes.xml`, which was
+  parented on `Theme.Material3.DayNight`. That last one is the layer with no iOS equivalent: it is
+  the window background behind Compose, the system bars, and the ExoPlayer control layouts, which
+  are real Views resolving `?attr/colorSurface`. Verified with the emulator's system appearance
+  set to **light**.
+- The feature band on both home screens, against the NAS library: backdrop, logo art, kind tag,
+  match percentage, dot-separated fact line, red progress hairline. Phone has Play and Details and
+  Play reaches the player in one tap, resuming where it left off; TV makes the whole card the
+  control, because on a remote one focusable thing that plays beats two that need a sideways press.
+- The active navigation marker is red on both, which is what the action colour is for.
+
+### What the emulator run caught
+
+Both were invisible to the compiler:
+
+- The TV navigation's selected tab was **white on white**. Upstream paints the pill `Color.White`
+  and its label `colorScheme.onPrimary`, which under upstream's palette was a dark blue; under Reel
+  `onPrimary` is white. A role can be right in the abstract and wrong at a use site that assumed
+  something about it.
+- `values-night/themes.xml` is *not* dead once night mode is forced — it is the configuration that
+  applies. Its overrides were quietly reintroducing upstream's blue.
+
+### Toolchain notes
+
+- Findroid needs **JDK 21**, `compileSdk 37` and `build-tools 37.0.0`. The SDK package id is
+  `platforms;android-37.0`, with a minor version: there is no `platforms;android-37`, and these
+  only appear in `repository2-3.xml`, so `cmdline-tools` must be rev 23+ or they look like they do
+  not exist. Updating `cmdline-tools` installs beside the old one as `latest-2`; it has to be
+  moved into place by hand.
+- Apple Silicon needs `arm64-v8a` system images — an `x86_64` image is full CPU emulation and
+  useless for a video client. Android TV tops out at **API 36**; there is no API-37 TV image in any
+  ABI. That is fine, `targetSdk` is 36.
+- ABI splits are enabled, so there is no universal APK. `./gradlew :app:phone:installLibreDebug`
+  picks the right split.
+- `ktfmtCheck` hangs off `check`, not `assemble`, so a build will not catch a badly formatted file.
+  The Kotlin token emitter in `packages/design-tokens/build.ts` writes 4-space indentation for
+  exactly this reason.
+- Driving the TV emulator: `adb shell input keyevent 61` (TAB) traverses focus; DPAD_DOWN does not
+  move focus out of a text field. `adb shell input tap` does nothing on a TV AVD.
+
+### Still to do
+
+- **The rows are still upstream's.** The feature band is Reel; the poster rows below it keep
+  Findroid's card, which puts genres in a comma list rather than a dot-separated fact line and
+  carries no kind tag.
+- **No release build has been made**, and nothing is signed. Sideloading a release APK or setting
+  up Play internal testing is untouched.
+- **Playback was only judged in an emulator**, which is jerky regardless of the app. Smoothness
+  needs a real phone.
+- The other locales still say Findroid, deliberately: only the English copy was renamed, with
+  upstream credited in the welcome text.
 
 ---
 

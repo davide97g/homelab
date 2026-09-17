@@ -27,10 +27,15 @@ emits:
 | `apps/web/src/styles/tokens.css` | CSS custom properties, bridged into Tailwind in `src/index.css` |
 | `apps/ios/generated/CinemaTokens.swift` | `CinemaTokens.Palette`, `CinemaTokens.Radius` |
 | `apps/android/generated/CinemaTokens.kt` | `CinemaTokens`, feeding a Compose `darkColorScheme` |
+| `apps/android/generated/cinema_tokens.xml` | `@color/cinema_*`, for Findroid's XML theme and its View-based player chrome |
 
-`bun run tokens` then copies the Swift file into the iOS fork itself
-(`apps/ios/sync-tokens.sh`), because a palette that has to be carried across by hand is a palette
-that drifts.
+`bun run tokens` then copies those files into the forks themselves (`apps/ios/sync-tokens.sh`,
+`apps/android/sync-tokens.sh`), because a palette that has to be carried across by hand is a
+palette that drifts.
+
+Android needs two outputs because Findroid is not all Compose: `core/res/values/themes.xml` and
+the ExoPlayer control layouts are Views resolving `?attr/colorPrimary` and `?attr/colorSurface`,
+and the launcher and TV banner backgrounds are `@color` resources.
 
 Colours are authored as hex rather than oklch precisely because three platforms have to agree on
 them; Swift and Kotlin have no oklch parser worth carrying.
