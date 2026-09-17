@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CircleAlert, HardDriveDownload } from 'lucide-react'
-import { DuckSpinner } from '@/components/ui/duck-spinner'
-import { EmptyPond } from '@/components/ui/empty-pond'
-import { QuackButton } from '@/components/ui/quack-button'
 import { useQuackToast } from '@/components/ui/quack-toast'
 import { useItem } from '@/lib/jellyfin/queries'
 import { useAvailability } from '@/lib/jellyfin/availability'
@@ -63,6 +60,8 @@ export function PlayerRoute() {
   const { data: availability } = useAvailability(item, Boolean(message))
   const offline = availability === 'offline'
 
+  const goBack = () => navigate(itemId ? `/item/${itemId}` : '/')
+
   return (
     <div
       className="relative h-dvh w-full overflow-hidden bg-black"
@@ -78,45 +77,48 @@ export function PlayerRoute() {
           />
           <PlayerControls
             videoRef={videoRef}
-            title={item?.Name ?? ''}
+            title={item?.Type === 'Episode' ? (item.SeriesName ?? '') : (item?.Name ?? '')}
+            subtitle={item?.Type === 'Episode' ? (item.Name ?? undefined) : undefined}
             playMethod={source.playMethod}
             visible={controlsVisible || Boolean(message)}
-            onBack={() => navigate(itemId ? `/item/${itemId}` : '/')}
+            onBack={goBack}
           />
         </>
       ) : (
         !message && (
-          <div className="grid size-full place-items-center">
-            <DuckSpinner size="lg" label="Negotiating playback" />
+          <div className="grid size-full place-items-center gap-3">
+            <div className="flex flex-col items-center gap-3">
+              <span className="size-6 animate-spin rounded-pill border-2 border-white/20 border-t-primary" />
+              <p className="text-sm text-white/60">Negotiating playback…</p>
+            </div>
           </div>
         )
       )}
 
       {message && (
-        <div className="absolute inset-0 grid place-items-center bg-black/85 p-6">
-          <EmptyPond
-            art={
-              offline ? (
-                <HardDriveDownload className="relative size-14 text-destructive" />
-              ) : (
-                <CircleAlert className="relative size-14 text-destructive" />
-              )
-            }
-            title={offline ? 'Storage offline' : 'Cannot play this file'}
-            hint={
-              offline
+        <div className="absolute inset-0 grid place-items-center bg-black/90 p-6">
+          <div className="flex max-w-md flex-col items-center gap-3 text-center">
+            {offline ? (
+              <HardDriveDownload className="size-10 text-amber" />
+            ) : (
+              <CircleAlert className="size-10 text-destructive" />
+            )}
+            <p className="text-lg font-semibold">
+              {offline ? 'Storage offline' : 'Cannot play this file'}
+            </p>
+            <p className="text-sm text-white/60">
+              {offline
                 ? 'The drive holding this film is not reachable. Reconnect it and try again.'
-                : message
-            }
-            action={
-              <QuackButton
-                variant="outline"
-                onClick={() => navigate(itemId ? `/item/${itemId}` : '/')}
-              >
-                Go back
-              </QuackButton>
-            }
-          />
+                : message}
+            </p>
+            <button
+              type="button"
+              onClick={goBack}
+              className="mt-2 inline-flex h-9 items-center rounded-md bg-white/10 px-4 text-sm font-semibold transition-colors hover:bg-white/20"
+            >
+              Go back
+            </button>
+          </div>
         </div>
       )}
     </div>

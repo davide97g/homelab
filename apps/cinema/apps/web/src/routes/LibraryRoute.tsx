@@ -3,16 +3,11 @@ import { Link, useParams } from 'react-router-dom'
 import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by'
 import { SortOrder } from '@jellyfin/sdk/lib/generated-client/models/sort-order'
 import { Clapperboard, HardDriveDownload, RotateCcw } from 'lucide-react'
-import { EmptyPond } from '@/components/ui/empty-pond'
-import { QuackButton } from '@/components/ui/quack-button'
 import { StickerSkeleton } from '@/components/ui/sticker-skeleton'
-import {
-  StickerToggleGroup,
-  StickerToggleGroupItem,
-} from '@/components/ui/sticker-toggle-group'
 import { MediaCard } from '@/components/media/MediaCard'
 import { useAvailability } from '@/lib/jellyfin/availability'
 import { useItems, useUserViews } from '@/lib/jellyfin/queries'
+import { cn } from '@/lib/utils'
 
 const SORTS = [
   { label: 'A–Z', by: ItemSortBy.SortName, order: SortOrder.Ascending },
@@ -38,84 +33,89 @@ export function LibraryRoute() {
 
   // One byte against one film answers "is the disk behind this library there".
   // A library on a removable drive otherwise renders a full grid of posters
-  // that all fail on click, because the artwork is served from Jellyfin's
-  // own metadata folder and knows nothing about the missing media.
+  // that all fail on click, because the artwork is served from Jellyfin's own
+  // metadata folder and knows nothing about the missing media.
   const probeItem = data?.items[0]
-  const { data: availability, refetch: recheck, isFetching: rechecking } =
-    useAvailability(probeItem)
+  const { data: availability, refetch: recheck, isFetching: rechecking } = useAvailability(probeItem)
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">
-            {view?.Name ?? 'Library'}
-          </h1>
-          {data && <p className="text-sm text-muted-foreground">{data.totalRecordCount} titles</p>}
+          <h1 className="text-2xl font-bold">{view?.Name ?? 'Library'}</h1>
+          {data && (
+            <p className="pt-1 text-sm text-muted-foreground">{data.totalRecordCount} titles</p>
+          )}
         </div>
-        {/* Single-select, so the group renders as radios: a reader announces
-            "Newest, radio button, 2 of 4" instead of four pressed buttons. */}
-        <StickerToggleGroup
-          type="single"
-          size="sm"
-          aria-label="Sort"
-          value={String(sortIndex)}
-          onValueChange={(value) => value && setSortIndex(Number(value))}
-        >
+
+        {/* Sorting is four words, not four buttons in a bordered group. */}
+        <div role="radiogroup" aria-label="Sort" className="flex items-center gap-4 text-sm">
           {SORTS.map((option, index) => (
-            <StickerToggleGroupItem key={option.label} value={String(index)}>
+            <button
+              key={option.label}
+              type="button"
+              role="radio"
+              aria-checked={index === sortIndex}
+              onClick={() => setSortIndex(index)}
+              className={cn(
+                'transition-colors',
+                index === sortIndex
+                  ? 'font-semibold text-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
               {option.label}
-            </StickerToggleGroupItem>
+            </button>
           ))}
-        </StickerToggleGroup>
+        </div>
       </div>
 
       {availability === 'offline' && (
         <div
           role="status"
-          className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-destructive/40 bg-destructive/10 px-4 py-3"
+          className="flex flex-wrap items-center gap-3 rounded-lg bg-surface px-4 py-3"
         >
-          <HardDriveDownload className="size-5 shrink-0 text-destructive" />
-          <p className="text-sm text-foreground/80">
-            <span className="font-semibold text-foreground">Storage offline.</span>{' '}
-            These titles are catalogued but their files are not reachable — reconnect the drive
-            they live on.
+          <HardDriveDownload className="size-4 shrink-0 text-amber" />
+          <p className="text-sm">
+            <span className="font-semibold">Storage offline.</span>{' '}
+            <span className="text-muted-foreground">
+              These titles are catalogued but their files are not reachable — reconnect the drive
+              they live on.
+            </span>
           </p>
-          <QuackButton
-            variant="outline"
-            size="sm"
-            className="ml-auto"
+          <button
+            type="button"
             disabled={rechecking}
             onClick={() => void recheck()}
+            className="ml-auto inline-flex h-8 items-center gap-2 rounded-md bg-white/10 px-3 text-xs font-semibold transition-colors hover:bg-white/20 disabled:opacity-50"
           >
-            <RotateCcw />
+            <RotateCcw className="size-3.5" />
             {rechecking ? 'Checking…' : 'Check again'}
-          </QuackButton>
+          </button>
         </div>
       )}
 
       {!isLoading && !data?.items.length ? (
-        <EmptyPond
-          // The art slot keeps the pond -- ripples, copy hierarchy, action --
-          // and swaps the mascot for something on-domain.
-          art={<Clapperboard className="relative size-14 text-primary" />}
-          title="Nothing in this library yet"
-          hint="Drop films into the folder Jellyfin watches, then let the library scan pick them up."
-          action={
-            <QuackButton asChild variant="outline">
-              <Link to="/">Back home</Link>
-            </QuackButton>
-          }
-        />
+        <div className="flex flex-col items-start gap-2 py-12">
+          <Clapperboard className="size-8 text-muted-foreground" />
+          <p className="pt-1 text-lg font-semibold">Nothing in this library yet</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Drop films into the folder Jellyfin watches, then let the library scan pick them up.
+          </p>
+          <Link
+            to="/"
+            className="mt-2 inline-flex h-9 items-center rounded-md bg-white/10 px-4 text-sm font-semibold transition-colors hover:bg-white/20"
+          >
+            Back home
+          </Link>
+        </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-x-4 gap-y-8">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
           {isLoading
             ? Array.from({ length: 18 }).map((_, i) => (
-                <StickerSkeleton key={i} shape="poster" delay={i * 60} />
+                <StickerSkeleton key={i} shape="poster" delay={i * 50} className="rounded-lg" />
               ))
-            : data?.items.map((item) => (
-                <MediaCard key={item.Id} item={item} className="w-full" />
-              ))}
+            : data?.items.map((item) => <MediaCard key={item.Id} item={item} />)}
         </div>
       )}
     </div>

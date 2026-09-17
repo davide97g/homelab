@@ -1,6 +1,5 @@
 import { Suspense, lazy, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { DuckSpinner } from '@/components/ui/duck-spinner'
 import { AppShell } from '@/components/layout/AppShell'
 import { useAuth } from '@/lib/jellyfin/auth'
 import { HomeRoute } from '@/routes/HomeRoute'
@@ -18,7 +17,7 @@ const PlayerRoute = lazy(() =>
 function FullscreenSpinner() {
   return (
     <div className="grid min-h-dvh place-items-center">
-      <DuckSpinner size="lg" />
+      <span className="size-6 animate-spin rounded-pill border-2 border-white/20 border-t-primary" />
     </div>
   )
 }

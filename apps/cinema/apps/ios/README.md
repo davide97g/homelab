@@ -1,6 +1,6 @@
 # Cinema for iOS
 
-A fork of [Swiftfin](https://github.com/jellyfin/Swiftfin) reskinned to Nebula.
+A fork of [Swiftfin](https://github.com/jellyfin/Swiftfin) reskinned to Reel.
 
 ## Why a fork and not a wrapper
 

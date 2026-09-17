@@ -83,7 +83,7 @@ See [`docs/ARCHITECTURE.md` § 7](docs/ARCHITECTURE.md).
 
 ## Reading on
 
-- [`docs/DESIGN.md`](docs/DESIGN.md) — Nebula, the design language, and the rules that keep the
+- [`docs/DESIGN.md`](docs/DESIGN.md) — Reel, the design language, and the rules that keep the
   three clients looking like one product.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the web app talks to Jellyfin, and why.
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — putting it on the NAS behind the Cloudflare tunnel.

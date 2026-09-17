@@ -169,14 +169,14 @@ client like Swiftfin exists for the living room.
 
 ## 5. Design system
 
-Nebula — the full rules are in [DESIGN.md](DESIGN.md). Two files:
+Reel — the full rules are in [DESIGN.md](DESIGN.md). Two files:
 
 - `packages/design-tokens/tokens.json` — every colour, radius, shadow and font,
   decided once and emitted to web CSS, Swift and Kotlin by `bun run tokens`.
   Never edit the generated outputs.
 - `apps/web/src/index.css` — bridges those tokens into Tailwind's `@theme` and
   onto the shadcn-style names (`--background`, `--card`, `--ring`, …) the
-  primitives in `components/ui` consume, then defines the Nebula utilities
+  primitives in `components/ui` consume, then defines the Reel utilities
   (`.panel`, `.panel-inset`, the glow and sheen effects).
 
 To re-skin, change `tokens.json`. To change the shape language, change its

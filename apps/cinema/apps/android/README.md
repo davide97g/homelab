@@ -1,6 +1,6 @@
 # Cinema for Android
 
-A fork of [Findroid](https://github.com/jarnedemeulemeester/findroid) reskinned to Nebula.
+A fork of [Findroid](https://github.com/jarnedemeulemeester/findroid) reskinned to Reel.
 
 ## Why a fork and not a wrapper
 

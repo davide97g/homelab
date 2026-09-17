@@ -1,10 +1,8 @@
-import { Link } from 'react-router-dom'
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto'
 import { StickerSkeleton } from '@/components/ui/sticker-skeleton'
-import { HeroBanner } from '@/components/media/HeroBanner'
-import { LibraryRail } from '@/components/media/LibraryRail'
+import { FeatureCard } from '@/components/media/FeatureCard'
 import { MediaCard } from '@/components/media/MediaCard'
-import { MediaRow } from '@/components/media/MediaRow'
+import { MediaRow, SectionHeading } from '@/components/media/MediaRow'
 import {
   useLatestItems,
   useNextUp,
@@ -12,6 +10,7 @@ import {
   useSuggestions,
   useUserViews,
 } from '@/lib/jellyfin/queries'
+import { cn } from '@/lib/utils'
 
 export function HomeRoute() {
   const views = useUserViews()
@@ -20,73 +19,74 @@ export function HomeRoute() {
   const latest = useLatestItems()
   const suggested = useSuggestions()
 
-  // What you were watching leads, then the newest arrivals, then anything at
-  // all -- a library imported in one go has no meaningful "latest", and the
-  // hero must never be empty. Deduped: a film can legitimately be in two.
-  const hero = dedupe([
+  // What you were watching leads, then what is queued, then the newest
+  // arrivals, then anything at all -- a library imported in one go has no
+  // meaningful "latest", and the feature row must never be empty.
+  const featured = dedupe([
     ...(resume.data ?? []),
+    ...(nextUp.data ?? []),
     ...(latest.data ?? []),
     ...(suggested.data ?? []),
-  ]).slice(0, 5)
+  ])
 
-  // Prefer things the hero is not already showing, but a small library would
-  // filter itself down to nothing -- an empty row is worse than a repeat.
-  const pool = dedupe(suggested.data ?? [])
-  const unseen = pool.filter((item) => !hero.some((h) => h.Id === item.Id))
-  const suggestions = (unseen.length >= 4 ? unseen : pool).slice(0, 4)
+  const hero = featured.slice(0, 4)
+  const beside = featured.slice(4, 6)
+  const loading = resume.isLoading && latest.isLoading && suggested.isLoading
 
   return (
-    <div className="flex flex-col gap-7">
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_21rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          {hero.length ? (
-            <HeroBanner items={hero} label={resume.data?.length ? 'Pick up where you left' : 'Popular'} />
-          ) : (
-            <StickerSkeleton className="h-[clamp(22rem,46vh,32rem)] w-full rounded-3xl" />
-          )}
+    <div className="flex flex-col gap-9">
+      <section className="flex flex-col gap-3">
+        <SectionHeading to={views.data?.[0]?.Id ? `/library/${views.data[0].Id}` : undefined}>
+          {resume.data?.length ? 'Continue watching' : 'Featured'}
+        </SectionHeading>
 
-          {(suggested.isLoading || suggestions.length > 0) && (
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold tracking-tight">You might also like</h2>
-              {views.data?.[0]?.Id && (
-                <Link
-                  to={`/library/${views.data[0].Id}`}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary-soft"
-                >
-                  See all
-                </Link>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {suggested.isLoading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <StickerSkeleton key={i} shape="poster" delay={i * 90} className="rounded-2xl" />
-                  ))
-                : suggestions.map((item) => (
-                    <MediaCard key={item.Id} item={item} className="w-full" />
-                  ))}
-            </div>
-          </section>
+        {/*
+          The feature card and the two cards beside it share one row height, so
+          the top of the page reads as a single band of artwork rather than
+          three boxes that happen to be adjacent.
+        */}
+        <div
+          className={cn(
+            'grid h-[clamp(15rem,34vw,23rem)] gap-3',
+            beside.length === 2
+              ? 'md:grid-cols-[2fr_1fr_1fr]'
+              : beside.length === 1
+                ? 'md:grid-cols-[2fr_1fr]'
+                : 'grid-cols-1',
+          )}
+        >
+          {loading ? (
+            <StickerSkeleton className="size-full rounded-xl" />
+          ) : (
+            <>
+              <FeatureCard items={hero} className="h-full" />
+              {beside.map((item) => (
+                <MediaCard
+                  key={item.Id}
+                  item={item}
+                  fill
+                  className="hidden md:block"
+                />
+              ))}
+            </>
           )}
         </div>
-
-        <LibraryRail
-          title="In library"
-          items={firstNonEmpty(nextUp.data, latest.data, suggested.data)}
-          isLoading={nextUp.isLoading && latest.isLoading && suggested.isLoading}
-        />
-      </div>
+      </section>
 
       <MediaRow
-        title="Continue watching"
-        items={resume.data}
-        isLoading={resume.isLoading}
+        title="New & popular"
+        items={firstNonEmpty(latest.data, suggested.data)}
+        isLoading={latest.isLoading && suggested.isLoading}
+      />
+
+      <MediaRow
+        title="Next up"
+        items={nextUp.data}
+        isLoading={nextUp.isLoading}
         shape="thumb"
       />
-      <MediaRow title="Next up" items={nextUp.data} isLoading={nextUp.isLoading} shape="thumb" />
 
-      {/* One "latest" row per library, so a big collection still feels ordered. */}
+      {/* One row per library, so a big collection still feels ordered. */}
       {views.data?.map((view) => (
         <LibraryLatestRow key={view.Id} viewId={view.Id as string} name={view.Name ?? ''} />
       ))}
@@ -97,12 +97,7 @@ export function HomeRoute() {
 function LibraryLatestRow({ viewId, name }: { viewId: string; name: string }) {
   const { data, isLoading } = useLatestItems(viewId)
   return (
-    <MediaRow
-      title={`New in ${name}`}
-      items={data}
-      isLoading={isLoading}
-      seeAllTo={`/library/${viewId}`}
-    />
+    <MediaRow title={name} items={data} isLoading={isLoading} seeAllTo={`/library/${viewId}`} />
   )
 }
 
