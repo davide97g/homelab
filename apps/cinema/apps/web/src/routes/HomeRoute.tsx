@@ -12,6 +12,9 @@ import {
 } from '@/lib/jellyfin/queries'
 import { cn } from '@/lib/utils'
 
+/** Four cards in the pager, two beside it -- the band is full at six. */
+const BAND_SIZE = 6
+
 export function HomeRoute() {
   const views = useUserViews()
   const resume = useResumeItems()
@@ -29,9 +32,16 @@ export function HomeRoute() {
     ...(suggested.data ?? []),
   ])
 
-  const hero = featured.slice(0, 4)
-  const beside = featured.slice(4, 6)
-  const loading = resume.isLoading && latest.isLoading && suggested.isLoading
+  const hero = featured.slice(0, BAND_SIZE - 2)
+  const beside = featured.slice(BAND_SIZE - 2, BAND_SIZE)
+
+  // The skeleton stands in until the band can be drawn once. `&&` dismissed it
+  // as soon as the fastest query landed, so the band appeared with one card and
+  // reflowed as the rest arrived; gate on what the band actually needs, and let
+  // a full band end the wait even if a slower query is still in flight.
+  const loading =
+    featured.length < BAND_SIZE &&
+    (resume.isLoading || nextUp.isLoading || latest.isLoading || suggested.isLoading)
 
   return (
     <div className="flex flex-col gap-9">

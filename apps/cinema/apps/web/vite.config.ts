@@ -18,6 +18,32 @@ export default defineConfig(({ mode }) => {
       alias: { '@': path.resolve(import.meta.dirname, './src') },
     },
     envDir: repoRoot,
+    build: {
+      rolldownOptions: {
+        output: {
+          // `lib/jellyfin/` is the only importer of @jellyfin/sdk, and it is
+          // imported from both the app shell and the lazily-loaded player. Left
+          // alone, each route chunk inlines its own copy of the SDK -- the same
+          // parse and execute paid twice on a phone. One group, referenced by
+          // both.
+          advancedChunks: {
+            groups: [
+              {
+                name: 'jellyfin-sdk',
+                test: /node_modules[\\/](@jellyfin[\\/]sdk|axios)[\\/]/,
+              },
+              // hls.js is the player's alone and stays behind the same lazy
+              // import; splitting it out only means a deploy that touches the
+              // player does not re-download 400 kB of unchanged decoder.
+              {
+                name: 'hls',
+                test: /node_modules[\\/]hls\.js[\\/]/,
+              },
+            ],
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       proxy: {

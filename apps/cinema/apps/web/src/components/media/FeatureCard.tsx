@@ -38,6 +38,9 @@ export function FeatureCard({ items, className }: { items: BaseItemDto[]; classN
           key={backdrop}
           src={backdrop}
           alt=""
+          // The largest thing above the fold, and so the LCP element: it has to
+          // leave ahead of the card artwork below it, which is `loading="lazy"`.
+          fetchPriority="high"
           className="absolute inset-0 size-full animate-[reel-fade_var(--duration-base)_var(--ease)] object-cover"
         />
       )}
