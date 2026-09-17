@@ -12,6 +12,6 @@
     "dev:all": "bash services/jellyfin/dev.sh",
     "build": "bun run tokens && bun run --cwd apps/web build",
     "lint": "bun run --cwd apps/web lint",
-    "tokens": "bun run packages/design-tokens/build.ts"
+    "tokens": "bun run packages/design-tokens/build.ts && apps/ios/sync-tokens.sh --if-present && apps/android/sync-tokens.sh --if-present"
   }
 }

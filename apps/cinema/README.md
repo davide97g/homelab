@@ -22,7 +22,8 @@ docs                     Architecture, design language, deployment.
 The three clients share one palette and nothing else. `packages/design-tokens/tokens.json` is
 the source of truth; `bun run tokens` regenerates the web CSS variables, `CinemaTokens.swift`
 and `CinemaTokens.kt`. The generated files are committed so the mobile forks build without this
-repo's toolchain, and hand-editing them is always wrong.
+repo's toolchain, and hand-editing them is always wrong. The same command copies the Swift file
+on into the iOS fork, and says nothing when that submodule is not checked out.
 
 ## Quickstart
 

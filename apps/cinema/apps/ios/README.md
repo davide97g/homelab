@@ -19,8 +19,8 @@ all — Apple's terms impose restrictions GPLv3 forbids. See [`../../docs/LICENS
 ## Working on it
 
 ```sh
-git submodule update --init            # after a fresh clone of the monorepo
-bun run tokens && apps/ios/sync-tokens.sh   # palette -> the fork
+git submodule update --init   # after a fresh clone of the monorepo
+bun run tokens               # palette -> generated/, and on into the fork
 open apps/ios/Swiftfin/Swiftfin.xcodeproj
 ```
 
@@ -46,10 +46,12 @@ DEVELOPMENT_TEAM = YOURTEAMID
 ## The palette
 
 `generated/CinemaTokens.swift` is emitted from `packages/design-tokens/tokens.json` by
-`bun run tokens`, and `sync-tokens.sh` copies it into the fork at
-`Shared/Cinema/CinemaTokens.swift`. The fork is a separate repository, so the token build does
-not write into it directly — the palette lands there as a reviewable commit in the fork's own
-history. Never hand-edit a generated file.
+`bun run tokens`, which then runs `sync-tokens.sh` to copy it into the fork at
+`Shared/Cinema/CinemaTokens.swift`. The fork is a separate repository, so the palette still lands
+there as a reviewable commit in the fork's own history — what the sync being automatic removes is
+the chance to forget it and leave the fork on the old colours. Without the submodule checked out
+the copy is skipped in silence, so a clone with no submodules still builds the web app. Never
+hand-edit a generated file.
 
 `Shared/Cinema/Color+Cinema.swift` names those tokens the way views speak: `.cinemaPrimary`,
 `.cinemaSurface`, `.cinemaMatch`. Views use the names.

@@ -28,6 +28,10 @@ emits:
 | `apps/ios/generated/CinemaTokens.swift` | `CinemaTokens.Palette`, `CinemaTokens.Radius` |
 | `apps/android/generated/CinemaTokens.kt` | `CinemaTokens`, feeding a Compose `darkColorScheme` |
 
+`bun run tokens` then copies the Swift file into the iOS fork itself
+(`apps/ios/sync-tokens.sh`), because a palette that has to be carried across by hand is a palette
+that drifts.
+
 Colours are authored as hex rather than oklch precisely because three platforms have to agree on
 them; Swift and Kotlin have no oklch parser worth carrying.
 
