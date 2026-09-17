@@ -7,26 +7,21 @@ Status as of **2026-09-17**.
 
 ---
 
-## 1. Deploy the web app — not started
+## 1. Deploy the web app — done
 
-`apps/web` runs only in development. Everything it needs is written up in
-[DEPLOY.md](DEPLOY.md); nothing about it is blocked.
+Live at <https://cinema.davideghiotto.it>, on the NAS, since 2026-09-17. See
+[DEPLOY.md](DEPLOY.md) for how it is put together and how to ship a change.
 
-- Add `cinema.davideghiotto.it` to the Cloudflare tunnel → `http://localhost:3003`.
-- Deploy `services/web/compose.yaml` as a Dokploy compose app.
-- **Verify the network name first.** The compose file assumes the mediarr project's network is
-  `mediarr_default`; check with `ssh homelab 'docker network ls | grep -i mediarr'`.
-- `jellyfin.davideghiotto.it` stays pointed at Jellyfin itself — that is still the admin surface.
+`jellyfin.davideghiotto.it` was taken down the same day — tunnel ingress and DNS record both
+removed. Cinema is the only public entrance, and Jellyfin is reached under
+`https://cinema.davideghiotto.it/jf`, which native clients accept as a server URL verbatim.
 
-Do this before the mobile apps are pointed anywhere: every client stores the server URL it
-signed in against, so the URL should be stable first.
+**Anything still pointed at the old hostname has to be repointed by hand**, including Cinema for
+iOS on the phone: there is no redirect, because the name no longer resolves.
 
-**Development note:** the repo-root `.env` currently points `JELLYFIN_URL` at
-`https://jellyfin.davideghiotto.it` (the NAS, through the tunnel) rather than at the local
-container, because the local Jellyfin has two films in it. `.env.local-backup` holds the local
-values. The LAN address `192.168.15.131:8096` is *not* reachable from the dev Mac; the tunnel is.
-
----
+**Development note:** the repo-root `.env` still points `JELLYFIN_URL` at the old hostname for
+`bun run dev`. Change it to `https://cinema.davideghiotto.it/jf`. `.env.local-backup` holds the
+values for the local Docker Jellyfin.
 
 ## 2. iOS — palette done, home screen next
 
