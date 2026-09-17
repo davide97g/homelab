@@ -40,10 +40,12 @@ function RailRow({ item }: { item: BaseItemDto }) {
   const { api } = useAuth()
   const poster = itemImageUrl(api, item, ImageType.Primary, { maxWidth: 120 })
   const title = item.Type === 'Episode' ? item.SeriesName : item.Name
+  // One genre, not two: the runtime shares this line, and a clipped "2h 3"
+  // is worse than no second genre.
   const chips =
     item.Type === 'Episode'
       ? [`S${item.ParentIndexNumber} E${item.IndexNumber}`]
-      : (item.Genres?.slice(0, 2) ?? [])
+      : (item.Genres?.slice(0, 1) ?? [])
   const runtime = item.RunTimeTicks ? formatRuntime(item.RunTimeTicks) : null
 
   return (
@@ -59,16 +61,22 @@ function RailRow({ item }: { item: BaseItemDto }) {
         <Link to={`/item/${item.Id}`} className="block truncate text-sm font-semibold">
           {title}
         </Link>
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+        {/* One line, clipped: rows in a dense list have to stay the same
+            height, and the title is what you scan. */}
+        <div className="flex items-center gap-1.5 overflow-hidden pt-1">
           {chips.map((chip) => (
             <span
               key={chip}
-              className="rounded-pill bg-white/8 px-2 py-0.5 text-[0.6875rem] text-muted-foreground"
+              className="shrink-0 rounded-pill bg-white/8 px-2 py-0.5 text-[0.6875rem] whitespace-nowrap text-muted-foreground"
             >
               {chip}
             </span>
           ))}
-          {runtime && <span className="text-[0.6875rem] text-muted-foreground">{runtime}</span>}
+          {runtime && (
+            <span className="shrink-0 text-[0.6875rem] whitespace-nowrap text-muted-foreground">
+              {runtime}
+            </span>
+          )}
         </div>
       </div>
 
