@@ -50,6 +50,29 @@ for how to build it and how the palette gets there.
    is the most obvious remaining giveaway.
 5. **Player.** Last. Swiftfin's controls are good; restyle, do not rewrite.
 
+### Verifying on a simulator — read this before trying
+
+`xcrun simctl` boots devices, installs, launches and screenshots **headlessly**, and all of that
+works. What does not work is driving the UI:
+
+- **Xcode 27 ships no `Simulator.app`.** The simulator UI is now
+  `/Applications/Xcode.app/Contents/Applications/DeviceHub.app`. `open -a Simulator` silently
+  does nothing.
+- DeviceHub draws the device with Metal. AppleScript `click at` does not reach it, and real
+  CGEvent clicks only land if you know exactly where the device canvas is inside the window.
+- Working that rectangle out needs a screenshot of the host screen, and `screencapture` fails
+  with *could not create image from display* until the terminal has **Screen Recording**
+  permission (System Settings → Privacy & Security → Screen Recording, then restart the
+  terminal).
+
+So: to verify anything that needs a signed-in session, either sign in by hand once in DeviceHub
+(the session persists, and `xcrun simctl io <udid> screenshot` works from then on), or grant
+Screen Recording first. A deep link cannot do it — Swiftfin's `swiftfin://` handler only resolves
+sessions that already exist.
+
+**The feature band has not been seen with real data yet** for exactly this reason. It compiles,
+it is wired into the provider, and the palette and app identity were confirmed on screen.
+
 ### Housekeeping
 
 - SwiftFormat is not installed on the dev Mac, so every build prints
