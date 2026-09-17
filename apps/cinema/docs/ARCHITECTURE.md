@@ -35,7 +35,9 @@ Two problems disappear as a result:
 
 In production the same shape holds: `apps/web/Dockerfile` serves `dist/` from
 nginx and proxies `/jf/` to Jellyfin — see `services/web/nginx.conf` and
-[DEPLOY.md](DEPLOY.md). `apps/web/vite.config.ts` is the only place the real
+[DEPLOY.md](DEPLOY.md). nginx compresses with gzip, which the public URL does
+not need — Cloudflare answers `br` at the edge — but the LAN address and the
+hop to `cloudflared` do. `apps/web/vite.config.ts` is the only place the real
 Jellyfin address appears in development, read from `JELLYFIN_URL` in the
 repo-root `.env` at dev-server startup.
 
@@ -325,8 +327,11 @@ offline-storage detection for libraries on removable drives.
 
 ## 9. Verified
 
-- `tsc -b` and `vite build` clean; initial bundle 501 kB (143 kB gzip), with
-  hls.js and the player split into a lazy chunk.
+- `tsc -b` and `vite build` clean. Four chunks: `index` 332 kB (104 kB gzip),
+  `jellyfin-sdk` 165 kB (34 kB) shared between the app shell and the player,
+  and behind the player's lazy import `PlayerRoute` 19 kB and hls.js 508 kB.
+  The SDK chunk is a manual group in `vite.config.ts`: `lib/jellyfin/` is
+  imported from both sides, and without it each route inlined its own copy.
 - The `/jf` proxy path rewrite confirmed against a mock server.
 - Auth header format, token injection, relative-base URL construction, the
   `PlaybackInfo` POST carrying a device profile, direct-play URL parameters and

@@ -8,12 +8,21 @@ Each task is written to be picked up cold, by a session or an agent with no memo
 what is wrong, where, why it is wrong, how to fix it, and how to know it worked. **Tasks 1–9 touch
 disjoint files and can run in parallel.** The one ordering constraint is noted in task 3.
 
+**All ten are done as of 2026-09-17**, each with a note under its heading saying what was
+actually changed and what was measured afterwards. The findings are kept rather than deleted:
+they are the argument for the shape the code now has, and the place to start if one of them comes
+back. Task 4 carries the one check that can only be made from the NAS.
+
 Measurements are reproducible — the commands that produced them are in each task. Re-measure
 before believing a number here; the repository moves.
 
 ---
 
 ## 1. iOS: the home screen fetches your resume list twice
+
+**Done, 2026-09-17.** The band owns the resume view model and `ResumeRowContentGroup` shares it —
+`ContentGroupViewModel` uniques view models by identity, so the screen asks once. Recently-added is
+fetched only after the resume list comes back empty, at the band's own page size.
 
 **Files** `apps/ios/Swiftfin/Shared/ViewModels/ContentGroupViewModel/DefaultContentGroupProvider.swift:57-68`,
 `apps/ios/Swiftfin/Shared/Cinema/FeatureContentGroup.swift:75-76`
@@ -62,6 +71,12 @@ must still fall back to recently-added on an account with nothing in progress �
 
 ## 2. Web: the Jellyfin SDK ships in both chunks
 
+**Done, 2026-09-17.** `rolldownOptions.output.advancedChunks` in `apps/web/vite.config.ts`. The SDK
+is one 165 kB chunk both routes reference; `index` fell 484 → 332 kB and `PlayerRoute` 541 → 19 kB.
+hls.js got a group of its own: it is the player's alone, so the remaining over-500 kB warning is now
+one vendor file (508 kB) rather than route code, and a player change no longer re-downloads the
+decoder.
+
 **Files** `apps/web/src/lib/jellyfin/*`, `apps/web/vite.config.ts`
 
 `bun run build`, today:
@@ -90,6 +105,10 @@ both route chunks should fall well under 500 kB. Then actually load the app and 
 mis-specified manual chunk breaks lazily, at runtime, not at build time.
 
 ## 3. Deploy: a token change reinstalls every dependency on the NAS
+
+**Done, 2026-09-17.** `COPY packages` now sits with `COPY apps/web`. Verified by building the image
+twice from a clean copy of the tree with one hex changed in `tokens.json` between them: `RUN … bun
+install --frozen-lockfile` reported `CACHED`, and `#abcdef` reached the built CSS.
 
 **File** `apps/web/Dockerfile:7-13`
 
@@ -120,6 +139,11 @@ the new colour actually reaches the page, which is the thing this change could s
 
 ## 4. Web: no compression for anything that skips Cloudflare
 
+**Done, 2026-09-17.** `gzip on` in `services/web/nginx.conf`, no brotli. Verified against the built
+image locally: js and css answer `content-encoding: gzip` with `Vary: Accept-Encoding`. **Still to
+check on the NAS after the next deploy:** that the public URL answers `br` and not `gzip` — if it
+flipped, nginx is compressing ahead of the edge.
+
 **File** `services/web/nginx.conf`
 
 nginx's own default is `gzip off`, and the config does not turn it on. Public traffic does not
@@ -136,6 +160,9 @@ answers `content-encoding: gzip`. Check the public URL still answers `br` afterw
 which is a downgrade.
 
 ## 5. Web: the home skeleton disappears before the content exists
+
+**Done, 2026-09-17.** The gate is now `featured.length < BAND_SIZE && (…isLoading || …)`: the
+skeleton lasts until the band can be drawn in full, or until every query has settled.
 
 **File** `apps/web/src/routes/HomeRoute.tsx:34`
 
@@ -156,6 +183,8 @@ once, with no intermediate state where one card is real and two are missing.
 
 ## 6. Web: the hero image is not prioritised
 
+**Done, 2026-09-17.** `fetchPriority="high"` on the backdrop.
+
 **File** `apps/web/src/components/media/FeatureCard.tsx:37-42`
 
 The backdrop is the largest element above the fold and almost certainly the LCP element, and it
@@ -169,6 +198,11 @@ it is already the default and says nothing.
 first wave rather than behind the card artwork.
 
 ## 7. Tokens: two copies of one generated file, kept in step by hand
+
+**Done, 2026-09-17.** `bun run tokens` ends with `apps/ios/sync-tokens.sh --if-present`, which
+copies the palette into the fork when the submodule is there and exits quietly when it is not. The
+script still runs on its own, and says what is wrong when it is run by hand without the submodule.
+`apps/ios/README.md` and the fork's `CINEMA.md` now document one command.
 
 **Files** `packages/design-tokens/build.ts`, `apps/ios/sync-tokens.sh`
 
@@ -192,6 +226,10 @@ and run it again — it must succeed, not fail.
 
 ## 8. Deploy: the environment is retyped on every deploy
 
+**Done, 2026-09-17.** `compose.yaml` already carried the NAS values as defaults, so the documented
+command is now a bare `docker compose up -d --build`; any other host overrides with an `.env` beside
+`compose.yaml`, which the deploy tar does not overwrite.
+
 **Files** [DEPLOY.md](DEPLOY.md), `services/web/compose.yaml`
 
 The deploy command carries its configuration inline:
@@ -212,6 +250,15 @@ the box will not be overwritten by a deploy. Shorten the documented command to m
 checks: `curl` on `:8898` answers 200, and `/jf/System/Info/Public` answers JSON.
 
 ## 9. iOS: dark is forced in three places
+
+**Done, 2026-09-17.** One of the three was dead: nothing reads the value of
+`Defaults[.appAppearance]` — only `Defaults.updates(.appAppearance)`, which ignores it and applies
+dark — so that key is back at upstream's `.system`. The other two both earn their place and now say
+so: `RootCoordinator.applyAppAppearance()` is the `UIWindow.overrideUserInterfaceStyle` that reaches
+UIKit-hosted screens *and* what writes `Defaults[.appearance]`, which `applyAccentColor` reads to
+mix for contrast; `SwiftfinApp`'s `preferredColorScheme(.dark)` covers the SwiftUI hierarchy from
+the first frame, before a key window exists. (Upstream's own `.colorScheme(.dark)` in
+`VideoPlayerViewShim` is a fourth, and is not ours.)
 
 **Files** `apps/ios/Swiftfin/Shared/Services/SwiftfinDefaults.swift`,
 `Shared/Coordinators/Root/RootCoordinator.swift`, `Swiftfin/App/SwiftfinApp.swift`
@@ -235,11 +282,10 @@ the stored default covers.
 
 ## 10. The monorepo exists on one machine
 
-`git remote -v` in the repository root prints nothing. `apps/ios/Swiftfin` is on GitHub and would
-survive the Mac; the web app, the tokens, the services and every one of these documents would not.
-
-This is not complexity and it is not slowness, and it is the cheapest item here with the largest
-downside. A private GitHub repository and one `git push` closes it.
+**Done, 2026-09-17** — outside this list. `origin` is the private
+`github.com/davide97g/cinema`, last pushed the same day. What is left is a habit rather than a
+task: `main` runs ahead of `origin/main` between pushes, so the machine is still the only copy of
+whatever is not pushed yet.
 
 ---
 

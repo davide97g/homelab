@@ -156,12 +156,9 @@ MPL-2.0, and mixing them would make the iOS app unshippable on the App Store. Se
 
 ## 4. Web — smaller things left
 
-- **The monorepo has no git remote.** It exists on one machine only. A private GitHub repo would
-  be a backup; the iOS fork is already public and independent of this.
-- **Chunk size.** `PlayerRoute` and the main bundle are both over 500 kB. hls.js is already split
-  out; the next win is lazy-loading the Jellyfin SDK surface the player needs.
-- **`services/web/nginx.conf` has never been exercised.** It is written but untested — the first
-  deploy is also its first run.
+- **Chunk size.** Settled for now: the SDK is one shared chunk and the route chunks are 332 kB
+  and 19 kB. What is left over 500 kB is hls.js itself, behind the player's lazy import, and
+  shrinking that means a different decoder rather than a different build config.
 - **No tests.** There is no test setup at all in `apps/web`. The availability probe
   (`lib/jellyfin/availability.ts`) and the ticks/format helpers are the parts where a bug would be
   quiet rather than loud.
