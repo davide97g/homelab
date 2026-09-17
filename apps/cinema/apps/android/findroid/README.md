@@ -20,9 +20,11 @@ I am developing this application in my spare time.
 [<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it on IzzyOnDroid" height="80">](https://apt.izzysoft.de/fdroid/index/apk/dev.jdtech.jellyfin)
 
 ## Screenshots
-| Home                                | Library                             | Movie                           | Season                            | Episode                             |
-|-------------------------------------|-------------------------------------|---------------------------------|-----------------------------------|-------------------------------------|
-| ![Home](fastlane/metadata/android/en-US/images/phoneScreenshots/1_en-US.png) | ![Library](fastlane/metadata/android/en-US/images/phoneScreenshots/2_en-US.png) | ![Movie](fastlane/metadata/android/en-US/images/phoneScreenshots/3_en-US.png) | ![Season](fastlane/metadata/android/en-US/images/phoneScreenshots/4_en-US.png) | ![Episode](fastlane/metadata/android/en-US/images/phoneScreenshots/5_en-US.png) |
+
+Upstream's screenshots lived under `fastlane/metadata/`, which Cinema dropped when this fork
+was vendored into the monorepo — they showed Findroid's own interface and targeted its Play
+Store listing. See [the upstream README](https://github.com/jarnedemeulemeester/findroid) for
+them, or build Cinema and look at the real thing.
 
 ## Features
 - Completely native interface
