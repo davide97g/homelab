@@ -86,10 +86,11 @@ See [`docs/ARCHITECTURE.md` § 7](docs/ARCHITECTURE.md).
 [`docs/ROADMAP.md`](docs/ROADMAP.md) is the list — what is done, what is next, and what a session
 picking any of it up needs to know. The two headlines:
 
-- **The web app is not deployed.** It runs against the NAS Jellyfin in development;
-  `cinema.davideghiotto.it` still has to be added to the Cloudflare tunnel and the compose app
-  deployed. Nothing about it is blocked.
-- **iOS has its palette, not its layout.** Android has not been started.
+- **The web app is live** at <https://cinema.davideghiotto.it>, and Jellyfin sits behind it at
+  `/jf`. The old `jellyfin.davideghiotto.it` no longer resolves, so anything still pointed at it
+  has to be repointed by hand.
+- **iOS is the palette, the home screen, the chrome and the icon.** What is left there is the
+  poster rows and the other locales' copy. Android has not been started.
 
 ## Reading on
 

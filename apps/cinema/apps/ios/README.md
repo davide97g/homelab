@@ -54,6 +54,22 @@ history. Never hand-edit a generated file.
 `Shared/Cinema/Color+Cinema.swift` names those tokens the way views speak: `.cinemaPrimary`,
 `.cinemaSurface`, `.cinemaMatch`. Views use the names.
 
+## The app icon
+
+```sh
+swift apps/ios/make-app-icon.swift
+```
+
+Renders `AppIcon-primary-primary.png` straight into the fork's asset catalogue: Reel's canvas,
+Reel's action colour, and the same film glyph `Shared/Cinema/CinemaMark.swift` draws in the app
+and the web rail draws at the top of its sidebar. Both colours are read from `tokens.json`, so
+the icon cannot drift from the palette. The output carries no alpha channel, because App Store
+Connect rejects an icon that has one.
+
+Upstream's twenty-four alternate icons are all Jellyfin's and are no longer offered — the
+Customize section of app settings is gone on iOS. The `.appiconset`s stay in the catalogue so
+`git merge upstream/main` has nothing to resolve.
+
 ## How upstream builds the home screen
 
 Worth reading before touching it — recent Swiftfin has no `HomeView`. The screen is composed
