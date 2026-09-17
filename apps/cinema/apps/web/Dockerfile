@@ -5,10 +5,14 @@ FROM oven/bun:1-alpine AS build
 WORKDIR /repo
 
 COPY package.json ./
-COPY packages ./packages
 COPY apps/web/package.json apps/web/bun.lock ./apps/web/
 RUN cd apps/web && bun install --frozen-lockfile
 
+# packages/ lands after the install, not before: nothing in apps/web depends on
+# @cinema/design-tokens, so the install never reads it -- only the token build
+# below does. Copied earlier, a one-hex change to tokens.json reinstalled every
+# dependency, on the NAS, which is the slow machine.
+COPY packages ./packages
 COPY apps/web ./apps/web
 RUN bun run packages/design-tokens/build.ts && cd apps/web && bun run build
 

@@ -36,9 +36,14 @@ cd ~/personal/projects/homelab/cinema
 tar czf - --exclude node_modules --exclude .git --exclude dist \
           --exclude 'apps/ios/Swiftfin' --exclude .env . \
   | ssh nas 'tar xzf - -C ~/cinema'
-ssh nas 'cd ~/cinema/services/web && \
-  JELLYFIN_UPSTREAM=http://172.17.0.1:8899 CINEMA_PORT=8898 docker compose up -d --build'
+ssh nas 'cd ~/cinema/services/web && docker compose up -d --build'
 ```
+
+`JELLYFIN_UPSTREAM` and `CINEMA_PORT` used to ride on that command. They are properties of the
+NAS, not of the deploy, and a typo in either shipped a container that built, started, and proxied
+to nothing — so they now live as defaults in `compose.yaml` (`172.17.0.1:8899` and `8898`). Any
+other host overrides them with an `.env` beside `compose.yaml`, which the tar above will not
+overwrite.
 
 Verify on the box before trusting the public URL:
 

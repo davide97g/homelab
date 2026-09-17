@@ -1,11 +1,16 @@
 # Cinema's front end. Portable between the two boxes it might live on, because
-# where Jellyfin is and which port is free differ per host:
+# where Jellyfin is and which port is free differ per host -- but both are
+# properties of the host, not of the deploy, so they are not retyped on every
+# deploy. The defaults below are the NAS, which is where Cinema actually runs:
 #
-#   NAS (beside Jellyfin, the real deployment):
-#     JELLYFIN_UPSTREAM=http://172.17.0.1:8899 CINEMA_PORT=8898 docker compose up -d --build
+#     docker compose up -d --build
 #
-#   mini PC (Dokploy, mediarr's Jellyfin):
-#     JELLYFIN_UPSTREAM=http://jellyfin:8096 CINEMA_PORT=3003 docker compose up -d --build
+# Anywhere else, an `.env` beside this file overrides them; docker compose reads
+# it with no flag, and the deploy tar in docs/DEPLOY.md excludes .env, so the
+# file on the box survives. The mini PC (Dokploy, mediarr's Jellyfin) would say:
+#
+#     JELLYFIN_UPSTREAM=http://jellyfin:8096
+#     CINEMA_PORT=3003
 #
 # See docs/DEPLOY.md.
 services:
