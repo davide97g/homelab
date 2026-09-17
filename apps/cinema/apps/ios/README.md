@@ -54,22 +54,40 @@ history. Never hand-edit a generated file.
 `Shared/Cinema/Color+Cinema.swift` names those tokens the way views speak: `.cinemaPrimary`,
 `.cinemaSurface`, `.cinemaMatch`. Views use the names.
 
-## Done
+## How upstream builds the home screen
 
-1. **Palette and identity.** Tokens in, accent colour repointed at Cinema red, bundle identifier
-   `it.davideghiotto.cinema`, display name Cinema.
+Worth reading before touching it — recent Swiftfin has no `HomeView`. The screen is composed
+declaratively, which is good news: Cinema's home screen is mostly a matter of adding one group
+type and reordering, not writing a screen.
 
-## Next, cheapest visual delta first
+- `Shared/ViewModels/ContentGroupViewModel/DefaultContentGroupProvider.swift` **is** the home
+  screen. `makeGroups` fetches the user's views and then a `@ContentGroupBuilder` block lists the
+  sections in order: a `PosterGroup` for resume, one for Next Up, optional recently-added and
+  recently-played groups behind `Defaults[.Customization.Home.*]`, then one "latest in library"
+  group per library.
+- A `ContentGroup` (`Shared/Objects/ContentGroup/ContentGroup.swift`) is a tiny protocol: an id, a
+  view model, and `body(with:)`. `PosterGroup` is the one that draws a titled row, parameterised
+  by `posterDisplayType` (portrait/landscape) and `posterSize`. A group disappears from the page
+  when its library comes back empty — that is `_shouldBeResolved`.
+- `Shared/Views/ContentGroupView.swift` renders whatever the provider returns, inside a scroll
+  view with pull-to-refresh and tab-reselect-scrolls-to-top already handled.
+- **tvOS already has a hero** — `Swiftfin tvOS/Objects/CinematicSelectionContentGroup.swift`,
+  used behind an `#if os(tvOS)` in the provider. iOS gets a landscape resume row instead. The web
+  app's feature band is closest to that tvOS group, so it is the thing to read first when
+  building an iOS equivalent.
 
-2. **Home.** Feature band (one large paging card plus two beside it), rows with a kind tag, a
-   title and a dot-separated fact line. Mirrors `apps/web`; see [`../../docs/DESIGN.md`](../../docs/DESIGN.md).
-3. **Navigation chrome.** Rail on iPad, tab row on iPhone.
-4. **Strings.** Upstream says "Swiftfin" in user-facing copy in a few places.
-5. **App icon.** `Swiftfin/Resources/Assets.xcassets`.
-6. **Player last.** Swiftfin's controls are good; restyle, do not rewrite.
+The shape of the iOS work, then: a Cinema-owned `ContentGroup` for the feature band in
+`Shared/Cinema/`, added at the top of `DefaultContentGroupProvider._makeGroups` for `os(iOS)`, and
+restyling `PosterGroup`'s card to carry a kind tag, title and dot-separated fact line the way
+`apps/web`'s `MediaCard` does.
 
 Keep the diff against upstream small and mechanical — `git merge upstream/main` has to stay cheap
 forever, because that is where server-compatibility fixes come from.
+
+## What is next
+
+[`../../docs/ROADMAP.md`](../../docs/ROADMAP.md) has the ordered list for every part of Cinema,
+iOS included.
 
 ## Distribution
 

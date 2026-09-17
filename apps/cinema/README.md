@@ -83,12 +83,13 @@ See [`docs/ARCHITECTURE.md` § 7](docs/ARCHITECTURE.md).
 
 ## Not done yet
 
-- **Deploy the web app.** It runs against the NAS Jellyfin in development but is not published
-  anywhere: `cinema.davideghiotto.it` still has to be added to the Cloudflare tunnel and the
-  compose app deployed. Everything it needs is written down in
-  [`docs/DEPLOY.md`](docs/DEPLOY.md); nothing about it is blocked.
-- **iOS and Android.** Both are scaffolding plus a generated palette; the forks are not attached
-  yet.
+[`docs/ROADMAP.md`](docs/ROADMAP.md) is the list — what is done, what is next, and what a session
+picking any of it up needs to know. The two headlines:
+
+- **The web app is not deployed.** It runs against the NAS Jellyfin in development;
+  `cinema.davideghiotto.it` still has to be added to the Cloudflare tunnel and the compose app
+  deployed. Nothing about it is blocked.
+- **iOS has its palette, not its layout.** Android has not been started.
 
 ## Reading on
 
@@ -98,3 +99,4 @@ See [`docs/ARCHITECTURE.md` § 7](docs/ARCHITECTURE.md).
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — putting it on the NAS behind the Cloudflare tunnel.
 - [`docs/LICENSING.md`](docs/LICENSING.md) — what forking Swiftfin and Findroid commits us to,
   and the one rule that keeps the iOS app shippable.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — everything still open, in the order worth doing it.
