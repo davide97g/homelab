@@ -26,8 +26,8 @@ extension URL {
     /// screen points at — the modified MPL files are under apps/ios/Swiftfin,
     /// and publishing them is what the licence requires.
     ///
-    /// The repository is private today. It has to be reachable by anyone this
-    /// app is distributed to before a build ships.
+    /// The repository is public, which is what publishes the modified MPL
+    /// files this fork is built from.
     static let cinemaGithub: URL = URL(string: "https://github.com/davide97g/cinema")!
 
     static let cinemaGithubLicense: URL =

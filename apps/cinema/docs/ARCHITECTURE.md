@@ -171,15 +171,14 @@ Getting this wrong is expensive late and free now.
 - **`apps/android` — Findroid, GPLv3.** Whole-work copyleft: distributing a build means publishing
   this fork's complete source. Google Play is fine with that.
 
-Both forks are vendored into this private repository, which is **mere aggregation** — GPL and MPL
-code sitting side by side in one tree does not relicense either. But the public fork repositories
-used to be how the modified sources were published, and they are being retired, so:
+Both forks are vendored into this repository, which is **mere aggregation** — GPL and MPL code
+sitting side by side in one tree does not relicense either, and our own code stays MIT.
 
-> **Before any iOS or Android build is distributed to anyone**, the corresponding source has to be
-> published somewhere the recipient can reach — the modified Swiftfin files for MPL-2.0, the entire
-> Findroid fork for GPLv3. Making this repository public would satisfy both; a public mirror of
-> each `apps/<platform>/` tree would too. Nothing is owed while the builds stay on your own
-> devices.
+**This repository is public, and that is what satisfies both obligations**: the modified Swiftfin
+files are published under MPL-2.0 at `apps/ios/Swiftfin`, and the complete Findroid fork under
+GPL-3.0 at `apps/android/findroid`. If it ever goes private again, a build cannot be distributed
+to anyone until those sources are reachable some other way. [`NOTICE.md`](../NOTICE.md) is the
+full credit and licence map.
 
 **The one rule: never move code between `apps/ios` and `apps/android`.** GPLv3 code entering the
 Swiftfin fork relicenses it, and a GPLv3 app cannot ship on the App Store at all — Apple's terms

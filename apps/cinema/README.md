@@ -116,3 +116,19 @@ Four documents, one job each:
 Each fork's own README ([`apps/ios`](apps/ios/README.md), [`apps/android`](apps/android/README.md))
 carries its build, its palette, the upstream version it was forked from, and the traps that
 platform taught us.
+
+## Credit, and licences
+
+Most of the code here is not ours. The iOS app is a fork of
+[Swiftfin](https://github.com/jellyfin/Swiftfin) by Jellyfin & Jellyfin Contributors (MPL-2.0); the
+Android app is a fork of [Findroid](https://github.com/jarnedemeulemeester/findroid) by Jarne
+Demeulemeester (GPL-3.0); both are vendored in this repository with their licences intact, and both
+are published here because those licences ask for it. [Jellyfin](https://jellyfin.org) itself is
+unmodified and does all the work Cinema does not.
+
+What is ours — `apps/web`, `packages/`, `services/`, `docs/`, and the Cinema files inside the forks
+— is MIT, © 2026 Davide Ghiotto ([@davide97g](https://github.com/davide97g),
+[davideghiotto.it](https://davideghiotto.it)).
+
+[`NOTICE.md`](NOTICE.md) maps every part of the tree to its authors and its licence, down to the
+fonts. If something is miscredited there, an issue is the fastest way to get it fixed.

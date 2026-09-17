@@ -152,7 +152,8 @@ xcrun devicectl device process launch --device <UDID> it.davideghiotto.cinema
   enable development services"*. Wait on `lockState` → `passcodeRequired: false`. Do **not** poll for
   the developer-disk-image error to clear: it clears while the device is still locked, and the build
   then times out waiting for the destination. Keep the screen awake for the whole build.
-- Team `<team-id>` has a wildcard profile covering `it.davideghiotto.cinema`.
+- The development team used here has a wildcard profile covering `it.davideghiotto.cinema`.
+  The team id goes in the gitignored `XcodeConfig/DevelopmentTeam.xcconfig`, never in the repo.
 
 SwiftFormat is not installed on the dev Mac, so every build prints `error: SwiftFormat not installed`
 and carries on — `brew install swiftformat` silences it.

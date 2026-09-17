@@ -7,15 +7,18 @@ across the LAN for no reason.
 
 Live at **<https://cinema.davideghiotto.it>** since 2026-09-17.
 
+Identifiers below are placeholders: `<tunnel-uuid>` and `<nas-lan-ip>` are properties of one
+homelab and are of no use to anyone else. Substitute your own.
+
 ## The shape of it
 
 | | |
 |---|---|
-| Host | UGREEN NAS, `ssh nas` (Tailscale), user `davide`, in the `docker` group |
+| Host | UGREEN NAS, reached over Tailscale as `ssh nas`, as a user in the `docker` group |
 | Container | `cinema-web`, from `services/web/compose.yaml`, published on `:8898` |
 | Jellyfin | same box, `:8899`, container `jellyfin-app-1` |
-| Tunnel | `<tunnel-name>` (`<tunnel-uuid>`) |
-| DNS | proxied CNAME `cinema` → `c5449ef2-….cfargotunnel.com` |
+| Tunnel | the NAS's own Cloudflare tunnel, `<tunnel-uuid>` |
+| DNS | proxied CNAME `cinema` → `<tunnel-uuid>.cfargotunnel.com` |
 
 The mobile apps are excluded: the web image needs `apps/web` and `packages/`, and shipping 38 MB
 of Swift and Kotlin to the NAS on every deploy would buy nothing.

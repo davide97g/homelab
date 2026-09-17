@@ -67,9 +67,10 @@ Deploy is a tar over ssh to the NAS, which builds its own image — see `docs/DE
   upstream remote or a second origin. Keep each fork's diff against upstream small and mechanical
   anyway: taking an upstream server-compatibility fix is now a manual diff against a fresh clone,
   and each fork's README records the version it was forked from.
-- **Distributing either mobile app obliges us to publish source** — modified Swiftfin files under
-  MPL-2.0, the whole Findroid fork under GPLv3. The public fork repositories used to satisfy that
-  and are being retired, so a source-publication route has to exist before any build ships.
+- **This repository is public, and has to stay public while builds are distributed.** That is what
+  publishes the modified Swiftfin files (MPL-2.0) and the whole Findroid fork (GPL-3.0). Our own
+  code is MIT; `NOTICE.md` maps every part of the tree to its licence and its authors, and is the
+  file to update when something is added, removed or re-credited.
 
 ## Web architecture (`docs/ARCHITECTURE.md` is the long version)
 
