@@ -9,8 +9,8 @@ and nothing else:
 
 ```
 apps/web                 React 19 + Vite SPA. The reference implementation of the design.
-apps/ios                 Swiftfin fork (MPL-2.0). Submodule at apps/ios/Swiftfin.
-apps/android             Findroid fork (GPLv3). Submodule at apps/android/findroid.
+apps/ios                 Swiftfin fork (MPL-2.0), vendored in-tree.
+apps/android             Findroid fork (GPLv3), vendored in-tree.
 packages/design-tokens   tokens.json -> CSS custom properties, Swift, Kotlin, Android XML.
 services/jellyfin/dev.sh Local Jellyfin in Docker, the dev:all stack.
 services/web             Production nginx image + compose for the NAS.
@@ -32,14 +32,14 @@ Bun is the package manager and script runner. The web app is built by **Vite**, 
 | `bun run dev:all` | `services/jellyfin/dev.sh`: Jellyfin container + Vite |
 | `bun run build` | `bun run tokens` then `tsc -b && vite build` in `apps/web` |
 | `bun run lint` | oxlint over `apps/web/src` |
-| `bun run tokens` | tokens.json → web CSS, Swift, Kotlin, XML, then syncs into both forks |
+| `bun run tokens` | tokens.json → web CSS, Swift, Kotlin, XML, written into each app |
 
 **There is no test suite.** The verification loop is `bun run build` (type-check + bundle) plus
 `bun run lint`, and for behaviour, the app against a real Jellyfin. If you add tests, use
 `bun test` (`bun test path/to/file.test.ts`, `-t "name"` for one case); `@types/bun` is already a
 dependency.
 
-Forks (both are git submodules — `git submodule update --init` after a fresh clone):
+Forks (vendored source in this repo — nothing to check out):
 
 ```sh
 cd apps/ios/Swiftfin && xcodebuild -project Swiftfin.xcodeproj -scheme Swiftfin \
@@ -54,18 +54,22 @@ Deploy is a tar over ssh to the NAS, which builds its own image — see `docs/DE
 ## Rules that are not visible in the code
 
 - **Colour, radius, shadow, font and motion values live only in
-  `packages/design-tokens/tokens.json`.** `bun run tokens` regenerates `apps/web/src/styles/tokens.css`,
-  `apps/ios/generated/CinemaTokens.swift`, `apps/android/generated/CinemaTokens.kt` and
-  `cinema_tokens.xml`, then copies them into the forks. The generated files are committed so the
-  forks build without this toolchain. Never hand-edit one, and never put a hex value in a
-  component — `docs/DESIGN.md` has the design rules.
+  `packages/design-tokens/tokens.json`.** `bun run tokens` writes `apps/web/src/styles/tokens.css`,
+  `apps/ios/Swiftfin/Shared/Cinema/CinemaTokens.swift`, and the Kotlin and XML pair under
+  `apps/android/findroid/core/`. The outputs are committed. Never hand-edit one, and never put a
+  hex value in a component — `docs/DESIGN.md` has the design rules.
 - **Never move code between `apps/ios` (MPL-2.0) and `apps/android` (GPLv3).** GPL code entering
   the Swiftfin fork relicenses it, and a GPLv3 app cannot ship on the App Store. Shared logic goes
   in `packages/`, written by us, or it gets written twice. `docs/ARCHITECTURE.md` § 6.
 - **Never copy code out of `jellyfin-web` (GPLv3) into `apps/web`.** Using the REST API is fine; a
   component is not.
-- Keep the fork diffs small and mechanical. `git merge upstream/main` is where server-compatibility
-  fixes come from, and it has to stay cheap forever.
+- **The forks are vendored, and this repo has exactly one remote.** Do not re-add a submodule, an
+  upstream remote or a second origin. Keep each fork's diff against upstream small and mechanical
+  anyway: taking an upstream server-compatibility fix is now a manual diff against a fresh clone,
+  and each fork's README records the version it was forked from.
+- **Distributing either mobile app obliges us to publish source** — modified Swiftfin files under
+  MPL-2.0, the whole Findroid fork under GPLv3. The public fork repositories used to satisfy that
+  and are being retired, so a source-publication route has to exist before any build ships.
 
 ## Web architecture (`docs/ARCHITECTURE.md` is the long version)
 

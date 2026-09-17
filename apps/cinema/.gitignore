@@ -18,3 +18,7 @@ DerivedData/
 local.properties
 *.apk
 *.aab
+
+# Upstream release automation for the forks, dropped when they were absorbed:
+# they targeted the upstream projects app store accounts, not ours.
+apps/*/*/fastlane/

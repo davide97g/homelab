@@ -1,8 +1,11 @@
 # Cinema for iOS
 
-A fork of [Swiftfin](https://github.com/jellyfin/Swiftfin) reskinned to Reel, attached here as a
-git submodule at `apps/ios/Swiftfin` and tracked at
-[davide97g/Swiftfin](https://github.com/davide97g/Swiftfin) on the `cinema` branch.
+A fork of [Swiftfin](https://github.com/jellyfin/Swiftfin) reskinned to Reel, **vendored** into
+this repository at `apps/ios/Swiftfin`. It is ordinary source in the monorepo: no submodule, no
+second remote, no separate history.
+
+**Forked from upstream at `1.6.1-93-g52aaec38`.** That is the base any future upstream update has
+to be worked out against — write the new base here when you do one.
 
 ## Why a fork and not a wrapper
 
@@ -19,8 +22,7 @@ all — Apple's terms impose restrictions GPLv3 forbids. See [`../../docs/ARCHIT
 ## Working on it
 
 ```sh
-git submodule update --init   # after a fresh clone of the monorepo
-bun run tokens               # palette -> generated/, and on into the fork
+bun run tokens               # palette -> Shared/Cinema/CinemaTokens.swift
 open apps/ios/Swiftfin/Swiftfin.xcodeproj
 ```
 
@@ -45,13 +47,10 @@ DEVELOPMENT_TEAM = YOURTEAMID
 
 ## The palette
 
-`generated/CinemaTokens.swift` is emitted from `packages/design-tokens/tokens.json` by
-`bun run tokens`, which then runs `sync-tokens.sh` to copy it into the fork at
-`Shared/Cinema/CinemaTokens.swift`. The fork is a separate repository, so the palette still lands
-there as a reviewable commit in the fork's own history — what the sync being automatic removes is
-the chance to forget it and leave the fork on the old colours. Without the submodule checked out
-the copy is skipped in silence, so a clone with no submodules still builds the web app. Never
-hand-edit a generated file.
+`bun run tokens` writes `Shared/Cinema/CinemaTokens.swift` straight from
+`packages/design-tokens/tokens.json`. `Shared/` is an Xcode file-system synchronized group, so the
+file joins the target with no project edit. It is committed, so the palette change is a reviewable
+diff. Never hand-edit it.
 
 `Shared/Cinema/Color+Cinema.swift` names those tokens the way views speak: `.cinemaPrimary`,
 `.cinemaSurface`, `.cinemaMatch`. Views use the names.
@@ -99,8 +98,17 @@ The shape of the iOS work, then: a Cinema-owned `ContentGroup` for the feature b
 restyling `PosterGroup`'s card to carry a kind tag, title and dot-separated fact line the way
 `apps/web`'s `MediaCard` does.
 
-Keep the diff against upstream small and mechanical — `git merge upstream/main` has to stay cheap
-forever, because that is where server-compatibility fixes come from.
+Keep the diff against upstream small and mechanical. There is no `git merge upstream/main` any
+more — the fork is vendored — so an upstream fix is a manual job, and a small diff is what keeps it
+possible:
+
+```sh
+git clone --depth 50 https://github.com/jellyfin/Swiftfin.git /tmp/swiftfin
+diff -ru --exclude .git /tmp/swiftfin apps/ios/Swiftfin | less   # our changes, and theirs
+```
+
+Cinema's own changes all live in `Shared/Cinema/` plus a handful of touched upstream files; take
+what you need from upstream by hand and update the base version recorded at the top of this file.
 
 ## Verifying a change — read this before trying
 

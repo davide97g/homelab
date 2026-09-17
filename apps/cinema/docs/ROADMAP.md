@@ -44,8 +44,7 @@ a different decoder, not a different build config.
 
 ## iOS — the surface is Cinema's; the player is upstream's, restyled
 
-Fork: [davide97g/Swiftfin](https://github.com/davide97g/Swiftfin), branch `cinema`, submodule at
-`apps/ios/Swiftfin`.
+Vendored at `apps/ios/Swiftfin`, forked from upstream `1.6.1-93-g52aaec38`.
 
 **Done.** Reel palette and accent, bundle id `it.davideghiotto.cinema`, display name and app icon
 Cinema, the Jellyfin blob gone from sign-in, Settings and About. Dark-only, declared as
@@ -76,9 +75,8 @@ iOS README explains what that costs and how to get past it.
 
 ## Android — the surface is Cinema's, phone and TV
 
-Fork: [davide97g/findroid](https://github.com/davide97g/findroid), branch `cinema`, submodule at
-`apps/android/findroid`. Five small, mechanical commits on top of upstream; the fork's `CINEMA.md`
-has the detail.
+Vendored at `apps/android/findroid`, forked from upstream `v1.1.0-42-g8f713da4`. Five small,
+mechanical commits' worth of change; the fork's `CINEMA.md` has the detail.
 
 **Done.** Reel palette in both app modules' Material 3 schemes, application id
 `it.davideghiotto.cinema`, name Cinema, the Lucide `film` mark as launcher icon, TV banner and
@@ -124,10 +122,16 @@ them comes back. Re-measure before believing a number — the repository moves.
 | 4 | nginx defaulted to `gzip off`, so the LAN and the hop to `cloudflared` got 484 kB raw | `gzip on` (no brotli — not in `nginx:1.27-alpine`, and Cloudflare answers `br` at the edge) |
 | 5 | The home skeleton was gated on `&&`, so it vanished when the *fastest* query resolved | Gated on the band being drawable in full, or every query having settled |
 | 6 | The hero backdrop — almost certainly the LCP element — carried no priority hint | `fetchPriority="high"` |
-| 7 | `CinemaTokens.swift` existed twice, kept in step by remembering to run a second script | `bun run tokens` ends with `sync-tokens.sh --if-present`, silent when the submodule is absent |
+| 7 | `CinemaTokens.swift` existed twice, kept in step by remembering to run a second script | `bun run tokens` writes it once, straight into the app (the sync scripts went with the submodules) |
 | 8 | `JELLYFIN_UPSTREAM` and `CINEMA_PORT` retyped on every deploy — a typo shipped a container proxying to nothing | Defaults in `compose.yaml`; the deploy is a bare `docker compose up -d --build` |
 | 9 | Dark forced in three places on iOS, two looking redundant | One was genuinely dead and is back at upstream's `.system`; the other two earn their place and now say why in a comment |
 | 10 | The monorepo existed on one machine | Pushed to the private `github.com/davide97g/cinema`; `main` still runs ahead between pushes |
+
+Since then the two forks have been **vendored**: no submodules, no fork remotes, one repository and
+one origin. It costs `git merge upstream/main` — see each fork's README for the manual route and
+the upstream version it was forked from — and it means the public fork repositories no longer carry
+our modified MPL/GPL sources, which is a licence obligation that has to be met another way before
+either app is distributed.
 
 Structural decisions that look expensive and should be left alone are listed in
 [ARCHITECTURE.md § 7](ARCHITECTURE.md).

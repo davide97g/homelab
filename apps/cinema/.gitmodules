@@ -1,6 +1,0 @@
-[submodule "apps/ios/Swiftfin"]
-	path = apps/ios/Swiftfin
-	url = https://github.com/davide97g/Swiftfin.git
-[submodule "apps/android/findroid"]
-	path = apps/android/findroid
-	url = https://github.com/davide97g/findroid.git

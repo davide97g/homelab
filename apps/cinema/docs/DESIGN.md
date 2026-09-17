@@ -25,13 +25,13 @@ emits:
 | Output | Consumer |
 |---|---|
 | `apps/web/src/styles/tokens.css` | CSS custom properties, bridged into Tailwind in `src/index.css` |
-| `apps/ios/generated/CinemaTokens.swift` | `CinemaTokens.Palette`, `CinemaTokens.Radius` |
-| `apps/android/generated/CinemaTokens.kt` | `CinemaTokens`, feeding a Compose `darkColorScheme` |
-| `apps/android/generated/cinema_tokens.xml` | `@color/cinema_*`, for Findroid's XML theme and its View-based player chrome |
+| `apps/ios/Swiftfin/Shared/Cinema/CinemaTokens.swift` | `CinemaTokens.Palette`, `CinemaTokens.Radius` |
+| `apps/android/findroid/core/…/design/CinemaTokens.kt` | `CinemaTokens`, feeding a Compose `darkColorScheme` |
+| `apps/android/findroid/core/…/values/cinema_tokens.xml` | `@color/cinema_*`, for Findroid's XML theme and its View-based player chrome |
 
-`bun run tokens` then copies those files into the forks themselves (`apps/ios/sync-tokens.sh`,
-`apps/android/sync-tokens.sh`), because a palette that has to be carried across by hand is a
-palette that drifts.
+Each file is written straight into the app that consumes it — the forks are vendored in this
+repository, so there is nowhere to copy it on to. A palette that has to be carried across by hand
+is a palette that drifts.
 
 Android needs two outputs because Findroid is not all Compose: `core/res/values/themes.xml` and
 the ExoPlayer control layouts are Views resolving `?attr/colorPrimary` and `?attr/colorSurface`,

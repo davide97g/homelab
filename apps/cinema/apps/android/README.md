@@ -1,8 +1,11 @@
 # Cinema for Android
 
-A fork of [Findroid](https://github.com/jarnedemeulemeester/findroid) reskinned to Reel, attached
-here as a git submodule at `apps/android/findroid` and tracked at
-[davide97g/findroid](https://github.com/davide97g/findroid) on the `cinema` branch.
+A fork of [Findroid](https://github.com/jarnedemeulemeester/findroid) reskinned to Reel,
+**vendored** into this repository at `apps/android/findroid`. It is ordinary source in the
+monorepo: no submodule, no second remote, no separate history.
+
+**Forked from upstream at `v1.1.0-42-g8f713da4`.** That is the base any future upstream update has
+to be worked out against — write the new base here when you do one.
 
 ## Why a fork and not a wrapper
 
@@ -18,8 +21,7 @@ here into `apps/ios`. See [`../../docs/ARCHITECTURE.md` § 6](../../docs/ARCHITE
 ## Working on it
 
 ```sh
-git submodule update --init            # after a fresh clone of the monorepo
-bun run tokens                         # palette -> generated/ -> the fork
+bun run tokens                         # palette -> :core, Kotlin and XML
 
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 export ANDROID_HOME="$HOME/Library/Android/sdk"
@@ -40,11 +42,12 @@ universal APK: use `installLibreDebug`, or the
 
 ## The palette
 
-`generated/CinemaTokens.kt` and `generated/cinema_tokens.xml` are emitted from
-`packages/design-tokens/tokens.json` by `bun run tokens`, which then runs `sync-tokens.sh` to copy
-them into the fork's `:core` module. Two files because Findroid is not all Compose: the ExoPlayer
-control layouts and `core/res/values/themes.xml` are Views resolving `?attr/colorPrimary`, and the
-launcher and TV banner backgrounds are `@color` resources.
+`bun run tokens` writes `core/src/main/java/it/davideghiotto/cinema/design/CinemaTokens.kt` and
+`core/src/main/res/values/cinema_tokens.xml` straight from `packages/design-tokens/tokens.json`.
+Two files because Findroid is not all Compose: the ExoPlayer control layouts and
+`core/res/values/themes.xml` are Views resolving `?attr/colorPrimary`, and the launcher and TV
+banner backgrounds are `@color` resources. `:core` is the destination because both `:app:phone` and
+`:app:tv` depend on it. Never hand-edit a generated file.
 
 `CinemaColors.kt`, beside them in the fork, names those tokens the way composables speak:
 `CinemaColors.primary`, `CinemaColors.surfaceRaised`, `CinemaColors.match`. Composables use the
@@ -63,9 +66,11 @@ banner themselves are vector drawables referencing `@color/cinema_*` and need no
 
 ## What the fork changes
 
-Five commits on top of upstream, deliberately small and mechanical so `git merge upstream/main`
-stays cheap — that is where server-compatibility fixes come from. `CINEMA.md` at the fork root has
-the detail. In short: the Reel palette wired into both app modules' Material 3 schemes, dark
+Five commits' worth of change on top of upstream, deliberately small and mechanical. There is no
+`git merge upstream/main` any more — the fork is vendored — so an upstream fix is a manual job
+(`git clone --depth 50 https://github.com/jarnedemeulemeester/findroid.git /tmp/findroid`, then
+`diff -ru --exclude .git /tmp/findroid apps/android/findroid`), and a small diff is what keeps that
+possible. `CINEMA.md` at the fork root has the detail. In short: the Reel palette wired into both app modules' Material 3 schemes, dark
 forced in the four places Android decides it, the feature band on both home screens, and the
 identity (application id `it.davideghiotto.cinema`, name Cinema, the mark).
 

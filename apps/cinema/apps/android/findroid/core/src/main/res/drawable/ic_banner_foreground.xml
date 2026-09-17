@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cinema - a Findroid fork.
+  The brand mark: Lucide's `film` on a 24-unit grid, the same shape the web
+  app's rail and the iOS app draw. Colours are @color/cinema_*, generated from
+  packages/design-tokens/tokens.json, so the icon cannot drift from the palette.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+  <group
+      android:scaleX="4"
+      android:scaleY="4"
+      android:translateX="112"
+      android:translateY="42">
+    <path
+        android:pathData="M5,3 h14 a2,2 0 0 1 2,2 v14 a2,2 0 0 1 -2,2 h-14 a2,2 0 0 1 -2,-2 v-14 a2,2 0 0 1 2,-2 z M7,3 V21 M3,7.5 H7 M3,12 H21 M3,16.5 H7 M17,3 V21 M17,7.5 H21 M17,16.5 H21"
+        android:strokeColor="@color/cinema_primary"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+  </group>
+</vector>

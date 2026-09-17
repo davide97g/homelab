@@ -17,6 +17,9 @@ Live at **<https://cinema.davideghiotto.it>** since 2026-09-17.
 | Tunnel | `<tunnel-name>` (`<tunnel-uuid>`) |
 | DNS | proxied CNAME `cinema` → `c5449ef2-….cfargotunnel.com` |
 
+The mobile apps are excluded: the web image needs `apps/web` and `packages/`, and shipping 38 MB
+of Swift and Kotlin to the NAS on every deploy would buy nothing.
+
 `apps/web/Dockerfile` builds the SPA with Bun and serves it from nginx, which also proxies
 `/jf/` to Jellyfin. Same-origin in production for the same reason it is same-origin in
 development: no CORS, and byte-range video requests pass through untouched. `proxy_buffering off`
@@ -33,8 +36,8 @@ The NAS builds its own image — it is x86_64 and the Mac is not — from a copy
 
 ```sh
 cd ~/personal/projects/homelab/cinema
-tar czf - --exclude node_modules --exclude .git --exclude dist \
-          --exclude 'apps/ios/Swiftfin' --exclude .env . \
+tar czf - --exclude node_modules --exclude .git --exclude dist --exclude .env \
+          --exclude 'apps/ios' --exclude 'apps/android' . \
   | ssh nas 'tar xzf - -C ~/cinema'
 ssh nas 'cd ~/cinema/services/web && docker compose up -d --build'
 ```

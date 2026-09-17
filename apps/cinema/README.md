@@ -11,19 +11,23 @@ transcoding and playback, and every pixel in front of it is ours.
 
 ```
 apps/web                 React + Vite SPA. The reference implementation of the design.
-apps/ios                 Swiftfin (MPL-2.0) fork. Bootstrap script + generated palette.
-apps/android             Findroid (GPLv3) fork. Submodule, generated palette, icon script.
+apps/ios                 Swiftfin (MPL-2.0) fork, vendored. Icon script.
+apps/android             Findroid (GPLv3) fork, vendored. Icon script.
 packages/design-tokens   tokens.json -> CSS custom properties, Swift, Kotlin.
 services/jellyfin        Local Jellyfin in Docker for development.
 services/web             Production image + compose for the NAS.
 docs                     Architecture, design language, deployment.
 ```
 
-The three clients share one palette and nothing else. `packages/design-tokens/tokens.json` is
-the source of truth; `bun run tokens` regenerates the web CSS variables, `CinemaTokens.swift`
-and `CinemaTokens.kt`. The generated files are committed so the mobile forks build without this
-repo's toolchain, and hand-editing them is always wrong. The same command copies the Swift file
-on into the iOS fork, and says nothing when that submodule is not checked out.
+One repository, one remote. The two mobile apps are forks of Swiftfin and Findroid vendored as
+ordinary source — no submodules, no second remote to keep in step. What that costs is
+`git merge upstream/main`; each fork's README says how an upstream fix is taken by hand instead,
+and records the upstream version it was forked from.
+
+The three clients share one palette and nothing else. `packages/design-tokens/tokens.json` is the
+source of truth; `bun run tokens` writes the web CSS variables, `CinemaTokens.swift`,
+`CinemaTokens.kt` and `cinema_tokens.xml` straight into the app that consumes each one. The
+outputs are committed so a palette change is a reviewable diff; hand-editing them is always wrong.
 
 ## Quickstart
 
@@ -32,6 +36,9 @@ cp .env.example .env    # paths + JELLYFIN_URL
 bun install
 bun run dev:all         # Jellyfin (Docker) + http://localhost:5173
 ```
+
+The mobile apps are in the same clone and need no extra step; their toolchains are Xcode and
+Android Studio, and their READMEs have the rest.
 
 Sign in with your Jellyfin username and password.
 
@@ -107,4 +114,5 @@ Four documents, one job each:
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — what is done, what is next, and what the cleanup measured.
 
 Each fork's own README ([`apps/ios`](apps/ios/README.md), [`apps/android`](apps/android/README.md))
-carries its build, its palette sync and the traps that platform taught us.
+carries its build, its palette, the upstream version it was forked from, and the traps that
+platform taught us.
