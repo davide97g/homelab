@@ -25,7 +25,7 @@ object CinemaTokens {
     val md = 6.dp
     val lg = 8.dp
     val xl = 12.dp
-    val 2xl = 16.dp
+    val xxl = 16.dp
     val pill = 999.dp
   }
 }

@@ -20,8 +20,14 @@ const NOTE = [
 const slashBanner = `${NOTE.map((line) => `// ${line}`).join('\n')}\n`
 const blockBanner = `/*\n${NOTE.map((line) => `  ${line}`).join('\n')}\n*/\n`
 
-/** kebab-case -> camelCase, for the Swift/Kotlin identifiers. */
-const camel = (key: string) => key.replace(/-(\w)/g, (_, c: string) => c.toUpperCase())
+/**
+ * kebab-case -> camelCase, for the Swift/Kotlin identifiers. Neither language
+ * allows an identifier to start with a digit, so a scale step like "2xl" is
+ * spelled out rather than silently emitted as code that will not compile.
+ */
+const IDENTIFIER_ALIASES: Record<string, string> = { '2xl': 'xxl', '3xl': 'xxxl' }
+const camel = (key: string) =>
+  (IDENTIFIER_ALIASES[key] ?? key).replace(/-(\w)/g, (_, c: string) => c.toUpperCase())
 
 // --- web ---------------------------------------------------------------
 function css() {
@@ -43,7 +49,7 @@ function css() {
 // --- iOS ---------------------------------------------------------------
 function swift() {
   const colors = Object.entries(tokens.color)
-    .map(([key, token]) => `    static let ${camel(key)} = Color(hex: "${token.hex}")`)
+    .map(([key, token]) => `    static let ${camel(key)} = ${swiftColor(token.hex)} // ${token.hex}`)
     .join('\n')
   const radii = Object.entries(tokens.radius)
     .filter(([key]) => key !== 'pill')
@@ -62,22 +68,22 @@ ${radii}
     static let pill: CGFloat = 999
   }
 }
-
-extension Color {
-  /// #RRGGBB only -- every token in tokens.json is opaque hex.
-  init(hex: String) {
-    var value: UInt64 = 0
-    Scanner(string: hex.replacingOccurrences(of: "#", with: "")).scanHexInt64(&value)
-    self.init(
-      .sRGB,
-      red: Double((value >> 16) & 0xFF) / 255,
-      green: Double((value >> 8) & 0xFF) / 255,
-      blue: Double(value & 0xFF) / 255,
-      opacity: 1
-    )
-  }
-}
 `
+}
+
+/**
+ * Colour components rather than a hex string: Swiftfin already defines its own
+ * `Color.init(hex:)`, and a second one in this file would not compile. Literals
+ * also cost nothing at runtime.
+ */
+function swiftColor(hex: string) {
+  const [r, g, b] = channels(hex).map((c) => (c / 255).toFixed(4))
+  return `Color(.sRGB, red: ${r}, green: ${g}, blue: ${b}, opacity: 1)`
+}
+
+function channels(hex: string) {
+  const value = Number.parseInt(hex.slice(1), 16)
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
 }
 
 // --- Android -----------------------------------------------------------

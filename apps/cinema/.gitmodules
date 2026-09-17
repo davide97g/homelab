@@ -1,0 +1,3 @@
+[submodule "apps/ios/Swiftfin"]
+	path = apps/ios/Swiftfin
+	url = https://github.com/davide97g/Swiftfin.git

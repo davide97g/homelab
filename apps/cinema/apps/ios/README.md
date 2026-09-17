@@ -1,6 +1,8 @@
 # Cinema for iOS
 
-A fork of [Swiftfin](https://github.com/jellyfin/Swiftfin) reskinned to Reel.
+A fork of [Swiftfin](https://github.com/jellyfin/Swiftfin) reskinned to Reel, attached here as a
+git submodule at `apps/ios/Swiftfin` and tracked at
+[davide97g/Swiftfin](https://github.com/davide97g/Swiftfin) on the `cinema` branch.
 
 ## Why a fork and not a wrapper
 
@@ -12,33 +14,62 @@ a fork can own.
 **Licence: MPL-2.0.** This matters and is the reason iOS forks Swiftfin rather than Findroid.
 MPL is file-scoped copyleft: modified Swiftfin files stay MPL and must be published, new files
 can be ours, and App Store distribution is fine. A GPLv3 client cannot ship on the App Store at
-all — Apple's terms impose restrictions GPLv3 forbids.
+all — Apple's terms impose restrictions GPLv3 forbids. See [`../../docs/LICENSING.md`](../../docs/LICENSING.md).
 
-## Bootstrap
+## Working on it
 
 ```sh
-# 1. Fork jellyfin/Swiftfin on GitHub (keep the licence and attribution intact).
-# 2. Attach the fork here as a submodule:
-./bootstrap.sh git@github.com:<you>/Swiftfin.git
+git submodule update --init            # after a fresh clone of the monorepo
+bun run tokens && apps/ios/sync-tokens.sh   # palette -> the fork
+open apps/ios/Swiftfin/Swiftfin.xcodeproj
 ```
 
-The fork lands in `apps/ios/Swiftfin` as a git submodule, so upstream stays mergeable:
-`git -C apps/ios/Swiftfin pull upstream main` when Jellyfin ships a server change.
+From the command line:
 
-## Applying the design
+```sh
+cd apps/ios/Swiftfin
+xcodebuild -project Swiftfin.xcodeproj -scheme Swiftfin \
+  -destination 'generic/platform=iOS Simulator' -skipMacroValidation build
+```
+
+`-skipMacroValidation` is not optional here: several dependencies ship Swift macros, and Xcode
+refuses to run them from the command line until they have been trusted in the GUI. Without the
+flag the build fails with *Macro "CasePathsMacros" … must be enabled before it can be used*.
+
+Signing for a device goes in `apps/ios/Swiftfin/XcodeConfig/DevelopmentTeam.xcconfig`, which the
+fork gitignores:
+
+```
+DEVELOPMENT_TEAM = YOURTEAMID
+```
+
+## The palette
 
 `generated/CinemaTokens.swift` is emitted from `packages/design-tokens/tokens.json` by
-`bun run tokens` at the repo root — the same file the web palette is built from. Copy or
-symlink it into the fork's `Shared/` group and replace Swiftfin's colour lookups with
-`CinemaTokens.Palette`. Re-run `bun run tokens` after any palette change; never hand-edit the
-generated file.
+`bun run tokens`, and `sync-tokens.sh` copies it into the fork at
+`Shared/Cinema/CinemaTokens.swift`. The fork is a separate repository, so the token build does
+not write into it directly — the palette lands there as a reviewable commit in the fork's own
+history. Never hand-edit a generated file.
 
-Order of work, cheapest visual delta first:
+`Shared/Cinema/Color+Cinema.swift` names those tokens the way views speak: `.cinemaPrimary`,
+`.cinemaSurface`, `.cinemaMatch`. Views use the names.
 
-1. Palette + corner radii (`CinemaTokens`) — the app reads as Cinema immediately.
-2. Home: hero pager, "In library" rail, poster cards with chips — mirrors `apps/web`.
-3. Navigation chrome: rail on iPad, pill row on iPhone.
-4. Player controls last. Swiftfin's are good; restyle, do not rewrite.
+## Done
+
+1. **Palette and identity.** Tokens in, accent colour repointed at Cinema red, bundle identifier
+   `it.davideghiotto.cinema`, display name Cinema.
+
+## Next, cheapest visual delta first
+
+2. **Home.** Feature band (one large paging card plus two beside it), rows with a kind tag, a
+   title and a dot-separated fact line. Mirrors `apps/web`; see [`../../docs/DESIGN.md`](../../docs/DESIGN.md).
+3. **Navigation chrome.** Rail on iPad, tab row on iPhone.
+4. **Strings.** Upstream says "Swiftfin" in user-facing copy in a few places.
+5. **App icon.** `Swiftfin/Resources/Assets.xcassets`.
+6. **Player last.** Swiftfin's controls are good; restyle, do not rewrite.
+
+Keep the diff against upstream small and mechanical — `git merge upstream/main` has to stay cheap
+forever, because that is where server-compatibility fixes come from.
 
 ## Distribution
 
