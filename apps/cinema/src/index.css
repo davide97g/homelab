@@ -1,0 +1,425 @@
+@import "tailwindcss";
+
+/* duck/ui's two typefaces, self-hosted -- no network at runtime. */
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/geist";
+/*
+  ---break---
+*/
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Design system: duck/ui (https://duckui.davideghiotto.it) on top of the
+  standard shadcn token names. This is the ONLY file you touch to re-skin the
+  whole app.
+
+  The :root set below is duck/ui's LIGHT theme and is effectively dead code
+  here -- <html> carries `class="dark"` permanently, because the app is
+  dark-only by intent: it's a cinema, not a dashboard. Keep it in sync anyway
+  if you ever add a theme switcher.
+
+  duck/ui's rules, worth re-reading before adding UI:
+    1. One holo element per viewport -- it is the seasoning, not the meal.
+    2. --primary (duck lime) carries every default action; holo is reserved for
+       the single most important thing on screen.
+    3. One idle animation per viewport. Reactive motion is free.
+    4. Semantic tokens only -- no raw hex or oklch in component code.
+    5. Sticker language: 3px borders, radius >= 0.75rem, soft glows not shadows.
+*/
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.985 0.004 285);
+  --foreground: oklch(0.18 0.012 285);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.012 285);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.012 285);
+
+  /* Warm amber accent -- swap this one line for a different personality. */
+  --primary: oklch(0.76 0.16 115);
+  --primary-foreground: oklch(0.22 0.06 115);
+
+  --secondary: oklch(0.945 0.006 285);
+  --secondary-foreground: oklch(0.25 0.012 285);
+
+  --muted: oklch(0.955 0.005 285);
+  --muted-foreground: oklch(0.48 0.012 285);
+
+  --accent: oklch(0.93 0.03 200);
+  --accent-foreground: oklch(0.25 0.05 220);
+
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.895 0.006 285);
+  --input: oklch(0.895 0.006 285);
+  --ring: oklch(0.62 0.14 115);
+
+  /* App-specific tokens beyond the shadcn set. */
+  --scrim: oklch(0.145 0.006 285 / 92%);
+  --shadow-hero: 0 30px 80px -20px oklch(0 0 0 / 70%);
+  --chart-1: oklch(0.72 0.2 305);
+  --chart-2: oklch(0.75 0.14 220);
+  --chart-3: oklch(0.78 0.14 160);
+  --chart-4: oklch(0.8 0.17 115);
+  --chart-5: oklch(0.7 0.19 350);
+  --holo: linear-gradient(135deg, oklch(0.72 0.2 305), oklch(0.76 0.15 250), oklch(0.8 0.14 195), oklch(0.85 0.17 150));
+  --foil: conic-gradient(from 200deg at 50% 50%, oklch(0.79 0.19 20), oklch(0.85 0.16 72), oklch(0.88 0.18 118), oklch(0.84 0.14 172), oklch(0.78 0.16 236), oklch(0.74 0.21 304), oklch(0.79 0.19 20));
+  --glow: 0 0 24px oklch(0.78 0.15 195 / 0.2);
+  --glow-primary: 0 0 24px oklch(0.76 0.16 115 / 0.35);
+  --sticker-border: 3px;
+  --vinyl: oklch(0.975 0.004 285);
+  --sheet: oklch(0.97 0.004 285);
+  --sheet-line: oklch(0.9 0.006 285);
+  --cut: oklch(0.78 0.01 285);
+  --fx: 50;
+  --fy: 50;
+  --rx: 0deg;
+  --ry: 0deg;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-scrim: var(--scrim);
+
+  /*
+    duck/ui's pairing: Bricolage Grotesque for display, Geist for body, both
+    imported at the top of this file. The theme ships these two tokens with a
+    plain system fallback stack, so opting into the real faces is a consumer
+    override -- and `shadcn add @duck/theme` resets it, including when the theme
+    resolves as another component's dependency. Re-apply these two lines after
+    any install. See duck/ui's /docs/theming#type.
+  */
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Geist Variable", sans-serif;
+
+  --radius: 0.75rem;
+  --ease-duck: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-squash: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --color-sheet: var(--sheet);
+  --color-sheet-line: var(--sheet-line);
+  --color-cut: var(--cut);
+  --color-vinyl: var(--vinyl);
+  --ry: var(--ry);
+  --rx: var(--rx);
+  --fy: var(--fy);
+  --fx: var(--fx);
+  --sticker-border: var(--sticker-border);
+  --glow-primary: var(--glow-primary);
+  --glow: var(--glow);
+  --foil: var(--foil);
+  --holo: var(--holo);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  @keyframes holo-shift {
+  0%, 100% {
+    background-position: 0% 0%, 0% 50%;
+    }
+  50% {
+    background-position: 0% 0%, 100% 50%;
+    }
+  }
+  @keyframes duck-waddle {
+  0%, 100% {
+    transform: rotate(-12deg) translateY(0);
+    }
+  25% {
+    transform: rotate(0deg) translateY(-2px);
+    }
+  50% {
+    transform: rotate(12deg) translateY(0);
+    }
+  75% {
+    transform: rotate(0deg) translateY(-2px);
+    }
+  }
+  @keyframes duck-idle {
+  0%, 90%, 100% {
+    transform: translateY(0) scale(1);
+    }
+  95% {
+    transform: translateY(-1.5px) scale(1.012);
+    }
+  }
+  @keyframes duck-sheen {
+  0%, 72%, 100% {
+    background-position: 170% 0;
+    }
+  88% {
+    background-position: -50% 0;
+    }
+  }
+  @keyframes duck-squash {
+  0% {
+    transform: scale(1, 1);
+    }
+  40% {
+    transform: scale(1.06, 0.9);
+    }
+  70% {
+    transform: scale(0.97, 1.04);
+    }
+  100% {
+    transform: scale(1, 1);
+    }
+  }
+  @keyframes duck-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+    }
+  60% {
+    transform: scale(1.14);
+    opacity: 1;
+    }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    }
+  }
+  @keyframes duck-ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.35;
+    }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+    }
+  }
+  @keyframes duck-paddle {
+  0%, 100% {
+    transform: translateY(0) rotate(-7deg);
+    }
+  50% {
+    transform: translateY(-3px) rotate(7deg);
+    }
+  }
+  @keyframes duck-float {
+  0%, 100% {
+    transform: translateY(0) rotate(-1.5deg);
+    }
+  50% {
+    transform: translateY(-9px) rotate(1.5deg);
+    }
+  }
+  @keyframes duck-caret {
+  0%, 49% {
+    opacity: 1;
+    }
+  50%, 100% {
+    opacity: 0;
+    }
+  }
+  @keyframes duck-marquee {
+  from {
+    transform: translateX(0);
+    }
+  to {
+    transform: translateX(-50%);
+    }
+  }
+  @keyframes duck-shimmer {
+  from {
+    background-position: -180% 0;
+    }
+  to {
+    background-position: 180% 0;
+    }
+  }
+  @keyframes duck-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  /* Titles are display type. Body copy stays Geist. */
+  h1,
+  h2 {
+    @apply font-display;
+  }
+  /* Horizontal carousels: scroll, snap, no visible scrollbar. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+/*
+  ---break---
+*/
+.dark {
+  --background: oklch(0.145 0.006 285);
+  --foreground: oklch(0.965 0.004 285);
+  --card: oklch(0.185 0.007 285);
+  --card-foreground: oklch(0.965 0.004 285);
+  --popover: oklch(0.175 0.007 285);
+  --popover-foreground: oklch(0.965 0.004 285);
+  --primary: oklch(0.85 0.17 115);
+  --primary-foreground: oklch(0.24 0.07 115);
+  --secondary: oklch(0.235 0.008 285);
+  --secondary-foreground: oklch(0.965 0.004 285);
+  --muted: oklch(0.225 0.008 285);
+  --muted-foreground: oklch(0.68 0.012 285);
+  --accent: oklch(0.26 0.03 200);
+  --accent-foreground: oklch(0.9 0.05 200);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.275 0.009 285);
+  --input: oklch(0.275 0.009 285);
+  --ring: oklch(0.85 0.17 115);
+  --chart-1: oklch(0.72 0.2 305);
+  --chart-2: oklch(0.75 0.14 220);
+  --chart-3: oklch(0.78 0.14 160);
+  --chart-4: oklch(0.85 0.17 115);
+  --chart-5: oklch(0.7 0.19 350);
+  --glow: 0 0 32px oklch(0.78 0.15 195 / 0.25);
+  --glow-primary: 0 0 32px oklch(0.85 0.17 115 / 0.35);
+  --sheet: oklch(0.175 0.006 285);
+  --sheet-line: oklch(0.225 0.008 285);
+  --cut: oklch(0.34 0.01 285);
+}
+/*
+  ---break---
+*/
+@layer utilities {
+  .holo-border {
+    border: 2px solid transparent;
+    background: linear-gradient(var(--card), var(--card)) padding-box, var(--holo) border-box;
+  }
+  .holo-border-animated {
+    border: 2px solid transparent;
+    background: linear-gradient(var(--card), var(--card)) padding-box, var(--holo) border-box;
+    background-size: 100% 100%, 300% 300%;
+    animation: holo-shift 4s ease-in-out infinite;
+  }
+  .holo-text {
+    background: var(--holo);
+    background-size: 200% 200%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: holo-shift 6s ease-in-out infinite;
+  }
+  .duck-glow {
+    box-shadow: var(--glow);
+  }
+  .duck-glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+  .sticker {
+    border-width: var(--sticker-border);
+  }
+  .foil {
+    background-image: radial-gradient(80% 80% at calc(var(--fx) * 1%) calc(var(--fy) * 1%), oklch(1 0 0 / 0.6), oklch(1 0 0 / 0) 60%), var(--foil);
+    background-size: 170% 170%, 230% 230%;
+    background-position: center, calc(50% + (var(--fx) - 50) * 0.6%) calc(50% + (var(--fy) - 50) * 0.6%);
+    background-blend-mode: overlay, normal;
+  }
+  .sheen {
+    position: relative;
+    overflow: hidden;
+  }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 42%, oklch(1 0 0 / 0.16) 49%, transparent 56%);
+    background-size: 250% 100%;
+    background-position: 160% 0;
+    transition: background-position 0.7s var(--ease-duck);
+  }
+  .sheen:hover::after, .sheen:focus-visible::after {
+    background-position: -40% 0;
+  }
+  .tilt {
+    transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+    transform-style: preserve-3d;
+    transition: transform 0.4s var(--ease-duck);
+  }
+  .tilt-live {
+    transition: transform 0.08s linear;
+  }
+  .kiss-cut {
+    background-color: var(--sheet);
+    background-image: repeating-linear-gradient(to right, var(--sheet-line) 0 1px, transparent 1px 100%), repeating-linear-gradient(to bottom, var(--sheet-line) 0 1px, transparent 1px 100%);
+    background-size: 28px 28px;
+  }
+  .cut-line {
+    border: 1.5px dashed var(--cut);
+  }
+}
+/*
+  ---break---
+*/
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tilt {
+    transform: none !important;
+  }
+}
+
+@utility duck-glow {
+    box-shadow: var(--glow);
+}
+
+@utility duck-glow-primary {
+    box-shadow: var(--glow-primary);
+}
