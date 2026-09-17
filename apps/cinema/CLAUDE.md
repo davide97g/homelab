@@ -4,6 +4,22 @@ globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
 alwaysApply: false
 ---
 
+## This repo
+
+A monorepo: `apps/web` (React SPA), `apps/ios` and `apps/android` (forks of Swiftfin and
+Findroid), `packages/design-tokens`, `services/*`. Read `README.md` for the map.
+
+Two rules that are not obvious from the code:
+
+- **Colour, radius, shadow and font values live only in `packages/design-tokens/tokens.json`.**
+  `bun run tokens` regenerates `apps/web/src/styles/tokens.css`, `CinemaTokens.swift` and
+  `CinemaTokens.kt`. Never hand-edit a generated file, and never put a hex value in a component.
+  The design rules are in `docs/DESIGN.md`.
+- **Never move code between `apps/ios` (MPL-2.0) and `apps/android` (GPLv3).** It would make the
+  iOS app unshippable on the App Store. See `docs/LICENSING.md`.
+
+## Tooling
+
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`

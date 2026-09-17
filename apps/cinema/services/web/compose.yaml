@@ -1,0 +1,21 @@
+# Cinema's front end, deployed the way every other web app on the box is: a
+# compose app in Dokploy, published on the Cloudflare tunnel. See docs/DEPLOY.md.
+services:
+  cinema-web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      # Jellyfin runs in the mediarr compose project; this container joins that
+      # network so it can address the container by name instead of by LAN IP.
+      JELLYFIN_UPSTREAM: http://jellyfin:8096
+    ports:
+      - "3003:80"
+    networks:
+      - mediarr
+
+networks:
+  mediarr:
+    external: true
+    name: mediarr_default

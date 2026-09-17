@@ -1,0 +1,330 @@
+@import "tailwindcss";
+
+/* Both faces self-hosted -- no network at runtime. */
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/geist";
+
+/* The palette itself. Generated from packages/design-tokens/tokens.json,
+   which is also what apps/ios and apps/android are skinned from. */
+@import "./styles/tokens.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Nebula -- Cinema's design language.
+
+    1. Deep violet canvas, never flat black, lit by two fixed nebula glows.
+    2. Content lives on glass panels: translucent surface, hairline border,
+       generous radius. Panels float; nothing is edge-to-edge except artwork.
+    3. One action colour (--primary, hot pink). If a second thing on screen is
+       pink, one of them is wrong.
+    4. Semantic names only in component code -- no hex, no raw token.
+
+  This file is the whole skin: the block below maps the Nebula tokens onto the
+  shadcn/duck names the UI primitives in src/components/ui already consume, so
+  re-skinning the app is one file, not thirty.
+*/
+:root {
+  --radius: var(--rad-lg);
+
+  --background: var(--canvas);
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--foreground);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-2);
+  --accent: var(--surface-3);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--foreground);
+  --input: var(--surface-2);
+  --ring: var(--primary-soft);
+
+  /* Charts and the two gradient ramps, pulled onto the violet/pink axis so
+     the inherited holo primitives read as Nebula rather than as duck/ui. */
+  --chart-1: var(--primary);
+  --chart-2: var(--violet);
+  --chart-3: var(--primary-soft);
+  --chart-4: var(--amber);
+  --chart-5: var(--green);
+  --holo: linear-gradient(135deg, var(--primary), var(--violet) 55%, var(--primary-soft));
+  --foil: conic-gradient(from 200deg at 50% 50%, var(--primary), var(--violet), var(--primary-soft), var(--amber), var(--primary));
+  --glow: 0 0 32px rgb(139 75 255 / 0.28);
+  --glow-primary: var(--shad-primary-glow);
+
+  /* Nebula is a 1px-hairline language; the inherited sticker primitives ask
+     for their border width here rather than hard-coding it. */
+  --sticker-border: 1px;
+  --sheet: var(--surface);
+  --sheet-line: var(--border);
+  --cut: var(--border);
+  --vinyl: var(--surface-2);
+
+  /* Pointer-driven, written by use-holo-pointer. */
+  --fx: 50;
+  --fy: 50;
+  --rx: 0deg;
+  --ry: 0deg;
+}
+
+@theme inline {
+  --radius-sm: var(--rad-sm);
+  --radius-md: var(--rad-md);
+  --radius-lg: var(--rad-lg);
+  --radius-xl: var(--rad-xl);
+  --radius-2xl: var(--rad-2xl);
+  --radius-3xl: calc(var(--rad-2xl) * 1.35);
+  --radius-pill: var(--rad-pill);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-scrim: var(--scrim);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-violet: var(--violet);
+  --color-amber: var(--amber);
+  --color-green: var(--green);
+  --color-canvas-deep: var(--canvas-deep);
+
+  --shadow-panel: var(--shad-panel);
+  --shadow-card: var(--shad-card);
+  --shadow-primary-glow: var(--shad-primary-glow);
+
+  --font-sans: var(--type-sans);
+  --font-display: var(--type-display);
+
+  --ease-duck: var(--ease);
+  --ease-squash: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --color-sheet: var(--sheet);
+  --color-sheet-line: var(--sheet-line);
+  --color-cut: var(--cut);
+  --color-vinyl: var(--vinyl);
+  --ry: var(--ry);
+  --rx: var(--rx);
+  --fy: var(--fy);
+  --fx: var(--fx);
+  --sticker-border: var(--sticker-border);
+  --glow-primary: var(--glow-primary);
+  --glow: var(--glow);
+  --foil: var(--foil);
+  --holo: var(--holo);
+
+  @keyframes holo-shift {
+    0%, 100% { background-position: 0% 0%, 0% 50%; }
+    50% { background-position: 0% 0%, 100% 50%; }
+  }
+  @keyframes duck-idle {
+    0%, 90%, 100% { transform: translateY(0) scale(1); }
+    95% { transform: translateY(-1.5px) scale(1.012); }
+  }
+  @keyframes duck-sheen {
+    0%, 72%, 100% { background-position: 170% 0; }
+    88% { background-position: -50% 0; }
+  }
+  @keyframes duck-squash {
+    0% { transform: scale(1, 1); }
+    40% { transform: scale(1.06, 0.9); }
+    70% { transform: scale(0.97, 1.04); }
+    100% { transform: scale(1, 1); }
+  }
+  @keyframes duck-pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    60% { transform: scale(1.14); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes duck-ripple {
+    0% { transform: scale(0); opacity: 0.35; }
+    100% { transform: scale(2.8); opacity: 0; }
+  }
+  @keyframes duck-waddle {
+    0%, 100% { transform: rotate(-12deg) translateY(0); }
+    25% { transform: rotate(0deg) translateY(-2px); }
+    50% { transform: rotate(12deg) translateY(0); }
+    75% { transform: rotate(0deg) translateY(-2px); }
+  }
+  @keyframes duck-paddle {
+    0%, 100% { transform: translateY(0) rotate(-7deg); }
+    50% { transform: translateY(-3px) rotate(7deg); }
+  }
+  @keyframes duck-float {
+    0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+    50% { transform: translateY(-9px) rotate(1.5deg); }
+  }
+  @keyframes duck-caret {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  @keyframes duck-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes duck-shimmer {
+    from { background-position: -180% 0; }
+    to { background-position: 180% 0; }
+  }
+  @keyframes duck-rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: dark;
+    background-color: var(--canvas-deep);
+  }
+  /*
+    The nebula: two fixed radial glows over the darkest surface. Fixed rather
+    than scrolled, so the light stays where the light source is while content
+    moves past it.
+  */
+  body {
+    @apply text-foreground font-sans antialiased;
+    background-color: var(--canvas-deep);
+    background-image:
+      radial-gradient(60rem 40rem at 12% -10%, rgb(242 48 140 / 0.22), transparent 60%),
+      radial-gradient(52rem 38rem at 88% 8%, rgb(139 75 255 / 0.20), transparent 62%);
+    background-attachment: fixed;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1,
+  h2 {
+    @apply font-display;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  /* The one structural idea in Nebula: everything sits on a glass panel. */
+  .panel {
+    background-color: var(--glass);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shad-panel);
+    backdrop-filter: blur(20px) saturate(140%);
+  }
+  /* Same material, used for things that sit on top of a panel. */
+  .panel-inset {
+    background-color: rgb(255 255 255 / 0.04);
+    border: 1px solid var(--hairline);
+  }
+  .holo-border {
+    border: 1px solid transparent;
+    background: linear-gradient(var(--card), var(--card)) padding-box, var(--holo) border-box;
+  }
+  .holo-border-animated {
+    border: 1px solid transparent;
+    background: linear-gradient(var(--card), var(--card)) padding-box, var(--holo) border-box;
+    background-size: 100% 100%, 300% 300%;
+    animation: holo-shift 4s ease-in-out infinite;
+  }
+  .holo-text {
+    background: var(--holo);
+    background-size: 200% 200%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: holo-shift 6s ease-in-out infinite;
+  }
+  .duck-glow {
+    box-shadow: var(--glow);
+  }
+  .duck-glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+  .sticker {
+    border-width: var(--sticker-border);
+  }
+  .foil {
+    background-image: radial-gradient(80% 80% at calc(var(--fx) * 1%) calc(var(--fy) * 1%), rgb(255 255 255 / 0.55), transparent 60%), var(--foil);
+    background-size: 170% 170%, 230% 230%;
+    background-position: center, calc(50% + (var(--fx) - 50) * 0.6%) calc(50% + (var(--fy) - 50) * 0.6%);
+    background-blend-mode: overlay, normal;
+  }
+  .sheen {
+    position: relative;
+    overflow: hidden;
+  }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.14) 49%, transparent 56%);
+    background-size: 250% 100%;
+    background-position: 160% 0;
+    transition: background-position 0.7s var(--ease);
+  }
+  .sheen:hover::after,
+  .sheen:focus-visible::after {
+    background-position: -40% 0;
+  }
+  .tilt {
+    transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+    transform-style: preserve-3d;
+    transition: transform 0.4s var(--ease);
+  }
+  .tilt-live {
+    transition: transform 0.08s linear;
+  }
+  .kiss-cut {
+    background-color: var(--sheet);
+    background-image:
+      repeating-linear-gradient(to right, var(--sheet-line) 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(to bottom, var(--sheet-line) 0 1px, transparent 1px 100%);
+    background-size: 28px 28px;
+  }
+  .cut-line {
+    border: 1px dashed var(--cut);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tilt {
+    transform: none !important;
+  }
+}
+
+@utility duck-glow {
+  box-shadow: var(--glow);
+}
+
+@utility duck-glow-primary {
+  box-shadow: var(--glow-primary);
+}

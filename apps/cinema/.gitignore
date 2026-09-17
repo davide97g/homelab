@@ -1,5 +1,20 @@
 node_modules
 dist
+build
 .env
+.env.*
+!.env.example
 *.local
 .DS_Store
+
+# Xcode / Swift (apps/ios)
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+DerivedData/
+
+# Gradle / Android (apps/android)
+.gradle/
+local.properties
+*.apk
+*.aab

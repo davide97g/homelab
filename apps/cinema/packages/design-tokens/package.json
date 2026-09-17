@@ -1,0 +1,7 @@
+{
+  "name": "@cinema/design-tokens",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "build": "bun run build.ts" }
+}
