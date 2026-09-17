@@ -13,7 +13,7 @@ Cinema replaces.
 **Licence: GPLv3.** Whole-work copyleft: distributing a build means publishing this fork's source,
 which is why it is public. Google Play is fine with that. The App Store is not, which is why iOS
 forks Swiftfin (MPL-2.0) instead. Keep the two apps' lineages straight: never copy GPL code from
-here into `apps/ios`. See [`../../docs/LICENSING.md`](../../docs/LICENSING.md).
+here into `apps/ios`. See [`../../docs/ARCHITECTURE.md` § 6](../../docs/ARCHITECTURE.md).
 
 ## Working on it
 
@@ -68,6 +68,21 @@ stays cheap — that is where server-compatibility fixes come from. `CINEMA.md` 
 the detail. In short: the Reel palette wired into both app modules' Material 3 schemes, dark
 forced in the four places Android decides it, the feature band on both home screens, and the
 identity (application id `it.davideghiotto.cinema`, name Cinema, the mark).
+
+## Toolchain and emulator notes
+
+- The SDK package id is `platforms;android-37.0`, **with a minor version** — there is no
+  `platforms;android-37`, and these packages only appear in `repository2-3.xml`, so `cmdline-tools`
+  must be rev 23+ or they look like they do not exist. Updating `cmdline-tools` installs beside the
+  old one as `latest-2`; it has to be moved into place by hand.
+- Apple Silicon needs `arm64-v8a` system images; an `x86_64` image is full CPU emulation and useless
+  for a video client. Android TV tops out at **API 36** — there is no API-37 TV image in any ABI,
+  which is fine, `targetSdk` is 36.
+- `ktfmtCheck` hangs off `check`, not `assemble`, so a build will not catch a badly formatted file.
+  The Kotlin token emitter in `packages/design-tokens/build.ts` writes 4-space indentation for
+  exactly this reason.
+- Driving the TV emulator: `adb shell input keyevent 61` (TAB) traverses focus; DPAD_DOWN does not
+  move focus out of a text field, and `adb shell input tap` does nothing on a TV AVD.
 
 ## Distribution
 

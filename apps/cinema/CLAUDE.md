@@ -1,127 +1,110 @@
----
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
----
+# CLAUDE.md
 
-## This repo
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-A monorepo: `apps/web` (React SPA), `apps/ios` and `apps/android` (forks of Swiftfin and
-Findroid), `packages/design-tokens`, `services/*`. Read `README.md` for the map.
+## What this is
 
-Two rules that are not obvious from the code:
+A custom front end for an **unmodified** Jellyfin server, on three clients that share one palette
+and nothing else:
 
-- **Colour, radius, shadow and font values live only in `packages/design-tokens/tokens.json`.**
-  `bun run tokens` regenerates `apps/web/src/styles/tokens.css`, `CinemaTokens.swift` and
-  `CinemaTokens.kt`. Never hand-edit a generated file, and never put a hex value in a component.
-  The design rules are in `docs/DESIGN.md`.
-- **Never move code between `apps/ios` (MPL-2.0) and `apps/android` (GPLv3).** It would make the
-  iOS app unshippable on the App Store. See `docs/LICENSING.md`.
-
-## Tooling
-
-Default to using Bun instead of Node.js.
-
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
-
-## APIs
-
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
-
-## Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+```
+apps/web                 React 19 + Vite SPA. The reference implementation of the design.
+apps/ios                 Swiftfin fork (MPL-2.0). Submodule at apps/ios/Swiftfin.
+apps/android             Findroid fork (GPLv3). Submodule at apps/android/findroid.
+packages/design-tokens   tokens.json -> CSS custom properties, Swift, Kotlin, Android XML.
+services/jellyfin/dev.sh Local Jellyfin in Docker, the dev:all stack.
+services/web             Production nginx image + compose for the NAS.
+docs/                    ARCHITECTURE, DESIGN, DEPLOY, ROADMAP. Four, one job each.
 ```
 
-## Frontend
+No server fork, no plugin, no patched `jellyfin-web`. Jellyfin does metadata, users, transcoding
+and bytes; this repo owns the interface.
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+## Commands
 
-Server:
+Bun is the package manager and script runner. The web app is built by **Vite**, not by
+`Bun.serve` or HTML imports — do not migrate it.
 
-```ts#index.ts
-import index from "./index.html"
+| Command | Does |
+|---|---|
+| `bun install` | Workspaces: `apps/web`, `packages/*` |
+| `bun run dev` | Vite only, `:5173`, against a Jellyfin you started |
+| `bun run dev:all` | `services/jellyfin/dev.sh`: Jellyfin container + Vite |
+| `bun run build` | `bun run tokens` then `tsc -b && vite build` in `apps/web` |
+| `bun run lint` | oxlint over `apps/web/src` |
+| `bun run tokens` | tokens.json → web CSS, Swift, Kotlin, XML, then syncs into both forks |
 
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
+**There is no test suite.** The verification loop is `bun run build` (type-check + bundle) plus
+`bun run lint`, and for behaviour, the app against a real Jellyfin. If you add tests, use
+`bun test` (`bun test path/to/file.test.ts`, `-t "name"` for one case); `@types/bun` is already a
+dependency.
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
+Forks (both are git submodules — `git submodule update --init` after a fresh clone):
 
 ```sh
-bun --hot ./index.ts
+cd apps/ios/Swiftfin && xcodebuild -project Swiftfin.xcodeproj -scheme Swiftfin \
+  -destination 'generic/platform=iOS Simulator' -skipMacroValidation build   # flag is required
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+cd apps/android/findroid && ./gradlew :app:phone:installLibreDebug   # or :app:tv:, plus ktfmtCheck
 ```
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+Deploy is a tar over ssh to the NAS, which builds its own image — see `docs/DEPLOY.md`.
+
+## Rules that are not visible in the code
+
+- **Colour, radius, shadow, font and motion values live only in
+  `packages/design-tokens/tokens.json`.** `bun run tokens` regenerates `apps/web/src/styles/tokens.css`,
+  `apps/ios/generated/CinemaTokens.swift`, `apps/android/generated/CinemaTokens.kt` and
+  `cinema_tokens.xml`, then copies them into the forks. The generated files are committed so the
+  forks build without this toolchain. Never hand-edit one, and never put a hex value in a
+  component — `docs/DESIGN.md` has the design rules.
+- **Never move code between `apps/ios` (MPL-2.0) and `apps/android` (GPLv3).** GPL code entering
+  the Swiftfin fork relicenses it, and a GPLv3 app cannot ship on the App Store. Shared logic goes
+  in `packages/`, written by us, or it gets written twice. `docs/ARCHITECTURE.md` § 6.
+- **Never copy code out of `jellyfin-web` (GPLv3) into `apps/web`.** Using the REST API is fine; a
+  component is not.
+- Keep the fork diffs small and mechanical. `git merge upstream/main` is where server-compatibility
+  fixes come from, and it has to stay cheap forever.
+
+## Web architecture (`docs/ARCHITECTURE.md` is the long version)
+
+**Everything reaches Jellyfin through the relative base path `/jf`.** `client.ts` hands the SDK
+`/jf`, so API calls, images, video byte ranges and subtitles all resolve against our own origin:
+the Vite proxy forwards them in development (`apps/web/vite.config.ts`, target from `JELLYFIN_URL`
+in the repo-root `.env`), nginx in production. CORS therefore never happens and `api_key` never
+leaves the origin. Do not introduce an absolute Jellyfin URL anywhere in app code.
+
+**Nothing outside `src/lib/jellyfin/` imports from `@jellyfin/sdk`.** Components take plain data
+and call hooks. That directory is the whole server contract: `client.ts` (Api instance, device id),
+`auth.tsx` (token in localStorage, validated on boot), `queries.ts` (TanStack Query hooks +
+centralised `queryKeys`), `playback.ts`, `device-profile.ts`, `availability.ts`, `images.ts`,
+`ticks.ts`.
+
+TanStack Query owns all server state — there is no Redux/Zustand, deliberately. Request
+`ItemFields` explicitly: `CARD_FIELDS` for grids, `DETAIL_FIELDS` for the detail page and player.
+
+**Playback is negotiated, never constructed.** `POST /Items/{id}/PlaybackInfo` with the SDK's
+`getBrowserDeviceProfile()` (do not hand-roll it) decides direct play vs. `TranscodingUrl`. Then
+report the session — `Sessions/Playing`, `/Progress` every 10s, `/Stopped` on unmount. Skipping
+`/Stopped` leaves ffmpeg running on the server after the tab closes. `usePlaybackSession` owns the
+negotiation and reporting; `VideoPlayer` only plays.
+
+**Drive-gone detection.** Jellyfin keeps claiming a film on an unplugged disk is directly playable,
+so `availability.ts` probes `GET /Videos/{id}/stream?Static=true` with `Range: bytes=0-0` and
+`cache: 'no-store'`. The `no-store` is load-bearing: without it the browser replays the cached 206
+and the check passes forever.
+
+**Skin.** `apps/web/src/index.css` bridges the generated tokens into Tailwind's `@theme` and onto
+the shadcn-style names the primitives in `components/ui` consume, and defines the Reel utilities
+(`.art-scrim`, `.hero-scrim`, `.panel`). Dark-only by intent, on all three clients. Text over
+artwork always gets a scrim utility.
+
+## Conventions
+
+- Conventional commits with a scope, lowercase and written as a sentence:
+  `perf(ios): the home screen asks for your resume list once`.
+- Docs are part of the work, and there are deliberately only four. `docs/ROADMAP.md` holds status
+  and the ordered next steps for all three clients — update it when you finish something. Each
+  fork's README holds its build and its platform traps. Do not add a fifth document to `docs/`
+  unless it has a job none of the four has.

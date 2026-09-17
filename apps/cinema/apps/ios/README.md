@@ -14,7 +14,7 @@ a fork can own.
 **Licence: MPL-2.0.** This matters and is the reason iOS forks Swiftfin rather than Findroid.
 MPL is file-scoped copyleft: modified Swiftfin files stay MPL and must be published, new files
 can be ours, and App Store distribution is fine. A GPLv3 client cannot ship on the App Store at
-all — Apple's terms impose restrictions GPLv3 forbids. See [`../../docs/LICENSING.md`](../../docs/LICENSING.md).
+all — Apple's terms impose restrictions GPLv3 forbids. See [`../../docs/ARCHITECTURE.md` § 6](../../docs/ARCHITECTURE.md).
 
 ## Working on it
 
@@ -101,6 +101,53 @@ restyling `PosterGroup`'s card to carry a kind tag, title and dot-separated fact
 
 Keep the diff against upstream small and mechanical — `git merge upstream/main` has to stay cheap
 forever, because that is where server-compatibility fixes come from.
+
+## Verifying a change — read this before trying
+
+`xcrun simctl` boots devices, installs, launches and screenshots headlessly, and all of that works.
+Driving the UI does not:
+
+- **Xcode 27 ships no `Simulator.app`.** The simulator UI is
+  `/Applications/Xcode.app/Contents/Applications/DeviceHub.app`; `open -a Simulator` silently does
+  nothing.
+- DeviceHub draws the device with Metal, so AppleScript clicks and synthetic AX clicks do not reach
+  it. Real CGEvent clicks land only if you know where the device canvas is — find it in DeviceHub's
+  accessibility tree (an `AXGroup` with the device's aspect ratio, not where window arithmetic
+  suggests) and map coordinates into it. `keyboardSetUnicodeString` is ignored, so every character
+  needs its real keycode; modifier *flags* are ignored, so shift must be a held key; and the
+  simulator's hardware keyboard is on an **Italian** layout, where `:` is shift+`.` and `/` is
+  shift+`7`.
+- `screencapture` fails with *could not create image from display* until the terminal has **Screen
+  Recording** permission (System Settings → Privacy & Security, then restart the terminal).
+
+So for anything needing a signed-in session: sign in by hand once in DeviceHub — the session
+persists, and `xcrun simctl io <udid> screenshot` works from then on — or grant Screen Recording
+first. A deep link cannot do it; Swiftfin's `swiftfin://` handler only resolves sessions that already
+exist.
+
+**Never build with `CODE_SIGNING_ALLOWED=NO`.** It produces an unsigned app with no entitlements, so
+keychain writes fail silently and the app crashes in `User.accessToken` right after sign-in. Ad-hoc
+simulator signing is the default and needs no development team.
+
+### On a real iPhone
+
+```sh
+xcrun devicectl list devices                    # find the UDID
+xcrun devicectl device info lockState --device <UDID>
+xcodebuild -project Swiftfin.xcodeproj -scheme Swiftfin -configuration Debug \
+  -skipMacroValidation -allowProvisioningUpdates -destination "id=<UDID>" build
+xcrun devicectl device install app --device <UDID> <path>.app
+xcrun devicectl device process launch --device <UDID> it.davideghiotto.cinema
+```
+
+- **The phone must be unlocked**, or the build dies before compiling with *"needs to be unlocked to
+  enable development services"*. Wait on `lockState` → `passcodeRequired: false`. Do **not** poll for
+  the developer-disk-image error to clear: it clears while the device is still locked, and the build
+  then times out waiting for the destination. Keep the screen awake for the whole build.
+- Team `<team-id>` has a wildcard profile covering `it.davideghiotto.cinema`.
+
+SwiftFormat is not installed on the dev Mac, so every build prints `error: SwiftFormat not installed`
+and carries on — `brew install swiftformat` silences it.
 
 ## What is next
 

@@ -1,0 +1,18 @@
+---
+description: Cinema monorepo — the rules that are not visible in the code.
+globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
+alwaysApply: false
+---
+
+`CLAUDE.md` at the repo root is the full brief. In short:
+
+- **Bun is the package manager and script runner** (`bun install`, `bun run dev`, `bun test`).
+  The web app is built by **Vite** — do not migrate it to `Bun.serve` or HTML imports.
+- **Colour, radius, shadow and font values live only in `packages/design-tokens/tokens.json`.**
+  `bun run tokens` regenerates the web CSS, `CinemaTokens.swift`, `CinemaTokens.kt` and
+  `cinema_tokens.xml`, and syncs them into the forks. Never hand-edit a generated file, and never
+  put a hex value in a component. `docs/DESIGN.md` has the design rules.
+- **Never move code between `apps/ios` (MPL-2.0) and `apps/android` (GPLv3)**, and never copy from
+  `jellyfin-web` (GPLv3) into `apps/web`. `docs/ARCHITECTURE.md` § 6.
+- **Everything reaches Jellyfin through the relative base path `/jf`**, and only
+  `apps/web/src/lib/jellyfin/` imports `@jellyfin/sdk`. `docs/ARCHITECTURE.md`.

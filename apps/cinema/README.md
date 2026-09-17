@@ -80,7 +80,7 @@ all survive. Plug the drive back in and re-run `bun run dev:all` to pick it up.
 The drive's films still appear while it is away — Jellyfin serves metadata from its own
 database, so it never notices, and keeps claiming the film is directly playable. The app checks
 for itself with a one-byte range request and shows an offline state instead of a Play button.
-See [`docs/ARCHITECTURE.md` § 7](docs/ARCHITECTURE.md).
+See [`docs/ARCHITECTURE.md` § 5](docs/ARCHITECTURE.md).
 
 ## Not done yet
 
@@ -97,11 +97,14 @@ picking any of it up needs to know. The two headlines:
 
 ## Reading on
 
-- [`docs/DESIGN.md`](docs/DESIGN.md) — Reel, the design language, and the rules that keep the
-  three clients looking like one product.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the web app talks to Jellyfin, and why.
+Four documents, one job each:
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the web app talks to Jellyfin and why,
+  including the licensing rule that keeps the iOS app shippable.
+- [`docs/DESIGN.md`](docs/DESIGN.md) — Reel, the design language, and the token pipeline that keeps
+  the three clients looking like one product.
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — putting it on the NAS behind the Cloudflare tunnel.
-- [`docs/LICENSING.md`](docs/LICENSING.md) — what forking Swiftfin and Findroid commits us to,
-  and the one rule that keeps the iOS app shippable.
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — everything still open, in the order worth doing it.
-- [`docs/CLEANUP.md`](docs/CLEANUP.md) — measured complexity and slowness, one brief per task.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — what is done, what is next, and what the cleanup measured.
+
+Each fork's own README ([`apps/ios`](apps/ios/README.md), [`apps/android`](apps/android/README.md))
+carries its build, its palette sync and the traps that platform taught us.
