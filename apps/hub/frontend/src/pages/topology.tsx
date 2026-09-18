@@ -87,6 +87,7 @@ export function TopologyPage({ data }: { data: Summary }) {
           <TopologyMap
             topology={topology}
             focus={focus}
+            selected={selected}
             onFocus={setHovered}
             onSelect={select}
             className="absolute inset-0"

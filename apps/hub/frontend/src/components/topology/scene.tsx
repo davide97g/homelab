@@ -41,13 +41,13 @@ import { cn } from "@/lib/utils";
 /** The direction the camera looks from. The distance is not here on purpose —
  *  it is computed from the viewport, below.
  *
- *  About 34 degrees above the floor. There is a real trade here and it does not
+ *  About 38 degrees above the floor. There is a real trade here and it does not
  *  go the way it first looks: tilting further down makes the estate's depth
  *  project taller, which sounds like it fills a tall frame better but instead
  *  makes the *vertical* extent the binding constraint, so the fit pulls the
  *  camera back and everything ends up smaller. Low enough that width is what
  *  limits the framing, high enough that both floors read as floors. */
-const HOME_DIRECTION = new THREE.Vector3(0, 0.56, 0.83).normalize();
+const HOME_DIRECTION = new THREE.Vector3(0, 0.64, 0.83).normalize();
 
 const MAX_BEADS = 24;
 /** How long one pulled scrape takes to cross its link. Fixed rather than
@@ -177,22 +177,54 @@ function House({ floor, colors }: { floor: SiteFloor; colors: SceneColors }) {
           exactly `--muted`, so the floor is the token and stays it. */}
       <mesh position={[0, -0.05, 0]}>
         <boxGeometry args={[w, 0.1, d]} />
-        <meshBasicMaterial color={colors.surface} transparent opacity={0.8} toneMapped={false} />
+        <meshBasicMaterial color={colors.surface} transparent opacity={0.54} toneMapped={false} />
       </mesh>
       <mesh geometry={shell} renderOrder={3}>
         <meshBasicMaterial
           color={colors.outline}
           transparent
-          opacity={0.07}
+          opacity={0.035}
           side={THREE.DoubleSide}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
       <lineSegments geometry={edges} renderOrder={4}>
-        <lineBasicMaterial color={colors.outline} transparent opacity={0.45} depthWrite={false} toneMapped={false} />
+        <lineBasicMaterial color={colors.outline} transparent opacity={0.22} depthWrite={false} toneMapped={false} />
       </lineSegments>
     </group>
+  );
+}
+
+/** Site names are printed into the slab, not floated as another UI chip. A
+ * single canvas texture per house is cheaper and calmer than DOM overlays that
+ * follow the camera alongside device labels. */
+function FloorStamp({ floor, label, colors }: { floor: SiteFloor; label: string; colors: SceneColors }) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 768;
+    canvas.height = 96;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    context.font = "600 42px ui-monospace, SFMono-Regular, Menlo, monospace";
+    context.letterSpacing = "9px";
+    context.fillStyle = "white";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(label.toUpperCase(), canvas.width / 2, canvas.height / 2);
+    const out = new THREE.CanvasTexture(canvas);
+    out.colorSpace = THREE.SRGBColorSpace;
+    return out;
+  }, [label]);
+  useEffect(() => () => texture?.dispose(), [texture]);
+
+  if (!texture) return null;
+  const [w, d] = floor.size;
+  return (
+    <mesh position={[floor.center[0], 0.012, floor.center[1] + d * 0.3]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[w * 0.62, 0.52]} />
+      <meshBasicMaterial map={texture} color={colors.outline} transparent opacity={0.28} depthWrite={false} toneMapped={false} />
+    </mesh>
   );
 }
 
@@ -256,9 +288,12 @@ function Conduit({
   active: boolean;
 }) {
   const measured = link.status !== "unconfigured";
+  // The two inter-flat routes are the thesis. Local wiring remains discoverable
+  // without competing with the traffic that can actually isolate an outage.
+  const primary = link.via !== undefined || link.transport === "tailnet" || link.transport === "tunnel";
   const geometry = useMemo(
-    () => new THREE.TubeGeometry(curve, 44, active ? 0.052 : measured ? 0.035 : 0.018, 6, false),
-    [curve, measured, active],
+    () => new THREE.TubeGeometry(curve, 44, active ? 0.052 : primary ? 0.038 : measured ? 0.024 : 0.014, 6, false),
+    [curve, measured, primary, active],
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -272,7 +307,7 @@ function Conduit({
     return { at, turn };
   }, [curve]);
 
-  const opacity = active ? 0.98 : link.status === "down" ? 0.3 : measured ? 0.62 : 0.28;
+  const opacity = active ? 0.98 : link.status === "down" ? 0.24 : primary ? 0.76 : measured ? 0.38 : 0.16;
 
   return (
     <>
@@ -444,6 +479,12 @@ function FocusLock({ focus, curves, colour }: { focus: Focus; curves: Map<string
   if (!at) return null;
   return (
     <group ref={ring} position={at}>
+      {/* A narrow mast makes selection readable at a glance, even when the
+          resource itself is partly hidden by a floor or another machine. */}
+      <mesh position={[0, 0.58, 0]}>
+        <cylinderGeometry args={[0.009, 0.009, 1.16, 8]} />
+        <meshBasicMaterial color={colour} transparent opacity={0.5} depthWrite={false} toneMapped={false} />
+      </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.38, 0.018, 8, 36]} />
         <meshBasicMaterial color={colour} transparent opacity={0.9} depthWrite={false} toneMapped={false} />
@@ -624,12 +665,14 @@ export default function TopologyScene({
   markers,
   elements,
   focus,
+  selected,
   className,
 }: {
   topology: Topology;
   markers: Marker[];
   elements: RefObject<Map<string, HTMLElement>>;
   focus: Focus;
+  selected: Focus;
   className?: string;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -703,6 +746,8 @@ export default function TopologyScene({
         <FitView enabled={!moved} api={controls} />
 
         <group>
+          <FloorStamp floor={SITE_FLOOR.davide} label="Davide's flat" colors={colors} />
+          <FloorStamp floor={SITE_FLOOR.ilario} label="Ilario's flat" colors={colors} />
           <House floor={SITE_FLOOR.davide} colors={colors} />
           <House floor={SITE_FLOOR.ilario} colors={colors} />
 
@@ -721,7 +766,7 @@ export default function TopologyScene({
               colors={colors.tone}
               position={NODE_AT.nas}
               scale={NODE_SCALE.nas}
-              rotation={[0, -0.5, 0]}
+              rotation={[0, 0.12, 0]}
             />
           )}
           {plug && (
@@ -771,7 +816,15 @@ export default function TopologyScene({
           })}
 
           <Beads plans={plans} focus={focus} />
-          <FocusLock focus={focus} curves={curves} colour={colors.tone.accent} />
+          <FocusLock
+            focus={selected}
+            curves={curves}
+            colour={
+              selected?.kind === "link"
+                ? colors.transport[topology.links.find((link) => link.id === selected.id)?.transport ?? "lan"]
+                : colors.tone.accent
+            }
+          />
 
           <Projector markers={markers} elements={elements} />
         </group>

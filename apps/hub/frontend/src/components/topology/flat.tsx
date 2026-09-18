@@ -90,12 +90,14 @@ function useUnitsPerPixel(ref: React.RefObject<SVGSVGElement | null>, viewBoxWid
 export function TopologyFlat({
   topology,
   focus,
+  selected,
   onFocus,
   onSelect,
   className,
 }: {
   topology: Topology;
   focus: Focus;
+  selected: Focus;
   onFocus: (focus: Focus) => void;
   onSelect: (focus: Exclude<Focus, null>) => void;
   className?: string;
@@ -341,7 +343,9 @@ export function TopologyFlat({
         // to a dot until it is pointed at, so the two that cross between the
         // flats are the ones stating a number.
         const collapsed =
-          (marker.kind === "link" && !marker.prominent && !active) ||
+          (!active &&
+            ((marker.kind === "node" && marker.id !== "edge" && marker.id !== "cinema-edge" && marker.id !== "viewer") ||
+              (marker.kind === "link" && !marker.prominent))) ||
           (dense && !active && (marker.kind === "node" || !marker.prominent));
         const width = (collapsed ? 16 : text.length * 5.6 + (node ? 18 : 12)) * k;
         const height = 18 * k;
@@ -370,6 +374,12 @@ export function TopologyFlat({
               opacity={0.94}
             />
             {node && !collapsed && <circle cx={x - width / 2 + 9 * k} cy={y} r={3 * k} fill={statusVar(node.status)} />}
+            {selected?.kind === marker.kind && selected.id === marker.id && (
+              <>
+                <circle cx={x} cy={y} r={height * 0.82} fill="none" stroke="var(--ring)" strokeWidth={1.1 * k} opacity={0.72} />
+                <path d={`M ${x} ${y - height * 0.82} L ${x} ${y - height * 1.55}`} stroke="var(--ring)" strokeWidth={1.1 * k} opacity={0.62} />
+              </>
+            )}
             {collapsed ? (
               <circle
                 cx={x}

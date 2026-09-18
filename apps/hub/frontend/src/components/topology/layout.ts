@@ -31,8 +31,8 @@ export const NODE_AT: Record<string, Vec3> = {
   // belongs to both ends of that path, and the cinema edge over Ilario's roof
   // because that tunnel starts and ends there. `viewer` hangs off to the right,
   // outside both houses, which is the whole point of it.
-  "cinema-edge": [5.6, 3.5, -1.8],
-  viewer: [8.7, 2.6, 0.9],
+  "cinema-edge": [4.7, 3.3, -0.5],
+  viewer: [7.2, 2.55, 1.1],
 };
 
 /** Scale per node kind, so one set of world positions places geometry that was

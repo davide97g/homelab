@@ -19,12 +19,14 @@ const TopologyScene = lazy(() => import("@/components/topology/scene"));
 export function TopologyMap({
   topology,
   focus,
+  selected,
   onFocus,
   onSelect,
   className,
 }: {
   topology: Topology;
   focus: Focus;
+  selected: Focus;
   onFocus: (focus: Focus) => void;
   onSelect: (focus: Exclude<Focus, null>) => void;
   className?: string;
@@ -37,7 +39,7 @@ export function TopologyMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const markers = useMemo(() => markersOf(topology), [shape]);
 
-  const flat = <TopologyFlat topology={topology} focus={focus} onFocus={onFocus} onSelect={onSelect} />;
+  const flat = <TopologyFlat topology={topology} focus={focus} selected={selected} onFocus={onFocus} onSelect={onSelect} />;
 
   // Behind both renderers, not just the canvas: the flat SVG is a real renderer
   // and gets the same ground. It is `aria-hidden` and behind everything, so it
@@ -60,7 +62,7 @@ export function TopologyMap({
     <div className={cn("relative", className)}>
       {ground}
       <Suspense fallback={flat}>
-        <TopologyScene topology={topology} markers={markers} elements={elements} focus={focus} />
+        <TopologyScene topology={topology} markers={markers} elements={elements} focus={focus} selected={selected} />
       </Suspense>
 
       {/* The labels, which are also the hit targets.
@@ -85,7 +87,12 @@ export function TopologyMap({
 
           // A link inside one flat is context; one that crosses between them is
           // the point. Context shrinks to a dot until you point at it.
-          const collapsed = marker.kind === "link" && !marker.prominent && !active;
+          // Hardware is deliberately a pin until asked for. The picture's job
+          // is to show paths; the ledger is the dense index of devices.
+          const collapsed =
+            !active &&
+            ((marker.kind === "node" && marker.id !== "edge" && marker.id !== "cinema-edge" && marker.id !== "viewer") ||
+              (marker.kind === "link" && !marker.prominent));
 
           return (
             <button

@@ -271,13 +271,13 @@
      Cheaper than a second canvas by every measure that matters. */
   .dotfield {
     background-image: radial-gradient(
-      color-mix(in oklch, var(--muted-foreground) 30%, transparent) 1.1px,
-      transparent 1.1px
+      color-mix(in oklch, var(--muted-foreground) 16%, transparent) 1px,
+      transparent 1px
     );
-    background-size: 22px 22px;
-    background-position: -11px -11px;
-    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 46%, #000 45%, transparent 100%);
-    mask-image: radial-gradient(ellipse 80% 80% at 50% 46%, #000 45%, transparent 100%);
+    background-size: 26px 26px;
+    background-position: -13px -13px;
+    -webkit-mask-image: radial-gradient(ellipse 72% 74% at 50% 48%, #000 38%, transparent 100%);
+    mask-image: radial-gradient(ellipse 72% 74% at 50% 48%, #000 38%, transparent 100%);
   }
 
   /* A panel with a question outstanding.
