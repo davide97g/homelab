@@ -50,14 +50,29 @@ async function qbitSession(): Promise<string> {
   // getSetCookie, not get: a response may carry several Set-Cookie headers and
   // `get` folds them into one comma-joined string that a cookie value is allowed
   // to contain commas of.
-  const cookies = res.headers.getSetCookie?.() ?? [res.headers.get("set-cookie") ?? ""];
-  const sid = cookies.join("; ").match(/SID=([^;]+)/)?.[1];
-  if (!sid) {
-    // A wrong password comes back 200 with the body "Fails." -- the status code
-    // is not the answer here, the cookie is.
-    throw new ServiceError("qBittorrent refused the login");
+  const raw = res.headers.getSetCookie?.() ?? (res.headers.get("set-cookie") ? [res.headers.get("set-cookie")!] : []);
+
+  // Whatever it set, sent back verbatim -- the name is not ours to predict.
+  // qBittorrent 4.x called the session cookie `SID`; 5.x calls it
+  // `QBT_SID_<port>`, so on this box it is `QBT_SID_8080`. Matching on `SID=`
+  // finds neither of those reliably (`QBT_SID_8080=` does not contain `SID=`),
+  // which made a perfectly good 204 login look like a refusal. Forwarding the
+  // jar keeps this working across that rename and the next one.
+  const jar = raw
+    .map((c) => c.split(";")[0]?.trim() ?? "")
+    .filter(Boolean)
+    .join("; ");
+
+  if (!jar) {
+    // Note that the status code is not the tell here: 5.2.3 answers a
+    // *successful* login with 204, and a wrong password with 401 -- but an
+    // older build answers a wrong password with 200 and the body "Fails.".
+    // The cookie is the only reliable signal, which is the same trap that has
+    // ghcr.io/martabal/qbittorrent-exporter logging "authentication failed"
+    // forever against correct credentials.
+    throw new ServiceError("qBittorrent accepted the login but set no session cookie");
   }
-  return `SID=${sid}`;
+  return jar;
 }
 
 export function qbitConfigured(): boolean {
