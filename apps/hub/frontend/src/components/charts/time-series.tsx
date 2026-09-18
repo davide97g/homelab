@@ -1,9 +1,11 @@
-import type { SeriesFrame } from "@wire";
+import type { CatalogEntry, SeriesFrame } from "@wire";
 import { ArrowUpRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { formatValue, readTheme, type ChartTheme } from "@/components/charts/theme";
+import { FieldLabel } from "@/components/primitives";
+import type { Instance } from "@/hooks/use-series";
 import { cn } from "@/lib/utils";
 
 /** uPlot rather than a React chart library.
@@ -28,10 +30,17 @@ function toData(frame: SeriesFrame): uPlot.AlignedData {
 export function TimeSeries({
   frame,
   height = 200,
+  slow = false,
+  startedAt = null,
   className,
 }: {
   frame: SeriesFrame | null;
   height?: number;
+  /** Sets the probe's pace on the placeholder. The NAS takes visibly longer and
+   *  a placeholder that pretends otherwise reads as a stall. */
+  slow?: boolean;
+  /** When this window started loading, for the elapsed readout. */
+  startedAt?: number | null;
   className?: string;
 }) {
   const host = useRef<HTMLDivElement | null>(null);
@@ -93,7 +102,10 @@ export function TimeSeries({
           grid: { stroke: theme.grid, width: 1, dash: [2, 4] },
           ticks: { show: false },
           font: "11px Inter, sans-serif",
-          size: 58,
+          // Wide enough for the longest tick this formatter produces --
+          // "400 Mbit/s" and "1.4 GiB/s" both overran the old 58 and were drawn
+          // clipped at the left edge.
+          size: 72,
           values: (_u, ticks) => ticks.map((v) => formatValue(Math.abs(v), frame.unit)),
         },
       ],
@@ -146,24 +158,11 @@ export function TimeSeries({
   }, [frame]);
 
   if (!frame) {
-    return <div className="neu-inset animate-pulse" style={{ height }} />;
+    return <Acquiring height={height} slow={slow} startedAt={startedAt} />;
   }
 
-  if (frame.error) {
-    return (
-      <div className="text-muted-foreground flex items-center justify-center rounded-[10px] px-4 text-center text-xs" style={{ height }}>
-        {frame.error}
-      </div>
-    );
-  }
-
-  if (frame.lines.length === 0) {
-    return (
-      <div className="text-muted-foreground flex items-center justify-center text-xs" style={{ height }}>
-        no data in this range
-      </div>
-    );
-  }
+  if (frame.error) return <Blank height={height}>{frame.error}</Blank>;
+  if (frame.lines.length === 0) return <Blank height={height}>no data in this range</Blank>;
 
   const hovered = cursor
     ? frame.lines
@@ -200,45 +199,79 @@ export function TimeSeries({
   );
 }
 
-/** A titled panel with the chart inside, its legend under it, and the escape
- *  hatch in the corner: the same expressions, open in Grafana Explore. That link
- *  is what makes an id allow-list affordable — the registry never has to be
+/** A half with nothing to draw: a panel that does not apply to this machine, or
+ *  a window with no samples in it. Framed rather than left as floating text,
+ *  because next to a full chart an unframed sentence reads as a rendering
+ *  failure rather than an answer. */
+function Blank({ height, children }: { height: number; children: React.ReactNode }) {
+  return (
+    <div
+      className="border-border/70 text-muted-foreground flex items-center justify-center rounded-[10px] border border-dashed px-4 text-center text-[11px]"
+      style={{ height }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** The placeholder a panel wears while its queries are out.
+ *
+ *  Deliberately not a grey pulsing block. See `.acquiring` in index.css for why,
+ *  and note the elapsed readout only appears after a second and a half: a fast
+ *  panel should never flash a number at you on its way in. */
+function Acquiring({ height, slow, startedAt }: { height: number; slow: boolean; startedAt: number | null }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, []);
+
+  const elapsed = startedAt === null ? 0 : (now - startedAt) / 1000;
+
+  return (
+    <div className={cn("acquiring relative", slow && "acquiring-slow")} style={{ height }}>
+      <div className="absolute inset-x-0 bottom-2 flex justify-center">
+        <span className="text-muted-foreground/70 text-[10px] tracking-wide">
+          {elapsed >= 1.5 ? `querying prometheus · ${elapsed.toFixed(0)}s` : "querying prometheus"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** One machine's half of a panel: the chart, the legend under it, and the escape
+ *  hatch to Grafana Explore for the exact expressions behind it. That link is
+ *  what makes an id allow-list affordable — the registry never has to be
  *  complete, because the next question is one click away. */
-export function Panel({
+function Side({
   frame,
   height,
-  className,
+  label,
+  slow,
+  startedAt,
 }: {
   frame: SeriesFrame | null;
   height?: number;
-  className?: string;
+  /** Null on a single-machine panel, where the card header already says which
+   *  machine this is and repeating it would be noise. */
+  label: Instance | null;
+  slow: boolean;
+  startedAt: number | null;
 }) {
   const [theme, setTheme] = useState<ChartTheme | null>(null);
   useEffect(() => setTheme(readTheme()), []);
 
   return (
-    <section className={cn("neu flex flex-col gap-2 p-4", className)}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold">{frame?.title ?? "…"}</h2>
-          {frame?.description && (
-            <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">{frame.description}</p>
-          )}
+    <div className="flex min-w-0 flex-col gap-1.5">
+      {label && (
+        <div className="flex items-center justify-between gap-2">
+          <FieldLabel>{label}</FieldLabel>
+          {frame?.grafana && <GrafanaLink href={frame.grafana} />}
         </div>
-        {frame?.grafana && (
-          <a
-            href={frame.grafana}
-            target="_blank"
-            rel="noreferrer"
-            title="Open these queries in Grafana Explore"
-            className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-          >
-            <ArrowUpRight className="size-4" />
-          </a>
-        )}
-      </div>
+      )}
 
-      <TimeSeries frame={frame} height={height} />
+      <TimeSeries frame={frame} height={height} slow={slow} startedAt={startedAt} />
 
       {frame && frame.lines.length > 1 && theme && (
         <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
@@ -255,6 +288,83 @@ export function Panel({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function GrafanaLink({ href }: { href: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      title="Open these queries in Grafana Explore"
+      className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+    >
+      <ArrowUpRight className="size-4" />
+    </a>
+  );
+}
+
+export type PanelSide = {
+  instance: Instance;
+  frame: SeriesFrame | null;
+  startedAt: number | null;
+};
+
+/** A titled panel holding one machine's chart, or both side by side.
+ *
+ *  The title comes from the catalog rather than the frame, so it is on screen
+ *  before any data is — a loading panel that can name itself is a page laying
+ *  itself out, and one that cannot is six anonymous grey boxes. */
+export function Panel({
+  entry,
+  sides,
+  height,
+  className,
+}: {
+  entry: CatalogEntry | null;
+  sides: PanelSide[];
+  height?: number;
+  className?: string;
+}) {
+  const first = sides[0];
+  const title = entry?.title ?? first?.frame?.title ?? "…";
+  const description = entry?.description ?? first?.frame?.description;
+  const compare = sides.length > 1;
+
+  return (
+    <section className={cn("neu flex flex-col gap-2 p-4", className)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          {description && <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">{description}</p>}
+        </div>
+        {!compare && first?.frame?.grafana && <GrafanaLink href={first.frame.grafana} />}
+      </div>
+
+      <div
+        className={cn(
+          "grid min-w-0 gap-4",
+          // Side by side from `md` up, where two charts still have room to be
+          // read; stacked below it, where they would be 150 px wide each and the
+          // comparison would cost more than it gave. The per-half machine label
+          // is what keeps the stacked version legible.
+          compare &&
+            "md:divide-border md:grid-cols-2 md:divide-x md:gap-0 md:[&>*+*]:pl-4 md:[&>*]:pr-4",
+        )}
+      >
+        {sides.map((side) => (
+          <Side
+            key={side.instance}
+            frame={side.frame}
+            height={height}
+            label={compare ? side.instance : null}
+            slow={side.instance === "nas"}
+            startedAt={side.startedAt}
+          />
+        ))}
+      </div>
     </section>
   );
 }

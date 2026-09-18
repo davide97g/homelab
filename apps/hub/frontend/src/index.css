@@ -244,8 +244,56 @@
     box-shadow: 0 10px 30px var(--glass-shadow);
   }
 
-  /* The warm wash behind the hero, standing in for the light the 3D scene will
-     throw once it exists. */
+  /* A panel with a question outstanding.
+
+     A grey pulsing rectangle is the honest generic answer and it tells you
+     nothing; on a wall of six of them it reads as a broken page. This is an
+     instrument acquiring a trace instead: an empty plot with its baseline drawn
+     in, and a probe sweeping it left to right. It says the axis is real, the
+     panel is alive, and the number is still coming -- which is exactly what is
+     true while Prometheus is answering. */
+  .acquiring {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: color-mix(in oklch, var(--muted) 70%, transparent);
+    box-shadow:
+      inset 2px 2px 5px var(--neu-dark),
+      inset -1px -1px 3px var(--neu-light);
+  }
+
+  /* The baseline the trace would sit on. */
+  .acquiring::before {
+    content: "";
+    position: absolute;
+    inset-inline: 8%;
+    bottom: 22%;
+    border-top: 1px dashed color-mix(in oklch, var(--muted-foreground) 32%, transparent);
+  }
+
+  .acquiring::after {
+    content: "";
+    position: absolute;
+    inset-block: 12%;
+    width: 38%;
+    left: -38%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--primary) 5%, transparent) 65%,
+      color-mix(in oklch, var(--primary) 32%, transparent)
+    );
+    border-right: 1px solid color-mix(in oklch, var(--primary) 60%, transparent);
+    animation: acquire 1.9s cubic-bezier(0.45, 0, 0.35, 1) infinite;
+  }
+
+  /* The NAS answers over the tunnel and is scraped once a minute, so its panels
+     wait noticeably longer. Same probe, slower sweep, so the difference is
+     legible rather than alarming. */
+  .acquiring-slow::after {
+    animation-duration: 3.1s;
+  }
+
   .hero-glow {
     position: relative;
     isolation: isolate;
@@ -280,6 +328,12 @@
   background: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
 }
 
+@keyframes acquire {
+  to {
+    left: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -287,5 +341,12 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* The probe is the one thing that cannot degrade to "hold still at the far
+     left": park it in the middle so the panel still reads as busy. */
+  .acquiring::after {
+    left: 27%;
+    opacity: 0.6;
   }
 }

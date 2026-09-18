@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { shortTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { ROUTES } from "@/components/shell/rail";
+import { activeRoute } from "@/components/shell/sidebar";
 
 export function TopBar({
   data,
@@ -23,7 +23,7 @@ export function TopBar({
   onSignOut: () => void;
 }) {
   const { pathname } = useLocation();
-  const route = ROUTES.find((r) => (r.to === "/" ? pathname === "/" : pathname.startsWith(r.to)));
+  const route = activeRoute(pathname);
   const firing = data?.alerts.filter((a) => a.state === "firing") ?? [];
 
   return (

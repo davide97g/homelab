@@ -8,13 +8,14 @@ import { NasPage } from "@/pages/nas";
 import { Placeholder } from "@/pages/placeholder";
 
 /** Route content in one place, so adding a page is one entry here and one in the
- *  rail rather than a hunt through a router tree. */
+ *  sidebar rather than a hunt through a router tree. */
 export const PAGES: { path: string; element: (data: Summary) => React.ReactNode }[] = [
   { path: "/", element: (data) => <HomePage data={data} /> },
   {
     path: "/compute",
-    element: () => (
+    element: (data) => (
       <MetricsPage
+        data={data}
         panels={[
           { id: "cpu.total" },
           { id: "load" },
@@ -29,8 +30,9 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
   },
   {
     path: "/power",
-    element: () => (
+    element: (data) => (
       <MetricsPage
+        data={data}
         panels={[
           { id: "power.wall", wide: true, height: 240 },
           { id: "energy.daily" },
@@ -43,8 +45,9 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
   },
   {
     path: "/network",
-    element: () => (
+    element: (data) => (
       <MetricsPage
+        data={data}
         panels={[
           { id: "net.throughput", wide: true, height: 240 },
           { id: "net.errors" },
@@ -55,8 +58,9 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
   },
   {
     path: "/storage",
-    element: () => (
+    element: (data) => (
       <MetricsPage
+        data={data}
         panels={[
           { id: "fs.used", wide: true },
           { id: "disk.io" },

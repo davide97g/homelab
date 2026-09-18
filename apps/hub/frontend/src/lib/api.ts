@@ -2,11 +2,13 @@ import type {
   ActionCatalog,
   ActionResult,
   AuditResponse,
+  CatalogEntry,
   ContainersResponse,
   LogOptions,
   LogsResponse,
   NasDetail,
   Range,
+  SeriesFrame,
   SeriesResponse,
   Summary,
 } from "@wire";
@@ -61,6 +63,71 @@ export function fetchSeries(
 ): Promise<SeriesResponse> {
   const q = new URLSearchParams({ ids: ids.join(","), range, instance });
   return fetch(`/api/series?${q}`, { ...same, signal }).then((r) => json<SeriesResponse>(r));
+}
+
+/** Titles, units and which machine each panel applies to. Static on the server,
+ *  fetched once here, and the reason a loading panel can say what it is loading
+ *  instead of showing an anonymous grey box. */
+export function fetchCatalog(signal?: AbortSignal): Promise<CatalogEntry[]> {
+  return fetch("/api/catalog", { ...same, signal }).then((r) => json<CatalogEntry[]>(r));
+}
+
+export type SeriesStream = {
+  /** Called once per panel, as soon as that panel's queries come back. */
+  onFrame: (frame: SeriesFrame) => void;
+  onDone: () => void;
+  /** Any failure of the stream itself. The caller falls back to the batched
+   *  endpoint rather than showing an error, because one is not worse than the
+   *  other once the answers are cached. */
+  onError: (reason: string) => void;
+};
+
+/** The same frames as `fetchSeries`, arriving one at a time.
+ *
+ *  Used for the first paint of a window only. `EventSource` carries the session
+ *  cookie on a same-origin request and reconnects on its own, which is exactly
+ *  what is not wanted here -- the server closes the stream when it has sent
+ *  everything -- so `done` closes it before the browser can retry.
+ *
+ *  Returns the closer. */
+export function streamSeries(
+  ids: string[],
+  range: Range,
+  instance: "homelab" | "nas",
+  handlers: SeriesStream,
+): () => void {
+  const q = new URLSearchParams({ ids: ids.join(","), range, instance });
+  const source = new EventSource(`/api/series/stream?${q}`);
+  let closed = false;
+
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    source.close();
+  };
+
+  source.addEventListener("frame", (event) => {
+    try {
+      handlers.onFrame(JSON.parse((event as MessageEvent<string>).data) as SeriesFrame);
+    } catch {
+      // A frame that will not parse is one panel, not the page.
+    }
+  });
+
+  source.addEventListener("done", () => {
+    close();
+    handlers.onDone();
+  });
+
+  // Fires both for a transport failure and for the server's own `error` event.
+  // Either way the stream is over; only the message differs.
+  source.addEventListener("error", (event) => {
+    const data = (event as MessageEvent<unknown>).data;
+    close();
+    handlers.onError(typeof data === "string" && data ? data : "the live stream dropped");
+  });
+
+  return close;
 }
 
 export function fetchNas(signal?: AbortSignal): Promise<NasDetail> {

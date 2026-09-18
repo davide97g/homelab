@@ -110,6 +110,21 @@ every expression in one reviewable file and makes responses cacheable by key.
 The cost is that a new panel is a server deploy, which is why every panel will
 carry an "open in Grafana" link built from the same expression.
 
+**The first paint of a window streams; everything after it is batched.** A cold
+metric page is a dozen Prometheus range queries, and the NAS is a minute-
+resolution scrape reached over the tunnel, so the slowest one used to decide when
+*any* chart appeared — six panels sat as grey boxes for half a minute and the page
+read as broken. `/api/series/stream` hands each frame over as it resolves, so the
+page fills in. Once the panels are up the server has them cached and the page
+goes back to `/api/series`, which is one request per tick carrying every id
+rather than one request per panel.
+
+**Both machines are shown at once, and isolating one is the zoom.** The two boxes
+answer the same questions differently and the interesting reading is usually the
+difference, so a metric page is two aligned columns rather than a toggle between
+them. Clicking a column header drops the other, gives this one the full width and
+stops querying Prometheus about the machine you are not looking at.
+
 **No interface name is hard-coded.** The box is `enp3s0`, the NAS is `eth0`, and
 mediarr-dash still asks Prometheus about `eno1` — a NIC with no cable, so its
 host card's throughput has read zero since the day it was written. The hub

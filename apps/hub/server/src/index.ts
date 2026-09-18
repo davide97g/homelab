@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +13,7 @@ import { nasDetail } from "./collect/nas.js";
 import { summary } from "./collect/summary.js";
 import { config } from "./config.js";
 import { logOptions, logs, parseLogRequest } from "./loki/query.js";
-import { catalog, parseRequest, series } from "./prom/series.js";
+import { catalog, frames, parseRequest, rangeSeconds, series } from "./prom/series.js";
 import { clientIp, forgive, limited } from "./limiter.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -98,6 +99,59 @@ app.get("/api/series", async (c) => {
   const data = await series(parsed);
   c.header("Cache-Control", "no-store");
   return c.json(data);
+});
+
+/** The same frames, but streamed one at a time as each finishes.
+ *
+ *  The batched route above answers in as long as its slowest panel takes, and on
+ *  a cold cache that is the whole point of the wait: six charts held hostage by
+ *  one query crossing the tunnel to a NAS that is scraped once a minute. The
+ *  work was already running in parallel; this hands each result over the moment
+ *  it exists, so a page fills in instead of arriving all at once or not at all.
+ *
+ *  Only the first load of a given window uses this. Once the panels are on
+ *  screen the page goes back to the batched route, where the server cache means
+ *  the whole reply is one fast round trip. */
+app.get("/api/series/stream", (c) => {
+  const parsed = parseRequest(new URL(c.req.url).searchParams);
+  if ("error" in parsed) return c.json({ error: parsed.error }, 400);
+
+  // A proxy that buffers would defeat the entire point of this route.
+  c.header("X-Accel-Buffering", "no");
+
+  return streamSSE(
+    c,
+    async (stream) => {
+      const pending = frames(parsed);
+      // Sent before any query resolves, so the page knows what it is waiting for
+      // and can draw the right number of panels rather than a guess.
+      await stream.writeSSE({
+        event: "open",
+        data: JSON.stringify({ ids: parsed.ids, instance: parsed.instance, range: parsed.range }),
+      });
+
+      let stepS = 0;
+      await Promise.all(
+        pending.map(async (p, i) => {
+          const frame = await p;
+          stepS = Math.max(stepS, frame.stepS);
+          // Safe to race: writeSSE encodes one event and writes it as a single
+          // chunk, so two landing in the same tick cannot interleave.
+          await stream.writeSSE({ event: "frame", data: JSON.stringify(frame), id: String(i) });
+        }),
+      );
+
+      await stream.writeSSE({
+        event: "done",
+        data: JSON.stringify({ at: new Date().toISOString(), rangeS: rangeSeconds(parsed.range), stepS }),
+      });
+    },
+    async (err) => {
+      // Hono follows this with its own `error` event carrying the message, which
+      // the page shows. Without an onError it would swallow the failure whole.
+      console.error("series stream failed:", err.message);
+    },
+  );
 });
 
 /** Every container on both machines. Docker's list for the mini PC -- which is

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { LoginCard } from "@/components/shell/login-card";
-import { Rail } from "@/components/shell/rail";
+import { initialExpanded, rememberSidebar, Sidebar } from "@/components/shell/sidebar";
 import { TopBar } from "@/components/shell/top-bar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePoll } from "@/hooks/use-poll";
@@ -33,10 +33,18 @@ export default function App() {
 function Shell({ onSignedOut }: { onSignedOut: () => void }) {
   const load = useCallback((signal: AbortSignal) => fetchSummary(signal), []);
   const { data, error, loading, expired, refreshedAt, refresh } = usePoll(load, 5000);
+  const [expanded, setExpanded] = useState(initialExpanded);
 
   useEffect(() => {
     if (expired) onSignedOut();
   }, [expired, onSignedOut]);
+
+  function toggleSidebar() {
+    setExpanded((was) => {
+      rememberSidebar(!was);
+      return !was;
+    });
+  }
 
   async function signOut() {
     await logout().catch(() => undefined);
@@ -45,7 +53,7 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
 
   return (
     <div className="flex h-full flex-col sm:flex-row">
-      <Rail />
+      <Sidebar expanded={expanded} onToggle={toggleSidebar} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar

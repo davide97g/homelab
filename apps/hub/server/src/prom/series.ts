@@ -177,35 +177,46 @@ export function parseRequest(params: URLSearchParams): SeriesRequest | { error: 
   return { ids: rawIds, range: rangeRaw as Range, instance: instanceRaw };
 }
 
+/** One in-flight frame per requested id, each resolving on its own.
+ *
+ *  Kept separate from `series` so the streaming route can hand a frame to the
+ *  browser the moment it lands. A cold page used to be as slow as its slowest
+ *  panel — every chart sat empty while one NAS query crawled over the tailnet —
+ *  and the work was already parallel; only the reply was not. */
+export function rangeSeconds(range: Range): number {
+  return RANGE_SECONDS[range];
+}
+
+export function frames(req: SeriesRequest): Promise<SeriesFrame>[] {
+  const rangeS = RANGE_SECONDS[req.range];
+
+  return req.ids.map((id) => {
+    const def = SERIES[id]!;
+    if (!def.instances.includes(req.instance)) {
+      // Asked for on a machine it does not apply to -- power on the NAS, say.
+      // An empty frame with a reason beats a 400 that fails the whole batch.
+      return Promise.resolve<SeriesFrame>({
+        id,
+        title: def.title,
+        unit: def.unit,
+        kind: def.kind,
+        t: [],
+        lines: [],
+        stepS: def.minStepS,
+        error: `not collected for ${req.instance}`,
+      });
+    }
+    const key = `series:${id}:${req.instance}:${req.range}`;
+    const ttl = Math.min(Math.max(stepFor(def, rangeS, req.instance) * 1000, 4000), 30_000);
+    return cache.get(key, () => buildFrame(id, def, req.instance, rangeS), ttl);
+  });
+}
+
 /** Batched on purpose: one request per page tick carrying every panel's ids.
  *  Fourteen panels polling individually would be 2.8 req/s against Prometheus
  *  from a single tab. */
 export async function series(req: SeriesRequest): Promise<SeriesResponse> {
-  const rangeS = RANGE_SECONDS[req.range];
-
-  const frames = await Promise.all(
-    req.ids.map((id) => {
-      const def = SERIES[id]!;
-      if (!def.instances.includes(req.instance)) {
-        // Asked for on a machine it does not apply to -- power on the NAS, say.
-        // An empty frame with a reason beats a 400 that fails the whole batch.
-        return Promise.resolve<SeriesFrame>({
-          id,
-          title: def.title,
-          unit: def.unit,
-          kind: def.kind,
-          t: [],
-          lines: [],
-          stepS: def.minStepS,
-          error: `not collected for ${req.instance}`,
-        });
-      }
-      const key = `series:${id}:${req.instance}:${req.range}`;
-      const ttl = Math.min(Math.max(stepFor(def, rangeS, req.instance) * 1000, 4000), 30_000);
-      return cache.get(key, () => buildFrame(id, def, req.instance, rangeS), ttl);
-    }),
-  );
-
-  const stepS = Math.max(...frames.map((f) => f.stepS));
-  return { at: new Date().toISOString(), rangeS, stepS, frames };
+  const settled = await Promise.all(frames(req));
+  const stepS = Math.max(...settled.map((f) => f.stepS));
+  return { at: new Date().toISOString(), rangeS: RANGE_SECONDS[req.range], stepS, frames: settled };
 }

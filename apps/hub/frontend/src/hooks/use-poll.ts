@@ -11,14 +11,19 @@ export type Polled<T> = {
 };
 
 /** Generalised from mediarr-dash's use-overview.ts, which does exactly this for
- *  one endpoint. Three behaviours are load-bearing and easy to lose:
+ *  one endpoint. Four behaviours are load-bearing and easy to lose:
  *
  *  - the previous payload stays on screen while the next is in flight, because a
  *    dashboard that blanks on every tick is unreadable;
  *  - polling stops while the tab is hidden, so a backgrounded tab is not quietly
  *    hammering Prometheus all day;
  *  - a 401 is `expired`, not an error, so the shell can drop back to the login
- *    card instead of showing a scary message. */
+ *    card instead of showing a scary message;
+ *  - a *new loader* fetches immediately rather than at the next tick. This one
+ *    was missing and it is why moving between two pages that share a component
+ *    -- any two metric pages -- looked frozen: React keeps the component
+ *    mounted, the interval never restarted, and the new panels stayed empty for
+ *    up to a minute until a tick that was already scheduled came round. */
 export function usePoll<T>(load: (signal: AbortSignal) => Promise<T>, intervalMs: number): Polled<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,15 +33,13 @@ export function usePoll<T>(load: (signal: AbortSignal) => Promise<T>, intervalMs
 
   const abort = useRef<AbortController | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const loadRef = useRef(load);
-  loadRef.current = load;
 
   const run = useCallback(async () => {
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
     try {
-      const next = await loadRef.current(controller.signal);
+      const next = await load(controller.signal);
       if (controller.signal.aborted) return;
       setData(next);
       setError(null);
@@ -48,7 +51,9 @@ export function usePoll<T>(load: (signal: AbortSignal) => Promise<T>, intervalMs
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, []);
+    // `load` is a dependency on purpose: a caller that memoises a new loader has
+    // asked a different question, and the effect below restarts on it.
+  }, [load]);
 
   useEffect(() => {
     const start = () => {
