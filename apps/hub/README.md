@@ -125,6 +125,15 @@ difference, so a metric page is two aligned columns rather than a toggle between
 them. Clicking a column header drops the other, gives this one the full width and
 stops querying Prometheus about the machine you are not looking at.
 
+**Refresh is one thing the app does, not one thing per page.** The button used
+to re-poll `/api/summary` and nothing else, so on a metric page it spun and
+changed nothing you were looking at. Pages register what refreshing means for
+them — re-read the charts, pull the tail forward — and the button runs all of
+them and waits for the lot, which is also what tells the sweep in the header
+when to stop. The background poll deliberately does not raise it: a page that
+re-reads itself every five seconds would show a permanent indicator, which is
+the same as no indicator at all.
+
 **No interface name is hard-coded.** The box is `enp3s0`, the NAS is `eth0`, and
 mediarr-dash still asks Prometheus about `eno1` — a NIC with no cable, so its
 host card's throughput has read zero since the day it was written. The hub

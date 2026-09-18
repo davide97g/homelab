@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { LoginCard } from "@/components/shell/login-card";
 import { initialExpanded, rememberSidebar, Sidebar } from "@/components/shell/sidebar";
+import { Booting } from "@/components/shell/trace";
 import { TopBar } from "@/components/shell/top-bar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePoll } from "@/hooks/use-poll";
@@ -20,7 +21,7 @@ export default function App() {
   return (
     <TooltipProvider delayDuration={120}>
       {authed === null ? (
-        <div className="text-muted-foreground flex h-full items-center justify-center text-sm">Checking session…</div>
+        <Booting label="checking your session" />
       ) : authed ? (
         <Shell onSignedOut={() => setAuthed(false)} />
       ) : (
@@ -32,7 +33,7 @@ export default function App() {
 
 function Shell({ onSignedOut }: { onSignedOut: () => void }) {
   const load = useCallback((signal: AbortSignal) => fetchSummary(signal), []);
-  const { data, error, loading, expired, refreshedAt, refresh } = usePoll(load, 5000);
+  const { data, error, loading, expired, refreshedAt } = usePoll(load, 5000);
   const [expanded, setExpanded] = useState(initialExpanded);
 
   useEffect(() => {
@@ -60,7 +61,6 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
           data={data}
           refreshedAt={refreshedAt}
           loading={loading}
-          onRefresh={refresh}
           onSignOut={() => void signOut()}
         />
 
@@ -82,7 +82,9 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
           )}
 
           {!data && !error && (
-            <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">Loading…</div>
+            <div className="flex h-72 items-center justify-center">
+              <Booting label="reading both machines" />
+            </div>
           )}
         </main>
       </div>

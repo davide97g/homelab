@@ -294,6 +294,63 @@
     animation-duration: 3.1s;
   }
 
+  /* The sweep. See components/shell/trace.tsx for the dash arithmetic; the
+     short version is that every path is normalised to pathLength 100, so these
+     numbers are percentages of the trace and nothing needs measuring.
+
+     Offsetting from +100 to -100 draws the segment in from the left and then
+     drains it off the right, which loops without a seam. Linear on purpose: a
+     sampler runs at a constant rate, and easing it makes it look like a
+     decoration rather than an instrument. */
+  .trace {
+    display: block;
+    overflow: visible;
+    opacity: 0;
+    transition: opacity 400ms ease-out;
+  }
+
+  .trace-on {
+    opacity: 1;
+  }
+
+  .trace path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Where the sweep is going, so it reads as revealing a signal rather than
+     inventing one. */
+  .trace-ghost {
+    stroke: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+    stroke-width: 1;
+  }
+
+  .trace-line,
+  .trace-head {
+    stroke-dashoffset: 100;
+  }
+
+  .trace-on .trace-line,
+  .trace-on .trace-head {
+    animation: trace-sweep 1.2s linear infinite;
+  }
+
+  .trace-line {
+    stroke: var(--primary);
+    stroke-width: 1.5;
+    stroke-dasharray: 100 100;
+  }
+
+  /* Three percent of the trace, riding just behind the leading edge. This is the
+     part that makes it read as a probe rather than a bar filling up. */
+  .trace-head {
+    stroke: var(--primary);
+    stroke-width: 3;
+    stroke-dasharray: 0 96 4 100;
+    filter: drop-shadow(0 0 7px color-mix(in oklch, var(--primary) 85%, transparent));
+  }
+
   .hero-glow {
     position: relative;
     isolation: isolate;
@@ -334,6 +391,15 @@
   }
 }
 
+@keyframes trace-sweep {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -348,5 +414,20 @@
   .acquiring::after {
     left: 27%;
     opacity: 0.6;
+  }
+
+  /* The sweep degrades to a trace that is simply drawn. The signal -- something
+     is happening -- survives; the motion does not. */
+  .trace-on .trace-line,
+  .trace-on .trace-head {
+    animation: none;
+  }
+
+  .trace-on .trace-line {
+    stroke-dashoffset: 0;
+  }
+
+  .trace-head {
+    display: none;
   }
 }

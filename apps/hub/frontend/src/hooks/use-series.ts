@@ -1,5 +1,6 @@
 import type { Range, SeriesFrame } from "@wire";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRefreshHandler } from "@/lib/activity";
 import { fetchSeries, streamSeries, Unauthorized } from "@/lib/api";
 
 export type Instance = "homelab" | "nas";
@@ -53,6 +54,7 @@ export function useSeries(ids: string[], range: Range, instance: Instance, enabl
   const [refreshedAt, setRefreshedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
+  const pollRef = useRef<() => Promise<void>>(async () => undefined);
 
   useEffect(() => {
     if (!enabled) {
@@ -97,6 +99,8 @@ export function useSeries(ids: string[], range: Range, instance: Instance, enabl
         }
       }
     };
+
+    pollRef.current = poll;
 
     const startPolling = () => {
       timer ??= setInterval(() => void poll(), INTERVALS[range]);
@@ -147,6 +151,12 @@ export function useSeries(ids: string[], range: Range, instance: Instance, enabl
     // re-run on every render, because `ids` is a fresh array each time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+
+  // The frames are already drawn, so a refresh re-reads them through the
+  // batched route rather than opening a new stream: re-streaming would mean
+  // blanking six charts to fill them back in one at a time, which is the right
+  // trade on a cold window and the wrong one here.
+  useRefreshHandler(useCallback(() => (enabled ? pollRef.current() : undefined), [enabled]));
 
   return {
     frame: (id: string) => frames.get(id) ?? null,

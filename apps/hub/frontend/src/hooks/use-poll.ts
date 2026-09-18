@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRefreshHandler } from "@/lib/activity";
 import { Unauthorized } from "@/lib/api";
 
 export type Polled<T> = {
@@ -75,6 +76,11 @@ export function usePoll<T>(load: (signal: AbortSignal) => Promise<T>, intervalMs
       abort.current?.abort();
     };
   }, [run, intervalMs]);
+
+  // What "refresh" means for this endpoint, for the button in the header. It
+  // returns the promise so the indicator can stop when the answer lands rather
+  // than after a guessed delay.
+  useRefreshHandler(run);
 
   return { data, error, loading, expired, refreshedAt, refresh: () => void run() };
 }

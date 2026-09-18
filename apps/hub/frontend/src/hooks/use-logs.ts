@@ -1,5 +1,6 @@
 import type { LogLevel, LogLine, LogRange, LogsResponse } from "@wire";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRefreshHandler } from "@/lib/activity";
 import { fetchLogs, Unauthorized } from "@/lib/api";
 
 export type LogFilters = {
@@ -34,6 +35,8 @@ export function useLogs(filters: LogFilters, live: boolean) {
 
   const cursor = useRef<string | null>(null);
   const key = JSON.stringify(filters);
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
 
   // A filter change is a new window, not more of the old one, so the cursor and
   // the pane are both reset.
@@ -95,6 +98,20 @@ export function useLogs(filters: LogFilters, live: boolean) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, key]);
+
+  // Refreshing a tail means pulling whatever has arrived since the last line on
+  // screen, not re-reading the window from the top and losing your place.
+  useRefreshHandler(
+    useCallback(async () => {
+      if (!cursor.current) return;
+      const res = await fetchLogs({ ...filtersRef.current, limit: TAIL_LIMIT, since: cursor.current }).catch(
+        () => null,
+      );
+      if (!res) return;
+      cursor.current = res.cursor ?? cursor.current;
+      if (res.lines.length > 0) setLines((prev) => [...prev, ...res.lines].slice(-MAX_LINES));
+    }, []),
+  );
 
   return { lines, meta, error, loading, expired };
 }

@@ -3,8 +3,10 @@ import { LogOut, RefreshCw } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { StatusDot } from "@/components/primitives";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { Trace } from "@/components/shell/trace";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { refreshAll, useRefreshing } from "@/lib/activity";
 import { shortTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { activeRoute } from "@/components/shell/sidebar";
@@ -13,22 +15,28 @@ export function TopBar({
   data,
   refreshedAt,
   loading,
-  onRefresh,
   onSignOut,
 }: {
   data: Summary | null;
   refreshedAt: number | null;
   loading: boolean;
-  onRefresh: () => void;
   onSignOut: () => void;
 }) {
   const { pathname } = useLocation();
   const route = activeRoute(pathname);
+  const refreshing = useRefreshing();
   const firing = data?.alerts.filter((a) => a.state === "firing") ?? [];
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 px-4 sm:px-6">
-      <h1 className="text-[15px] font-semibold tracking-tight">{route?.label ?? "Overview"}</h1>
+      <h1 className="shrink-0 text-[15px] font-semibold tracking-tight">{route?.label ?? "Overview"}</h1>
+
+      {/* The header's dead space, put to work. Sitting beside the timestamp and
+          the button that triggers it is the whole reason it reads as this page
+          being re-read rather than as an ornament. */}
+      <div className="hidden min-w-0 flex-1 px-4 md:block">
+        <Trace active={refreshing} height={24} />
+      </div>
 
       <div className="ml-auto flex items-center gap-2">
         {data && (
@@ -63,8 +71,17 @@ export function TopBar({
           {refreshedAt ? shortTime(new Date(refreshedAt).toISOString()) : "—"}
         </span>
 
-        <Button variant="ghost" size="icon-sm" aria-label="Refresh now" onClick={onRefresh}>
-          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Refresh now"
+          aria-busy={refreshing}
+          disabled={refreshing}
+          onClick={() => void refreshAll()}
+        >
+          <RefreshCw
+            className={cn("size-4 transition-colors", (loading || refreshing) && "animate-spin", refreshing && "text-primary")}
+          />
         </Button>
         <ThemeToggle />
         <Button variant="ghost" size="icon-sm" aria-label="Sign out" onClick={onSignOut}>
