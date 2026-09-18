@@ -28,7 +28,7 @@ export function TopBar({
   const firing = data?.alerts.filter((a) => a.state === "firing") ?? [];
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 px-4 sm:px-6">
+    <header className="flex h-14 shrink-0 items-center gap-2 px-4 sm:gap-3 sm:px-6">
       <h1 className="shrink-0 text-[15px] font-semibold tracking-tight">{route?.label ?? "Overview"}</h1>
 
       {/* The header's dead space, put to work. Sitting beside the timestamp and
@@ -38,7 +38,10 @@ export function TopBar({
         <Trace active={refreshing} height={24} />
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      {/* `icon-sm` is 28px, which is a comfortable mouse target and an
+          uncomfortable thumb one. The three controls grow to 44 on touch and the
+          row tightens its gaps to pay for it. */}
+      <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
         {data && (
           <div className="hidden items-center gap-3 sm:flex">
             {(["homelab", "nas"] as const).map((id) => (
@@ -74,6 +77,7 @@ export function TopBar({
         <Button
           variant="ghost"
           size="icon-sm"
+          className="size-11 sm:size-7"
           aria-label="Refresh now"
           aria-busy={refreshing}
           disabled={refreshing}
@@ -84,7 +88,7 @@ export function TopBar({
           />
         </Button>
         <ThemeToggle />
-        <Button variant="ghost" size="icon-sm" aria-label="Sign out" onClick={onSignOut}>
+        <Button variant="ghost" size="icon-sm" className="size-11 sm:size-7" aria-label="Sign out" onClick={onSignOut}>
           <LogOut className="size-4" />
         </Button>
       </div>

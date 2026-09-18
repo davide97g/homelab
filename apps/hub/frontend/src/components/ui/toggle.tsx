@@ -18,7 +18,11 @@ const toggleVariants = cva(
         mark: "text-muted-foreground data-[state=off]:hover:text-foreground data-[state=on]:bg-chip data-[state=on]:shadow-sm",
       },
       size: {
-        default: "h-[26px] px-2.5",
+        // 26px is a mouse target. Every segmented control in the app is one of
+        // the most-tapped things on its page -- the range picker, the log
+        // levels, the container scope -- so on a phone they grow to 44 and shrink
+        // back from `sm` up, where the pointer is precise and the row is tight.
+        default: "h-11 px-3 sm:h-[26px] sm:px-2.5",
       },
     },
     defaultVariants: { variant: "segment", size: "default" },

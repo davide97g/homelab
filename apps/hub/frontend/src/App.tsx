@@ -54,7 +54,10 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
   }
 
   return (
-    <div className="flex h-full flex-col sm:flex-row">
+    // The left/right safe-area insets live on the shell rather than on each
+    // child: in landscape on a notched phone every one of them would otherwise
+    // need the same pair, and the rail would still run under the cutout.
+    <div className="flex h-full flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:flex-row">
       <Sidebar expanded={expanded} onToggle={toggleSidebar} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -65,7 +68,12 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
           onSignOut={() => void signOut()}
         />
 
-        <main key={location.pathname} className="animate-in fade-in-0 min-h-0 flex-1 overflow-y-auto px-4 pb-8 duration-200 sm:px-6">
+        {/* The bottom padding carries the home-indicator inset on top of its own
+            8, so the last card on a page is never half under the gesture bar. */}
+        <main
+          key={location.pathname}
+          className="animate-in fade-in-0 min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] duration-200 sm:px-6"
+        >
           {error && !data && (
             <div className="neu text-tone-bad mx-auto mt-6 max-w-lg p-5 text-sm">
               Could not reach the hub's API: {error}

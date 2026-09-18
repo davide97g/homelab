@@ -6,11 +6,14 @@ import { HostCard } from "@/components/cards/host-card";
 import { MetricCard } from "@/components/cards/metric-card";
 import { MachineHero } from "@/components/hero/machine-hero";
 import { ArcGauge, FieldLabel } from "@/components/primitives";
+import { useCompact, useShortViewport } from "@/hooks/use-media-query";
 
 /** The mini PC is the hero and the NAS is a card, because that is the actual
  *  ratio of attention: one machine runs forty containers and the tunnel, the
  *  other holds photos and a Jellyfin. */
 export function HomePage({ data }: { data: Summary }) {
+  const compact = useCompact();
+  const short = useShortViewport();
   const box = data.hosts.homelab;
   const nas = data.hosts.nas;
   const power = data.power;
@@ -24,8 +27,13 @@ export function HomePage({ data }: { data: Summary }) {
   return (
     <div className="space-y-5">
       <section className="hero-glow grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <MachineHero machine="homelab" hotspots={box.hotspots} className="mx-auto" />
+        {/* Side by side from the first pixel rather than stacked below `sm`. The
+            hero and the dial stacked are ~520px of picture, which on a phone is
+            the entire first screen and pushes every number below the fold --
+            and the numbers are why the page was opened. Shoulder to shoulder
+            they are ~190px and the four headline metrics land above it. */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:gap-5">
+          <MachineHero machine="homelab" hotspots={box.hotspots} className="mx-auto max-w-[150px] sm:max-w-[420px] [@media(max-height:560px)]:max-w-[200px]" />
 
           <ArcGauge
             value={power.wallW}
@@ -34,10 +42,10 @@ export function HomePage({ data }: { data: Summary }) {
             caption={power.source === "plug" ? "measured at the plug" : "modelled — plug unreachable"}
             tone={power.wallW !== null && power.wallW > 45 ? "warn" : "accent"}
             sweep={270}
-            size={196}
+            size={compact ? 156 : short ? 150 : 196}
             className="mx-auto"
           >
-            <span className="tnum text-[34px] leading-none font-semibold">
+            <span className="tnum text-[28px] leading-none font-semibold sm:text-[34px]">
               {power.wallW === null ? "—" : `${power.wallW.toFixed(0)}`}
             </span>
             <span className="text-muted-foreground text-xs">watts</span>

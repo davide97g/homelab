@@ -285,7 +285,7 @@ export function DetailCard({
   if (!node && !link) return null;
 
   return (
-    <div className={cn("glass flex w-[16.5rem] flex-col gap-3 p-4", className)}>
+    <div className={cn("glass flex w-full flex-col gap-3 p-4 sm:w-[16.5rem]", className)}>
       {selected && <span className="text-muted-foreground self-end text-[10px] tracking-wide uppercase">Pinned · Esc clears</span>}
       {node ? (
         <NodeDetail node={node} />

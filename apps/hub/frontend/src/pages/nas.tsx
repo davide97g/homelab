@@ -6,6 +6,7 @@ import { SensorList } from "@/components/cards/sensor-list";
 import { MachineHero } from "@/components/hero/machine-hero";
 import { ArrayCard, BayStrip, FilesystemList } from "@/components/nas/storage";
 import { ArcGauge, FieldLabel, StatusDot, STATUS_LABEL, TONE_TEXT } from "@/components/primitives";
+import { useCompact, useShortViewport } from "@/hooks/use-media-query";
 import { MetricsPage } from "@/pages/metrics-page";
 import { usePoll } from "@/hooks/use-poll";
 import { fetchNas } from "@/lib/api";
@@ -16,6 +17,8 @@ import { cn } from "@/lib/utils";
  *  come over a relayed tailnet hop, so it is the one worth being able to fail on
  *  its own. */
 export function NasPage() {
+  const compact = useCompact();
+  const short = useShortViewport();
   const load = useCallback((signal: AbortSignal) => fetchNas(signal), []);
   const { data, error } = usePoll<NasDetail>(load, 5000);
 
@@ -35,8 +38,13 @@ export function NasPage() {
   return (
     <div className="space-y-5">
       <section className="hero-glow grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <MachineHero machine="nas" hotspots={host.hotspots} className="mx-auto" />
+        {/* Side by side from the first pixel rather than stacked below `sm`. The
+            hero and the dial stacked are ~520px of picture, which on a phone is
+            the entire first screen and pushes every number below the fold --
+            and the numbers are why the page was opened. Shoulder to shoulder
+            they are ~190px and the four headline metrics land above it. */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:gap-5">
+          <MachineHero machine="nas" hotspots={host.hotspots} className="mx-auto max-w-[150px] sm:max-w-[420px] [@media(max-height:560px)]:max-w-[200px]" />
 
           <ArcGauge
             value={pool?.percent ?? null}
@@ -45,10 +53,10 @@ export function NasPage() {
             caption={pool ? `${pool.availDisplay} free of ${pool.sizeDisplay}` : "pool not reporting"}
             tone={(pool?.percent ?? 0) >= 90 ? "bad" : (pool?.percent ?? 0) >= 80 ? "warn" : "accent"}
             sweep={270}
-            size={196}
+            size={compact ? 156 : short ? 150 : 196}
             className="mx-auto"
           >
-            <span className="tnum text-[34px] leading-none font-semibold">
+            <span className="tnum text-[28px] leading-none font-semibold sm:text-[34px]">
               {pool?.percent === null || pool?.percent === undefined ? "—" : pool.percent.toFixed(0)}
             </span>
             <span className="text-muted-foreground text-xs">percent</span>

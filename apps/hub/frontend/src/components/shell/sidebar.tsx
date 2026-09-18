@@ -13,6 +13,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -66,12 +67,29 @@ export function activeRoute(pathname: string): (typeof ROUTES)[number] | undefin
 export function Sidebar({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
   const { pathname } = useLocation();
   const current = activeRoute(pathname);
+  const rail = useRef<HTMLElement>(null);
+
+  // Below `sm` the rail is a scroller wider than the screen, so the entry you
+  // are on can start off-screen -- you land on /actions from a link and the rail
+  // shows Topology through Network with no highlight anywhere in it. Pulling the
+  // active entry into view is what makes the highlight worth drawing at all.
+  useEffect(() => {
+    const active = rail.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    // `nearest` so the desktop column, where nothing is ever out of view, is not
+    // yanked around by a no-op scroll.
+    active?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [pathname]);
 
   return (
     <nav
+      ref={rail}
       aria-label="Sections"
       className={cn(
-        "bg-rail text-rail-foreground flex shrink-0 flex-row items-center gap-1 overflow-x-auto px-2 py-2",
+        // `edge-fade-x` is what tells a phone there is more rail past the right
+        // edge; the mask is undone from `sm` up, where the rail is a column.
+        "bg-rail text-rail-foreground edge-fade-x flex shrink-0 flex-row items-center gap-1 overflow-x-auto px-2 py-1.5",
+        "pt-[calc(0.375rem+env(safe-area-inset-top))]",
+        "sm:[mask-image:none] sm:[-webkit-mask-image:none]",
         "sm:h-full sm:flex-col sm:items-stretch sm:gap-1 sm:overflow-x-visible sm:overflow-y-auto sm:px-2 sm:py-3",
         "sm:transition-[width] sm:duration-200 sm:ease-out",
         expanded ? "sm:w-[216px]" : "sm:w-[60px]",
@@ -103,7 +121,9 @@ export function Sidebar({ expanded, onToggle }: { expanded: boolean; onToggle: (
             aria-label={label}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "relative flex h-9 shrink-0 items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5",
+              // 44px is the floor for a touch target and the rail is the most
+              // tapped thing in the app; the desktop column keeps its 36.
+              "relative flex h-11 shrink-0 items-center gap-2.5 overflow-hidden rounded-[10px] px-3 sm:h-9 sm:px-2.5",
               "transition-[background-color,color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100",
               "hover:bg-white/10 focus-visible:ring-primary/60 focus-visible:ring-2 focus-visible:outline-none",
               !expanded && "sm:mx-auto sm:w-9 sm:justify-center sm:gap-0 sm:px-0",

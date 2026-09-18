@@ -208,6 +208,33 @@ difference, so a metric page is two aligned columns rather than a toggle between
 them. Clicking a column header drops the other, gives this one the full width and
 stops querying Prometheus about the machine you are not looking at.
 
+**A phone is a first-class reader, not a narrow desktop.** The palette note in
+`index.css` says the box gets looked at from a phone in a dark room as often as
+from a desk, and the layout now means it. Four things follow from that and none
+of them should be undone by a "just make it fit" edit later:
+
+- **The numbers come before the picture.** On `/overview` and `/nas` the machine
+  and its dial sit shoulder to shoulder below `sm` rather than stacked. Stacked
+  they are ~520px of hero, which is a whole phone screen, and every figure on
+  the page starts below the fold — on a page whose entire job is the figures.
+- **Two lists stop being tables.** A containers row and a log line are both
+  three columns whose right-hand column is a fixed ~270px and ~200px; at 390px
+  that left the container's *name* about two characters wide and the log message
+  a ten-character ribbon. Both stack below `sm` and return to the grid above it.
+  Anything added to either list has to answer the same question.
+- **Touch targets are 44px below `sm` and mouse-sized above it.** That lives in
+  `toggle.tsx` for every segmented control at once — the range picker, the log
+  levels, the container scope — rather than per caller.
+- **`dvh`, never `vh`, and `env(safe-area-inset-*)` on the shell.** `vh` is the
+  *large* viewport on mobile Safari, so a `62vh` pane is taller than the space it
+  was given; and without `viewport-fit=cover` in `index.html` the insets are all
+  zero and the rail runs under the notch.
+
+The one interaction that changes shape rather than size: the log filter strip is
+six fields, which is a strip on a desktop and most of a phone screen before a
+single line of log. Host, level and window stay; the three text fields fold
+behind **more filters** below `sm` and are always present above it.
+
 **Refresh is one thing the app does, not one thing per page.** The button used
 to re-poll `/api/summary` and nothing else, so on a metric page it spun and
 changed nothing you were looking at. Pages register what refreshing means for

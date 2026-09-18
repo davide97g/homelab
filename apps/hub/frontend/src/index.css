@@ -209,6 +209,19 @@
     height: 100%;
   }
 
+  /* `100%` resolves against the *small* viewport on mobile Safari, so the shell
+     loses a strip of height the moment the URL bar retracts and never takes it
+     back. `dvh` tracks the bar; the `%` above stays as the fallback. */
+  #root {
+    height: 100dvh;
+  }
+
+  /* The rail is a horizontal scroller on a phone and it is the one place a
+     stray sideways drag must not bounce the page. */
+  body {
+    overscroll-behavior-x: none;
+  }
+
   body {
     background: var(--background);
     color: var(--foreground);
@@ -385,6 +398,27 @@
     stroke-width: 3;
     stroke-dasharray: 0 96 4 100;
     filter: drop-shadow(0 0 7px color-mix(in oklch, var(--primary) 85%, transparent));
+  }
+
+  /* A horizontal scroller that says so. Both ends fade out, so a rail with more
+     entries than fit reads as continuing rather than as ending on a clipped
+     icon. The mask is only ever applied below `sm`, where the rail scrolls. */
+  .edge-fade-x {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 20px), transparent 100%);
+  }
+
+  /* Touch has no hover to reveal a scrollbar and no pointer precision to spare,
+     so the panes that scroll inside the page hide theirs rather than spending
+     8px of a 390px screen on one. */
+  @media (hover: none) {
+    .edge-fade-x {
+      scrollbar-width: none;
+    }
+
+    .edge-fade-x::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   .hero-glow {

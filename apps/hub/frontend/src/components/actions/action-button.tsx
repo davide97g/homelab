@@ -29,6 +29,7 @@ export function ActionButton({
   size = "sm",
   onDone,
   className,
+  buttonClassName,
 }: {
   action: string;
   target?: string;
@@ -38,6 +39,9 @@ export function ActionButton({
   title?: string;
   variant?: "outline" | "ghost" | "secondary" | "destructive";
   size?: "sm" | "default";
+  /** Extra classes for the button itself rather than the wrapper, which is what
+   *  the containers list needs to grow a 32px row control to a 44px thumb one. */
+  buttonClassName?: string;
   onDone?: (result: ActionResult) => void;
   className?: string;
 }) {
@@ -89,6 +93,7 @@ export function ActionButton({
       <Button
         type="button"
         size={size}
+        className={buttonClassName}
         variant={armed ? "destructive" : variant}
         disabled={disabled || pending}
         title={title}

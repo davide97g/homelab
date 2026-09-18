@@ -83,7 +83,7 @@ export function TopologyPage({ data }: { data: Summary }) {
         {/* Below lg the drawing sets its own height by aspect — the estate is
             wide and shallow, and a tall box on a phone just letterboxes it.
             From lg up it fills the column instead. */}
-        <div className="relative order-1 aspect-[1.6] lg:order-2 lg:aspect-auto lg:h-full lg:min-h-[420px]">
+        <div className="relative order-1 aspect-[1.25] sm:aspect-[1.6] lg:order-2 lg:aspect-auto lg:h-full lg:min-h-[420px]">
           <TopologyMap
             topology={topology}
             focus={focus}
@@ -99,7 +99,11 @@ export function TopologyPage({ data }: { data: Summary }) {
             topology={topology}
             focus={focus}
             selected={selected !== null}
-            className="animate-in fade-in-0 pointer-events-auto absolute right-0 bottom-0 duration-150"
+            // A 264px card in the corner of a 358px drawing covers the thing
+            // you just tapped. On a phone it reads as a sheet across the foot of
+            // the picture instead, which is where a tap-to-inspect result is
+            // expected to appear.
+            className="animate-in fade-in-0 pointer-events-auto absolute inset-x-0 bottom-0 duration-150 sm:inset-x-auto sm:right-0"
           />
         </div>
       </div>

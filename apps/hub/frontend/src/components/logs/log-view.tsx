@@ -58,7 +58,10 @@ export function LogView({
   return (
     <div
       ref={pane}
-      className="neu-inset h-[min(62vh,640px)] overflow-y-auto p-1 font-mono text-[11.5px] leading-[1.55]"
+      // `dvh` rather than `vh`: on mobile Safari `vh` is the *large* viewport, so
+      // a 62vh pane is taller than the space it is given and pushes the line
+      // count and the query underneath it off the screen.
+      className="neu-inset h-[min(68dvh,640px)] overflow-y-auto p-1 font-mono text-[11.5px] leading-[1.55] sm:h-[min(62dvh,640px)]"
     >
       {lines.length === 0 ? (
         <div className="text-muted-foreground flex h-full items-center justify-center font-sans text-sm">
@@ -69,18 +72,26 @@ export function LogView({
           {lines.map((l) => (
             <div
               key={l.id}
-              className="hover:bg-chip/60 animate-in fade-in-0 grid grid-cols-[auto_auto_1fr] gap-x-3 rounded-[6px] px-2 py-[1px] transition-colors duration-150"
+              // Three columns on a desktop, two rows on a phone. Time and source
+              // together are a fixed ~200px, which on a 390px screen left the
+              // message -- the only part anyone reads -- a ten-character ribbon
+              // wrapping every other word. Below `sm` the meta line sits above
+              // the message and the message gets the whole width.
+              className={cn(
+                "hover:bg-chip/60 animate-in fade-in-0 grid gap-x-3 rounded-[6px] px-2 py-1 transition-colors duration-150",
+                "grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_auto_1fr] sm:py-[1px]",
+              )}
             >
               <span className="text-muted-foreground tnum shrink-0">{clock(l.atMs)}</span>
               <span
-                className={cn("shrink-0 truncate", LEVEL_CLASS[l.level])}
+                className={cn("min-w-0 truncate sm:shrink-0", LEVEL_CLASS[l.level])}
                 title={`${l.host} · ${l.job} · ${l.source}${l.level === "unknown" ? "" : ` · ${l.level}`}`}
               >
                 {l.source}
               </span>
               {/* break-all rather than truncate: a stack trace or a long URL is
                   usually the whole reason you opened this page. */}
-              <span className="break-all whitespace-pre-wrap">{l.line}</span>
+              <span className="col-span-2 break-all whitespace-pre-wrap sm:col-span-1">{l.line}</span>
             </div>
           ))}
           {live && <div className="text-muted-foreground px-2 py-1 font-sans text-[10px]">tailing…</div>}

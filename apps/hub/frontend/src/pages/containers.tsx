@@ -70,7 +70,7 @@ export function ContainersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Segmented
           options={[
             { value: "all" as Scope, label: "all" },
@@ -83,13 +83,16 @@ export function ContainersPage() {
           label="Scope"
         />
 
-        <div className="relative">
+        {/* Full width on a phone, where a 16rem box would wrap to its own line
+            anyway and leave two thirds of it empty. 16px of text on purpose:
+            anything smaller and iOS zooms the whole page on focus. */}
+        <div className="relative w-full sm:w-auto">
           <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="name, image or compose project"
-            className="h-8 w-64 pl-8 text-[12px]"
+            className="h-11 w-full pl-8 text-[16px] sm:h-8 sm:w-64 sm:text-[12px]"
           />
         </div>
 
@@ -147,7 +150,12 @@ function Row({
     .filter((a): a is ActionDef => Boolean(a) && a!.available);
 
   return (
-    <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)_auto] items-center gap-3 px-3 py-2.5">
+    // Three columns is the right shape for this row and the wrong shape for a
+    // phone: the third one is a fixed ~270px of gauge and buttons, which on a
+    // 390px screen left the name column about two characters wide. Below `sm`
+    // the same four facts stack instead -- what it is, how it is, what it costs,
+    // what you can do about it -- and the grid comes back from `sm` up.
+    <div className="flex flex-col gap-2 px-3 py-3 sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)_auto] sm:items-center sm:gap-3 sm:py-2.5">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className={cn("size-2 shrink-0 rounded-full", TONE_BG[tone])} aria-hidden />
@@ -176,15 +184,15 @@ function Row({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
-        <div className="flex w-32 flex-col items-end gap-1">
+      <div className="flex items-center gap-3 sm:shrink-0">
+        <div className="flex min-w-0 flex-1 flex-col gap-1 sm:w-32 sm:flex-none sm:items-end">
           <span className="text-muted-foreground tnum text-[11px]">
             {c.cpuPercent === null ? "—" : `${c.cpuPercent.toFixed(1)}%`} · {c.rssDisplay}
           </span>
-          <MiniBar value={(c.cpuPercent ?? 0) / peak} tone="accent" className="w-24" />
+          <MiniBar value={(c.cpuPercent ?? 0) / peak} tone="accent" className="w-full sm:w-24" />
         </div>
 
-        <div className="flex min-w-[9rem] items-center justify-end gap-1.5">
+        <div className="flex shrink-0 items-center justify-end gap-1.5 sm:min-w-[9rem]">
           {c.managed ? (
             offered.map((a) => (
               <ActionButton
@@ -195,6 +203,9 @@ function Row({
                 confirm={a.confirm}
                 title={a.description}
                 variant="ghost"
+                // A restart button you have to aim at is how the wrong container
+                // gets restarted.
+                buttonClassName="h-11 px-3.5 sm:h-8 sm:px-3"
                 onDone={onDone}
               />
             ))

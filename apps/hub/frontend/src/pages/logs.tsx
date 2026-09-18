@@ -1,5 +1,5 @@
 import type { LogLevel, LogOptions, LogRange } from "@wire";
-import { ArrowUpRight, Pause, Play, X } from "lucide-react";
+import { ArrowUpRight, Pause, Play, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LogView } from "@/components/logs/log-view";
 import { FieldLabel, Segmented, Toggles } from "@/components/primitives";
@@ -31,6 +31,11 @@ const BOTH_HOSTS = "__any";
 export function LogsPage() {
   const [options, setOptions] = useState<LogOptions | null>(null);
   const [live, setLive] = useState(true);
+  // Six filters is a reasonable strip on a desktop and most of a phone screen
+  // before a single line of log. Host, level and window are the three anyone
+  // reaches for; the three text fields fold behind a disclosure below `sm` and
+  // are always present from `sm` up.
+  const [moreFilters, setMoreFilters] = useState(false);
   const [contains, setContains] = useState("");
   const [filters, setFilters] = useState<LogFilters>({
     range: "1h",
@@ -64,15 +69,15 @@ export function LogsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="neu flex flex-wrap items-end gap-3 p-3">
-        <Field label="host">
+      <div className="neu flex flex-wrap items-end gap-x-3 gap-y-3 p-3">
+        <Field label="host" className="min-w-0 flex-1 sm:flex-none">
           {/* Radix reserves "" for clearing a Select, so "both" needs a value of
               its own rather than the empty string the filter uses. */}
           <Select
             value={filters.host ?? BOTH_HOSTS}
             onValueChange={(next) => set("host", next === BOTH_HOSTS ? null : next)}
           >
-            <SelectTrigger className="w-28" aria-label="Host">
+            <SelectTrigger className="h-11 w-full text-[14px] sm:h-9 sm:w-28 sm:text-sm" aria-label="Host">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -88,14 +93,19 @@ export function LogsPage() {
 
         {/* A datalist rather than a combobox component: there are forty-odd
             containers and a hundred journal units, and the browser's own
-            type-to-filter handles that list better than anything worth writing. */}
-        <Field label="container">
+            type-to-filter handles that list better than anything worth writing.
+
+            `sm:contents` dissolves this wrapper from `sm` up, so the fields land
+            in the filter strip's own flex row exactly as they did before; below
+            `sm` it is a column that the disclosure shows and hides. */}
+        <div className={cn("w-full flex-col gap-3 sm:contents", moreFilters ? "flex" : "hidden")}>
+        <Field label="container" className="w-full sm:w-auto">
           <Input
             list="hub-containers"
             value={filters.container ?? ""}
             placeholder="any"
             onChange={(e) => set("container", e.target.value || null)}
-            className="h-8 w-44 text-[12px]"
+            className="h-11 w-full text-[16px] sm:h-8 sm:w-44 sm:text-[12px]"
           />
           <datalist id="hub-containers">
             {(options?.containers ?? []).map((c) => (
@@ -104,13 +114,13 @@ export function LogsPage() {
           </datalist>
         </Field>
 
-        <Field label="journal unit">
+        <Field label="journal unit" className="w-full sm:w-auto">
           <Input
             list="hub-units"
             value={filters.unit ?? ""}
             placeholder="any"
             onChange={(e) => set("unit", e.target.value || null)}
-            className="h-8 w-44 text-[12px]"
+            className="h-11 w-full text-[16px] sm:h-8 sm:w-44 sm:text-[12px]"
           />
           <datalist id="hub-units">
             {(options?.units ?? []).map((u) => (
@@ -118,9 +128,11 @@ export function LogsPage() {
             ))}
           </datalist>
         </Field>
+        </div>
 
-        <Field label="level">
+        <Field label="level" className="w-full sm:w-auto">
           <Toggles
+            className="w-full sm:w-fit [&>button]:flex-1 sm:[&>button]:flex-none"
             options={LEVELS}
             value={filters.levels}
             onChange={(next) => set("levels", next)}
@@ -129,24 +141,44 @@ export function LogsPage() {
           />
         </Field>
 
-        <Field label="contains">
-          <Input
-            value={contains}
-            placeholder="literal text"
-            onChange={(e) => setContains(e.target.value)}
-            className="h-8 w-52 text-[12px]"
+        <div className={cn("w-full sm:contents", moreFilters ? "block" : "hidden")}>
+          <Field label="contains" className="w-full sm:w-auto">
+            <Input
+              value={contains}
+              placeholder="literal text"
+              onChange={(e) => setContains(e.target.value)}
+              className="h-11 w-full text-[16px] sm:h-8 sm:w-52 sm:text-[12px]"
+            />
+          </Field>
+        </div>
+
+        <Field label="window" className="w-full sm:w-auto">
+          <Segmented
+            className="w-full sm:w-fit [&>button]:flex-1 sm:[&>button]:flex-none"
+            options={RANGES}
+            value={filters.range}
+            onChange={(r) => set("range", r)}
+            label="Time window"
           />
         </Field>
 
-        <Field label="window">
-          <Segmented options={RANGES} value={filters.range} onChange={(r) => set("range", r)} label="Time window" />
-        </Field>
+        <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+          <Button
+            variant={moreFilters ? "secondary" : "ghost"}
+            size="sm"
+            className="h-11 sm:hidden"
+            aria-expanded={moreFilters}
+            onClick={() => setMoreFilters((v) => !v)}
+          >
+            <SlidersHorizontal className="size-3.5" />
+            {moreFilters ? "fewer filters" : "more filters"}
+          </Button>
 
-        <div className="ml-auto flex items-center gap-2">
           {filtered && (
             <Button
               variant="ghost"
               size="sm"
+              className="h-11 sm:h-8"
               onClick={() => {
                 setContains("");
                 setFilters({ range: filters.range, host: null, container: null, unit: null, levels: [], contains: "" });
@@ -155,7 +187,12 @@ export function LogsPage() {
               <X className="size-3.5" /> clear
             </Button>
           )}
-          <Button variant={live ? "secondary" : "ghost"} size="sm" onClick={() => setLive((v) => !v)}>
+          <Button
+            variant={live ? "secondary" : "ghost"}
+            size="sm"
+            className="ml-auto h-11 sm:ml-0 sm:h-8"
+            onClick={() => setLive((v) => !v)}
+          >
             {live ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
             {live ? "tailing" : "paused"}
           </Button>
@@ -195,11 +232,11 @@ export function LogsPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn("flex flex-col gap-1", className)}>
       <FieldLabel>{label}</FieldLabel>
-      <div className="flex items-center gap-1">{children}</div>
+      <div className="flex w-full items-center gap-1">{children}</div>
     </div>
   );
 }
