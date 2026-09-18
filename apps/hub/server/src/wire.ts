@@ -126,3 +126,64 @@ export type Summary = {
 
 export type SessionResponse = { authenticated: boolean };
 export type ErrorResponse = { error: string };
+
+// ——— Time series ———————————————————————————————————————————————————————————
+
+export type SeriesKind = "line" | "area" | "stack" | "bar";
+
+export type SeriesLine = {
+  key: string;
+  label: string;
+  /** Aligned to the frame's `t`. null is a genuine gap, not a zero. */
+  values: (number | null)[];
+  /** A chart token name (`chart-1`..`chart-8`) or a tone name. Never a literal
+   *  colour: the canvas resolves it against the CSS variables so it follows the
+   *  theme. */
+  color?: string;
+  area?: boolean;
+  dashed?: boolean;
+  /** Drawn below the axis. Used for transmit against receive. */
+  mirror?: boolean;
+};
+
+export type SeriesFrame = {
+  id: string;
+  title: string;
+  description?: string;
+  unit: Unit;
+  kind: SeriesKind;
+  /** Shared x axis, unix seconds, ascending and evenly spaced by stepS. */
+  t: number[];
+  lines: SeriesLine[];
+  stepS: number;
+  domain?: [number | null, number | null];
+  /** Set when this frame alone failed; the rest of the response still stands. */
+  error?: string;
+  /** Deep link into Grafana Explore for the same expressions and range, built
+   *  server-side. The escape hatch for anything the registry does not cover. */
+  grafana?: string;
+};
+
+export type SeriesResponse = {
+  at: string;
+  rangeS: number;
+  stepS: number;
+  frames: SeriesFrame[];
+};
+
+/** What /api/catalog returns: enough for a page to lay itself out without
+ *  hard-coding a single expression. */
+export type CatalogEntry = {
+  id: string;
+  title: string;
+  description?: string;
+  unit: Unit;
+  kind: SeriesKind;
+  instances: ("homelab" | "nas")[];
+};
+
+/** The ranges the series endpoint accepts. A union rather than a const array
+ *  because this file must stay types-only — a value here would become a real
+ *  runtime import in the browser bundle. Both sides declare their own
+ *  `Range[]` list, typed against this, so a mismatch fails to compile. */
+export type Range = "15m" | "1h" | "6h" | "24h" | "7d" | "30d";

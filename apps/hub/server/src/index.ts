@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
 import { summary } from "./collect/summary.js";
 import { config } from "./config.js";
+import { catalog, parseRequest, series } from "./prom/series.js";
 import { clientIp, forgive, limited } from "./limiter.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -62,6 +63,24 @@ app.get("/api/summary", async (c) => {
   const data = await summary();
   // Every number here is seconds old by design; never let a proxy or the browser
   // serve an older one on top of that.
+  c.header("Cache-Control", "no-store");
+  return c.json(data);
+});
+
+/** Everything a page needs to lay itself out: ids, titles, units and which
+ *  machine each applies to. Static, so it is cached hard. */
+app.get("/api/catalog", (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(catalog());
+});
+
+/** Time series by id. Never by PromQL — see server/src/prom/registry.ts for why,
+ *  and note that everything the browser sends is parsed and clamped before any
+ *  expression is rendered. */
+app.get("/api/series", async (c) => {
+  const parsed = parseRequest(new URL(c.req.url).searchParams);
+  if ("error" in parsed) return c.json({ error: parsed.error }, 400);
+  const data = await series(parsed);
   c.header("Cache-Control", "no-store");
   return c.json(data);
 });

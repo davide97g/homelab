@@ -1,4 +1,4 @@
-import type { Summary } from "@wire";
+import type { Range, SeriesResponse, Summary } from "@wire";
 
 // Types come from the server's wire.ts through the @wire alias, so there is no
 // second copy to keep in step. Only the calls live here.
@@ -40,4 +40,14 @@ export function login(password: string): Promise<{ ok: true }> {
 
 export function logout(): Promise<{ ok: true }> {
   return fetch("/api/logout", { ...same, method: "POST" }).then((r) => json<{ ok: true }>(r));
+}
+
+export function fetchSeries(
+  ids: string[],
+  range: Range,
+  instance: "homelab" | "nas",
+  signal?: AbortSignal,
+): Promise<SeriesResponse> {
+  const q = new URLSearchParams({ ids: ids.join(","), range, instance });
+  return fetch(`/api/series?${q}`, { ...same, signal }).then((r) => json<SeriesResponse>(r));
 }

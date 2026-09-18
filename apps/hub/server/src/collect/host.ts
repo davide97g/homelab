@@ -52,7 +52,7 @@ const deviceCache = new Cache(600_000);
 
 const EXCLUDE = "lo|veth.*|docker.*|br-.*|tailscale.*|wl.*|ieee80211.*|zt.*";
 
-async function netDevice(instance: string): Promise<string | null> {
+export async function netDevice(instance: string): Promise<string | null> {
   return deviceCache.get(`net:${instance}`, async () => {
     const busiest = await instant(
       `topk(1, rate(node_network_receive_bytes_total{instance="${instance}",device!~"${EXCLUDE}"}[1h]))`,

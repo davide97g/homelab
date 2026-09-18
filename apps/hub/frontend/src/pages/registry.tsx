@@ -1,5 +1,6 @@
 import type { Summary } from "@wire";
 import { HomePage } from "@/pages/home";
+import { MetricsPage } from "@/pages/metrics-page";
 import { Placeholder } from "@/pages/placeholder";
 
 /** Route content in one place, so adding a page is one entry here and one in the
@@ -9,40 +10,57 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
   {
     path: "/compute",
     element: () => (
-      <Placeholder
-        title="Compute & thermals"
-        blurb="CPU total and per-thread, load, memory and swap, and every hwmon sensor by its kernel label rather than temp1."
-        phase="Waiting on the series registry and the chart layer."
+      <MetricsPage
+        panels={[
+          { id: "cpu.total" },
+          { id: "load" },
+          { id: "cpu.percore", wide: true, height: 240 },
+          { id: "cpu.modes" },
+          { id: "mem.breakdown" },
+          { id: "temp.sensors", wide: true, height: 240 },
+          { id: "temp.band", wide: true },
+        ]}
       />
     ),
   },
   {
     path: "/power",
     element: () => (
-      <Placeholder
-        title="Power & energy"
-        blurb="Wall watts against the APU package rail, kWh per day, the monthly cost, and the plug's volts and power factor."
-        phase="Waiting on the series registry and the chart layer."
+      <MetricsPage
+        panels={[
+          { id: "power.wall", wide: true, height: 240 },
+          { id: "energy.daily" },
+          { id: "power.plug" },
+          { id: "power.nas", wide: true },
+        ]}
+        note="Wall power exists only for the mini PC — it is the machine on the metering plug."
       />
     ),
   },
   {
     path: "/network",
     element: () => (
-      <Placeholder
-        title="Network"
-        blurb="Throughput with transmit mirrored below the axis, errors, drops and link flaps, and which container is moving the bytes."
-        phase="Waiting on the series registry and the chart layer."
+      <MetricsPage
+        panels={[
+          { id: "net.throughput", wide: true, height: 240 },
+          { id: "net.errors" },
+          { id: "net.containers" },
+        ]}
       />
     ),
   },
   {
     path: "/storage",
     element: () => (
-      <Placeholder
-        title="Storage"
-        blurb="Filesystem fill, NVMe read and write, device utilisation, and how many days until something is full."
-        phase="Waiting on the series registry and the chart layer."
+      <MetricsPage
+        panels={[
+          { id: "fs.used", wide: true },
+          { id: "disk.io" },
+          { id: "disk.util" },
+          { id: "container.cpu" },
+          { id: "container.mem" },
+          { id: "qbit.rates", wide: true },
+        ]}
       />
     ),
   },
