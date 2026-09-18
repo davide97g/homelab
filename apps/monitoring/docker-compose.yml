@@ -57,8 +57,26 @@ services:
       - --path.rootfs=/host
       - --collector.hwmon
       - --collector.rapl
-      - --collector.systemd
-      # No --collector.processes. It walks every host PID, the docker-default
+      # No --collector.systemd. It talks to systemd over the private dbus socket
+      # at /run/systemd/private, and --path.rootfs does not redirect that any
+      # more than it redirects procfs -- so from inside a container the
+      # collector fails on every single scrape and emits nothing:
+      # `count({__name__=~"node_systemd.*"})` is empty while
+      # node_scrape_collector_success{collector="systemd"} is 0.
+      #
+      # Failing would be free if it were quiet. It is not: an explicitly enabled
+      # collector logs its failure at ERROR, so this wrote 240 lines an hour --
+      # every one of node-exporter's own error lines -- saying `couldn't get
+      # dbus connection`. That is 3% of the mini PC's log volume, which is
+      # survivable, and 100% of what a "show me errors" filter returns for this
+      # container, which is not: it buries the errors worth reading.
+      #
+      # Fixing it properly means mounting /run/systemd/private, which hands the
+      # container a control channel to systemd -- it could start and stop units.
+      # That is a real privilege increase for metrics no panel plots. The NAS's
+      # node_exporter already leaves this off for the same reason.
+      #
+      # No --collector.processes either. It walks every host PID, the docker-default
       # AppArmor profile denies it ptrace read, and the kernel logged the denial
       # ~2370 times an hour -- 23% of the whole journal, and now 23% of what
       # ships to Loki. Nothing plots node_processes_*, and the process counts

@@ -183,7 +183,7 @@ a default ACL on `/home/davide` which makes new files world-readable regardless 
 
 | Source | Covers |
 |---|---|
-| node_exporter (host network, host PID, root) | CPU per core, memory, load, `enp3s0` throughput/errors/drops/link state, NVMe I/O and temperature, hwmon sensors, systemd units |
+| node_exporter (host network, host PID, root) | CPU per core, memory, load, `enp3s0` throughput/errors/drops/link state, NVMe I/O and temperature, hwmon sensors |
 | cAdvisor | per-container CPU, memory, network, filesystem |
 | json-exporter + NOUS A1T plug | real wall watts, volts, amps, power factor, cumulative kWh |
 | qBittorrent exporter | client-wide up/down rates, all-time totals, peer and DHT counts, and torrent counts by category × status |
@@ -245,6 +245,38 @@ stopped dead.
 
 Re-enabling it means adding `security_opt: [apparmor=unconfined]` to node-exporter. That is a
 real privilege increase for a metric no panel reads; do it only if something starts needing it.
+
+### Neither node_exporter runs --collector.systemd either
+
+Same shape, smaller number, and it survived the first sweep because it was not loud enough to
+notice.
+
+The systemd collector talks to systemd over the private dbus socket at `/run/systemd/private`, and
+`--path.rootfs` does not redirect that any more than it redirects procfs — the same trap the RAPL
+collector fell into. So from inside a container it fails on **every scrape** and emits nothing:
+
+```
+$ count({__name__=~"node_systemd.*"})                            # empty
+$ node_scrape_collector_success{collector="systemd"}             # 0
+```
+
+Failing would be free if it were quiet, and a collector that is merely *default-enabled* is:
+bcachefs, zfs, nfs and half a dozen others also report success 0 on this box and say nothing about
+it. An **explicitly enabled** one logs its failure at ERROR, once per scrape:
+
+```
+level=ERROR source=collector.go:168 msg="collector failed" name=systemd
+  err="couldn't get dbus connection: dial unix /run/systemd/private: ... no such file or directory"
+```
+
+That was 240 lines an hour — 3% of the mini PC's log volume, which is survivable, and **100% of
+node-exporter's error lines**, which is not. It buried the container's real errors under a failure
+that was never going to stop.
+
+Fixing it properly means mounting `/run/systemd/private`, which hands the container a control
+channel to systemd: it could start and stop units. That is a real privilege increase for metrics
+no panel plots. The NAS's node_exporter had already left this off for the same reason; the mini
+PC's now matches.
 
 ### Why the qBittorrent metrics are not per-torrent
 
