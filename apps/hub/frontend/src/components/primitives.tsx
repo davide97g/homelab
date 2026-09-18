@@ -1,4 +1,6 @@
 import type { Health, Status, Tone } from "@wire";
+import { useLayoutEffect, useRef, useState } from "react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
 // Ported from mediarr-dash, with one structural change: every tone is a CSS
@@ -242,7 +244,15 @@ export function Ring({
 
 /** The pill group used for ranges, machines and anything else with a handful of
  *  mutually exclusive options. Three copies of this had appeared by the third
- *  page, which is where it stopped being a coincidence. */
+ *  page, which is where it stopped being a coincidence.
+ *
+ *  Radix's ToggleGroup underneath, which buys the things a row of buttons never
+ *  had: arrow keys move between options, only the selected one is a tab stop,
+ *  and the pressed state is announced rather than inferred from a colour.
+ *
+ *  The pill is one element that slides between options instead of one per option
+ *  switching on and off. It is the same information either way; the difference
+ *  is that a move says which of them you left. */
 export function Segmented<T extends string>({
   options,
   value,
@@ -257,29 +267,59 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+  const group = useRef<HTMLDivElement>(null);
+
+  // Measured rather than computed: the options are words of different lengths,
+  // so the pill's geometry is whatever the browser laid out.
+  useLayoutEffect(() => {
+    const root = group.current;
+    if (!root) return;
+
+    const measure = () => {
+      const active = root.querySelector<HTMLElement>('[data-state="on"]');
+      setIndicator(active ? { left: active.offsetLeft, width: active.offsetWidth } : null);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [value, items.length]);
 
   return (
-    <div className={cn("neu-inset flex gap-0.5 p-0.5", className)} role="group" aria-label={label}>
+    <ToggleGroup
+      ref={group}
+      type="single"
+      value={value}
+      // Radix hands back "" when the pressed item is pressed again. These are
+      // mutually exclusive choices, so that is a no-op rather than "none".
+      onValueChange={(next) => next && onChange(next as T)}
+      aria-label={label}
+      variant="segment"
+      className={className}
+    >
+      {indicator && (
+        <span
+          aria-hidden
+          className="bg-chip absolute top-0.5 bottom-0.5 rounded-[calc(var(--radius)-0.75rem)] shadow-sm transition-[left,width] duration-200 ease-out motion-reduce:transition-none"
+          style={{ left: indicator.left, width: indicator.width }}
+        />
+      )}
       {items.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          aria-pressed={o.value === value}
-          className={cn(
-            "rounded-[calc(var(--radius)-0.75rem)] px-2.5 py-1 text-[11px] font-medium transition-colors",
-            o.value === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
+        <ToggleGroupItem key={o.value} value={o.value}>
           {o.label}
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   );
 }
 
 /** The same pills, but any number of them can be on at once. Used for log
- *  levels, where "errors and warnings" is the question you actually ask. */
+ *  levels, where "errors and warnings" is the question you actually ask.
+ *
+ *  No sliding indicator here, because there is nothing for one pill to slide
+ *  between: each option carries its own. */
 export function Toggles<T extends string>({
   options,
   value,
@@ -296,25 +336,25 @@ export function Toggles<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={cn("neu-inset flex gap-0.5 p-0.5", className)} role="group" aria-label={label}>
+    <ToggleGroup
+      type="multiple"
+      value={value}
+      onValueChange={(next) => onChange(next as T[])}
+      aria-label={label}
+      variant="mark"
+      className={className}
+    >
       {options.map((o) => {
         const on = value.includes(o);
+        // The tone class is picked in JS rather than interpolated into a
+        // `data-[state=on]:` variant, because Tailwind scans source text: a
+        // class assembled from a template literal is never generated.
         return (
-          <button
-            key={o}
-            type="button"
-            onClick={() => onChange(on ? value.filter((v) => v !== o) : [...value, o])}
-            aria-pressed={on}
-            className={cn(
-              "rounded-[calc(var(--radius)-0.75rem)] px-2.5 py-1 text-[11px] font-medium transition-colors",
-              on ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
-              on && toneOf ? TONE_TEXT[toneOf(o)] : on && "text-foreground",
-            )}
-          >
+          <ToggleGroupItem key={o} value={o} className={cn(on && (toneOf ? TONE_TEXT[toneOf(o)] : "text-foreground"))}>
             {o}
-          </button>
+          </ToggleGroupItem>
         );
       })}
-    </div>
+    </ToggleGroup>
   );
 }

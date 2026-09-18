@@ -75,9 +75,16 @@ export function Sidebar({ expanded, onToggle }: { expanded: boolean; onToggle: (
         expanded ? "sm:w-[216px]" : "sm:w-[60px]",
       )}
     >
-      <div className="mb-1 hidden shrink-0 items-center gap-2.5 px-2 py-1 sm:flex">
+      <div className="mb-1 hidden shrink-0 items-center gap-2.5 overflow-hidden px-2 py-1 sm:flex">
         <span className="bg-primary size-2.5 shrink-0 rounded-full" aria-hidden />
-        {expanded && <span className="truncate text-[13px] font-semibold tracking-tight">homelab hub</span>}
+        <span
+          className={cn(
+            "min-w-0 truncate text-[13px] font-semibold tracking-tight transition-opacity duration-200",
+            !expanded && "opacity-0",
+          )}
+        >
+          homelab hub
+        </span>
       </div>
 
       {ROUTES.map(({ to, icon: Icon, label }) => {
@@ -94,16 +101,24 @@ export function Sidebar({ expanded, onToggle }: { expanded: boolean; onToggle: (
             aria-label={label}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "relative flex h-9 shrink-0 items-center gap-2.5 rounded-[10px] px-2.5 transition-colors",
+              "relative flex h-9 shrink-0 items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5",
+              "transition-[background-color,color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100",
               "hover:bg-white/10 focus-visible:ring-primary/60 focus-visible:ring-2 focus-visible:outline-none",
-              !expanded && "sm:mx-auto sm:w-9 sm:justify-center sm:px-0",
+              !expanded && "sm:mx-auto sm:w-9 sm:justify-center sm:gap-0 sm:px-0",
               isActive && "bg-white/12 text-primary",
             )}
           >
             <Icon className="size-[18px] shrink-0" strokeWidth={isActive ? 2.2 : 1.7} />
-            <span className={cn("truncate text-[13px]", !expanded && "sm:hidden")}>{label}</span>
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate text-[13px] transition-opacity duration-200",
+                !expanded && "sm:w-0 sm:flex-none sm:opacity-0",
+              )}
+            >
+              {label}
+            </span>
             {isActive && (
-              <span className="bg-primary absolute top-1/2 -left-1 hidden h-5 w-[3px] -translate-y-1/2 rounded-r-full sm:block" />
+              <span className="bg-primary animate-in fade-in-0 slide-in-from-left-1 absolute top-1/2 left-0 hidden h-5 w-[3px] -translate-y-1/2 rounded-r-full duration-200 sm:block" />
             )}
           </Link>
         );
@@ -128,10 +143,11 @@ export function Sidebar({ expanded, onToggle }: { expanded: boolean; onToggle: (
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse the sidebar" : "Expand the sidebar"}
         className={cn(
-          "mt-auto hidden h-9 shrink-0 items-center gap-2.5 rounded-[10px] px-2.5 transition-colors sm:flex",
+          "mt-auto hidden h-9 shrink-0 items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 sm:flex",
+          "transition-[background-color,color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100",
           "text-rail-foreground/55 hover:text-rail-foreground hover:bg-white/10",
           "focus-visible:ring-primary/60 focus-visible:ring-2 focus-visible:outline-none",
-          !expanded && "sm:mx-auto sm:w-9 sm:justify-center sm:px-0",
+          !expanded && "sm:mx-auto sm:w-9 sm:justify-center sm:gap-0 sm:px-0",
         )}
       >
         {expanded ? (
@@ -139,7 +155,14 @@ export function Sidebar({ expanded, onToggle }: { expanded: boolean; onToggle: (
         ) : (
           <PanelLeftOpen className="size-[18px] shrink-0" strokeWidth={1.7} />
         )}
-        <span className={cn("truncate text-[13px]", !expanded && "sm:hidden")}>Collapse</span>
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-left text-[13px] transition-opacity duration-200",
+            !expanded && "sm:w-0 sm:flex-none sm:opacity-0",
+          )}
+        >
+          Collapse
+        </span>
       </button>
     </nav>
   );

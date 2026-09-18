@@ -189,16 +189,14 @@ function Column({
       title={hint}
       aria-pressed={active}
       className={cn(
-        "group focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-left transition-colors",
-        "hover:bg-foreground/[0.04] focus-visible:ring-2 focus-visible:outline-none",
+        "focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-left",
+        "transition-[background-color,transform] duration-150 active:scale-[0.99] motion-reduce:active:scale-100",
+        "hover:bg-foreground/[0.05] focus-visible:ring-2 focus-visible:outline-none",
       )}
     >
       <StatusDot status={host.status} />
       <span className="truncate text-[13px] font-semibold">{host.name}</span>
       <span className="text-muted-foreground hidden truncate text-[11px] sm:inline">{host.role}</span>
-      <span className="text-muted-foreground/0 group-hover:text-muted-foreground ml-auto hidden shrink-0 text-[10px] tracking-wide transition-colors sm:inline">
-        {hint.toLowerCase()}
-      </span>
     </button>
   );
 }

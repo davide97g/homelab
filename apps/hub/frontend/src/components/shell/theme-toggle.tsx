@@ -1,6 +1,7 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Theme = "light" | "dark";
 
@@ -34,7 +35,22 @@ export function ThemeToggle() {
       aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
     >
-      {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+      {/* Both are mounted and stacked, so the swap is a crossfade rather than
+          one icon disappearing and another arriving in its place. */}
+      <span className="relative grid size-4 place-items-center">
+        <Sun
+          className={cn(
+            "absolute size-4 transition-[opacity,transform] duration-200",
+            theme === "dark" ? "scale-100 rotate-0 opacity-100" : "scale-75 -rotate-90 opacity-0",
+          )}
+        />
+        <Moon
+          className={cn(
+            "absolute size-4 transition-[opacity,transform] duration-200",
+            theme === "dark" ? "scale-75 rotate-90 opacity-0" : "scale-100 rotate-0 opacity-100",
+          )}
+        />
+      </span>
     </Button>
   );
 }

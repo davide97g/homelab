@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* The enter/exit vocabulary shadcn's components are written against. tooltip.tsx
+   shipped with `animate-in fade-in-0 zoom-in-95` from the day it was added and
+   none of those classes existed, so the tooltip has never animated. */
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -75,6 +79,12 @@
   --glass-border: oklch(1 0 0 / 0.70);
   --glass-shadow: oklch(0.5500 0.0300 70 / 0.16);
 
+  /* The chip that sits *inside* a pressed track: a selected segment, a hovered
+     log row. Not --card, which is the surface for things that sit on the page.
+     In the dark theme card is darker than muted, so a chip drawn with it reads
+     as a hole punched in the track rather than a pill raised out of it. */
+  --chip: oklch(0.9980 0.0030 90);
+
   --rail: oklch(0.2450 0.0180 60);
   --rail-foreground: oklch(0.9200 0.0100 85);
 
@@ -133,6 +143,9 @@
   --glass-border: oklch(1 0 0 / 0.10);
   --glass-shadow: oklch(0 0 0 / 0.45);
 
+  /* Lighter than --muted rather than darker, which is the whole point of it. */
+  --chip: oklch(0.3200 0.0150 63);
+
   --rail: oklch(0.1500 0.0100 65);
   --rail-foreground: oklch(0.8600 0.0100 85);
 }
@@ -173,6 +186,7 @@
   --color-chart-7: var(--chart-7);
   --color-chart-8: var(--chart-8);
 
+  --color-chip: var(--chip);
   --color-rail: var(--rail);
   --color-rail-foreground: var(--rail-foreground);
 

@@ -106,7 +106,7 @@ export function ActionButton({
           )}
           title={showing.message}
         >
-          {showing.ok ? <Check className="size-3.5" /> : <TriangleAlert className="size-3.5" />}
+          {showing.ok ? <Check className="animate-in zoom-in-50 duration-200 size-3.5" /> : <TriangleAlert className="animate-in zoom-in-50 duration-200 size-3.5" />}
           <span className="max-w-56 truncate">{showing.message}</span>
         </span>
       )}

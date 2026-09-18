@@ -69,7 +69,7 @@ export function LogView({
           {lines.map((l) => (
             <div
               key={l.id}
-              className="hover:bg-card/70 grid grid-cols-[auto_auto_1fr] gap-x-3 rounded-[6px] px-2 py-[1px]"
+              className="hover:bg-chip/60 animate-in fade-in-0 grid grid-cols-[auto_auto_1fr] gap-x-3 rounded-[6px] px-2 py-[1px] transition-colors duration-150"
             >
               <span className="text-muted-foreground tnum shrink-0">{clock(l.atMs)}</span>
               <span

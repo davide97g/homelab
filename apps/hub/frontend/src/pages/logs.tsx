@@ -5,6 +5,7 @@ import { LogView } from "@/components/logs/log-view";
 import { FieldLabel, Segmented, Toggles } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLogs, type LogFilters } from "@/hooks/use-logs";
 import { fetchLogOptions } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,10 @@ const RANGES: LogRange[] = ["5m", "15m", "1h", "6h", "24h", "7d"];
 const LEVELS: LogLevel[] = ["error", "warn", "info", "debug"];
 
 const LEVEL_TONE = { error: "bad", warn: "warn", info: "accent", debug: "default" } as const;
+
+/** The "no host filter" option. Not "", which Radix's Select treats as a
+ *  request to clear the value entirely. */
+const BOTH_HOSTS = "__any";
 
 /** The thing that was missing entirely until this week: the stack had metrics
  *  and no logs, so "why did the temperature spike at 03:12" could only ever be
@@ -61,18 +66,24 @@ export function LogsPage() {
     <div className="space-y-4">
       <div className="neu flex flex-wrap items-end gap-3 p-3">
         <Field label="host">
-          <select
-            value={filters.host ?? ""}
-            onChange={(e) => set("host", e.target.value || null)}
-            className="border-input bg-card h-8 rounded-[10px] border px-2 text-[12px]"
+          {/* Radix reserves "" for clearing a Select, so "both" needs a value of
+              its own rather than the empty string the filter uses. */}
+          <Select
+            value={filters.host ?? BOTH_HOSTS}
+            onValueChange={(next) => set("host", next === BOTH_HOSTS ? null : next)}
           >
-            <option value="">both</option>
-            {(options?.hosts ?? []).map((h) => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-28" aria-label="Host">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={BOTH_HOSTS}>both</SelectItem>
+              {(options?.hosts ?? []).map((h) => (
+                <SelectItem key={h} value={h}>
+                  {h}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
 
         {/* A datalist rather than a combobox component: there are forty-odd

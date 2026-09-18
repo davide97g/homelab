@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { LoginCard } from "@/components/shell/login-card";
 import { initialExpanded, rememberSidebar, Sidebar } from "@/components/shell/sidebar";
 import { Booting } from "@/components/shell/trace";
@@ -35,6 +35,7 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
   const load = useCallback((signal: AbortSignal) => fetchSummary(signal), []);
   const { data, error, loading, expired, refreshedAt } = usePoll(load, 5000);
   const [expanded, setExpanded] = useState(initialExpanded);
+  const location = useLocation();
 
   useEffect(() => {
     if (expired) onSignedOut();
@@ -64,7 +65,7 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
           onSignOut={() => void signOut()}
         />
 
-        <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 sm:px-6">
+        <main key={location.pathname} className="animate-in fade-in-0 min-h-0 flex-1 overflow-y-auto px-4 pb-8 duration-200 sm:px-6">
           {error && !data && (
             <div className="neu text-tone-bad mx-auto mt-6 max-w-lg p-5 text-sm">
               Could not reach the hub's API: {error}

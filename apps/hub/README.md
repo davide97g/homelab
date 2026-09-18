@@ -134,6 +134,13 @@ when to stop. The background poll deliberately does not raise it: a page that
 re-reads itself every five seconds would show a permanent indicator, which is
 the same as no indicator at all.
 
+**A chip inside a pressed track is `--chip`, never `--card`.** In the light
+theme card is lighter than muted and a selected segment reads as raised; in the
+dark theme card is *darker* than muted, so the same class turns the selection
+into a hole punched in its own track. `--chip` is defined per theme to be the
+lighter of the two, and every selected segment, toggle and hovered log row uses
+it. `--card` stays what it is: the surface for things that sit on the page.
+
 **No interface name is hard-coded.** The box is `enp3s0`, the NAS is `eth0`, and
 mediarr-dash still asks Prometheus about `eno1` — a NIC with no cable, so its
 host card's throughput has read zero since the day it was written. The hub

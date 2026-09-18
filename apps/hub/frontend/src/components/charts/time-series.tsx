@@ -173,7 +173,7 @@ export function TimeSeries({
     : [];
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("animate-in fade-in-0 relative duration-300", className)}>
       <div ref={host} />
 
       {cursor && hovered.length > 0 && theme && (
@@ -206,7 +206,7 @@ export function TimeSeries({
 function Blank({ height, children }: { height: number; children: React.ReactNode }) {
   return (
     <div
-      className="border-border/70 text-muted-foreground flex items-center justify-center rounded-[10px] border border-dashed px-4 text-center text-[11px]"
+      className="border-border/70 text-muted-foreground animate-in fade-in-0 flex items-center justify-center rounded-[10px] border border-dashed px-4 text-center text-[11px] duration-300"
       style={{ height }}
     >
       {children}
