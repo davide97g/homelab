@@ -39,10 +39,13 @@ services:
       - --path.sysfs=/host/sys
       - --collector.hwmon
       - --collector.rapl
-      - --collector.processes
       # No --collector.systemd here: it wants the systemd private dbus socket,
       # which is not worth mounting into someone else's box for a metric we do
-      # not plot.
+      # not plot. And no --collector.processes: it walks every host PID, gets
+      # denied ptrace read by the docker-default AppArmor profile, and the kernel
+      # logs every denial -- on the mini PC that was 23% of the entire journal.
+      # Filling someone else's journal for a metric no panel reads is a
+      # particularly bad trade.
       - --collector.netdev.device-exclude=^(veth|docker|br-|lo).*$$
     volumes:
       - /:/host:ro,rslave

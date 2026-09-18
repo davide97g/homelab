@@ -58,7 +58,14 @@ services:
       - --collector.hwmon
       - --collector.rapl
       - --collector.systemd
-      - --collector.processes
+      # No --collector.processes. It walks every host PID, the docker-default
+      # AppArmor profile denies it ptrace read, and the kernel logged the denial
+      # ~2370 times an hour -- 23% of the whole journal, and now 23% of what
+      # ships to Loki. Nothing plots node_processes_*, and the process counts
+      # that are actually wanted (node_procs_running, node_procs_blocked) come
+      # from the always-on stat collector. Re-enable it only alongside
+      # `security_opt: [apparmor=unconfined]`, which is a real privilege
+      # increase for a metric no panel uses.
       - --collector.netdev.device-exclude=^(veth|docker|br-|lo).*$$
     volumes:
       - /:/host:ro,rslave

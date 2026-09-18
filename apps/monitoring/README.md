@@ -218,6 +218,26 @@ fixing once, deliberately, because it restarts every container on the box:
 { "log-driver": "json-file", "log-opts": { "max-size": "50m", "max-file": "3" } }
 ```
 
+### Neither node_exporter runs --collector.processes
+
+The first thing the logs paid for. That collector walks every host PID, the `docker-default`
+AppArmor profile denies it `ptrace read` on unconfined processes, and the kernel audits each
+denial — 2370 lines an hour on the mini PC, **23% of the entire journal**, which after Alloy
+landed was also 23% of everything shipped to Loki:
+
+```
+apparmor="DENIED" operation="ptrace" class="ptrace" profile="docker-default"
+  pid=… comm="node_exporter" requested_mask="read" denied_mask="read" peer="unconfined"
+```
+
+Nothing plots `node_processes_*`, and the two process numbers worth having —
+`node_procs_running` and `node_procs_blocked` — come from the always-on `stat` collector, which
+reads `/proc/stat` and needs no ptrace. So the collector is off on both boxes and the denials
+stopped dead.
+
+Re-enabling it means adding `security_opt: [apparmor=unconfined]` to node-exporter. That is a
+real privilege increase for a metric no panel reads; do it only if something starts needing it.
+
 ### Why the qBittorrent metrics are not per-torrent
 
 Tempting, and wrong twice over. A `name`-labelled series per torrent is one new time series per
