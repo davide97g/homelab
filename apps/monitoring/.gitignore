@@ -1,1 +1,3 @@
 .dokploy.env
+nas-agents/.env
+__pycache__/

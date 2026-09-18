@@ -6,7 +6,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "refresh": "30s",
   "time": {
     "from": "now-6h",
@@ -93,7 +93,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m])) * 100)",
           "legendFormat": "busy",
           "datasource": {
             "type": "prometheus",
@@ -158,7 +158,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+          "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance=\"homelab\"} / node_memory_MemTotal_bytes{instance=\"homelab\"})",
           "legendFormat": "used",
           "datasource": {
             "type": "prometheus",
@@ -209,7 +209,7 @@
       "id": 22,
       "type": "stat",
       "title": "Temperature",
-      "description": "Hottest hwmon sensor on the box, whichever one it is at that moment.",
+      "description": "The hottest sensor on the box right now, named. Sensors the kernel gives no label fall back to their raw hwmon name.",
       "gridPos": {
         "h": 6,
         "w": 4,
@@ -223,8 +223,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(node_hwmon_temp_celsius)",
-          "legendFormat": "hottest sensor",
+          "expr": "topk(1, (label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"})",
+          "legendFormat": "{{chip_name}} {{display}}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -353,7 +353,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(rate(node_network_receive_bytes_total{device=\"enp3s0\"}[5m]) + rate(node_network_transmit_bytes_total{device=\"enp3s0\"}[5m])) * 8",
+          "expr": "(rate(node_network_receive_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) + rate(node_network_transmit_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m])) * 8",
           "legendFormat": "rx + tx",
           "datasource": {
             "type": "prometheus",
@@ -418,7 +418,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(100 * (1 - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}))",
+          "expr": "max(100 * (1 - node_filesystem_avail_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"}))",
           "legendFormat": "root used",
           "datasource": {
             "type": "prometheus",
@@ -807,7 +807,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m])) * 100)",
           "legendFormat": "TOTAL",
           "datasource": {
             "type": "prometheus",
@@ -816,7 +816,7 @@
         },
         {
           "refId": "B",
-          "expr": "100 - (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]) * 100)",
+          "expr": "100 - (rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m]) * 100)",
           "legendFormat": "cpu{{cpu}}",
           "datasource": {
             "type": "prometheus",
@@ -880,7 +880,7 @@
       "id": 7,
       "type": "timeseries",
       "title": "Memory",
-      "description": "`used` is total minus MemAvailable, so it excludes reclaimable page cache — this is the number to watch. `cache + buffers` is free RAM the kernel is borrowing for file cache and will hand back under pressure. `swap used` climbing while `used` stays low means vm.swappiness is evicting cold pages for no reason.",
+      "description": "`used` is total minus MemAvailable, so it excludes reclaimable page cache \u2014 this is the number to watch. `cache + buffers` is free RAM the kernel is borrowing for file cache and will hand back under pressure. `swap used` climbing while `used` stays low means vm.swappiness is evicting cold pages for no reason.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -894,7 +894,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "expr": "node_memory_MemTotal_bytes{instance=\"homelab\"} - node_memory_MemAvailable_bytes{instance=\"homelab\"}",
           "legendFormat": "used",
           "datasource": {
             "type": "prometheus",
@@ -903,7 +903,7 @@
         },
         {
           "refId": "B",
-          "expr": "node_memory_Cached_bytes + node_memory_Buffers_bytes",
+          "expr": "node_memory_Cached_bytes{instance=\"homelab\"} + node_memory_Buffers_bytes{instance=\"homelab\"}",
           "legendFormat": "cache + buffers",
           "datasource": {
             "type": "prometheus",
@@ -912,7 +912,7 @@
         },
         {
           "refId": "D",
-          "expr": "node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes",
+          "expr": "node_memory_SwapTotal_bytes{instance=\"homelab\"} - node_memory_SwapFree_bytes{instance=\"homelab\"}",
           "legendFormat": "swap used",
           "datasource": {
             "type": "prometheus",
@@ -921,7 +921,7 @@
         },
         {
           "refId": "C",
-          "expr": "node_memory_MemTotal_bytes",
+          "expr": "node_memory_MemTotal_bytes{instance=\"homelab\"}",
           "legendFormat": "total",
           "datasource": {
             "type": "prometheus",
@@ -1004,7 +1004,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names)",
+          "expr": "max((label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"})",
           "legendFormat": "MAX (all sensors)",
           "datasource": {
             "type": "prometheus",
@@ -1013,8 +1013,8 @@
         },
         {
           "refId": "B",
-          "expr": "node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names",
-          "legendFormat": "{{chip_name}} {{sensor}}",
+          "expr": "(label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"}",
+          "legendFormat": "{{chip_name}} {{display}}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -1091,7 +1091,7 @@
           "sort": "desc"
         }
       },
-      "description": "Every hwmon sensor, with the max across all of them drawn as a thick white line."
+      "description": "Every hwmon sensor by its kernel label: Tctl is the CPU die, Composite / Sensor 1 / Sensor 2 are the NVMe, edge is the iGPU, spd5118 are the DIMMs. mt7921_phy0 is the WiFi chip on an interface that is DOWN, so it tracks case temperature rather than load. Sensors the kernel gives no label are named by their chip instead."
     },
     {
       "id": 14,
@@ -1110,7 +1110,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "time() - node_boot_time_seconds",
+          "expr": "time() - node_boot_time_seconds{instance=\"homelab\"}",
           "legendFormat": "uptime",
           "datasource": {
             "type": "prometheus",
@@ -1119,7 +1119,7 @@
         },
         {
           "refId": "B",
-          "expr": "node_load1",
+          "expr": "node_load1{instance=\"homelab\"}",
           "legendFormat": "load 1m",
           "datasource": {
             "type": "prometheus",
@@ -1128,7 +1128,7 @@
         },
         {
           "refId": "C",
-          "expr": "count(count by (cpu) (node_cpu_seconds_total))",
+          "expr": "count(count by (cpu) (node_cpu_seconds_total{instance=\"homelab\"}))",
           "legendFormat": "threads",
           "datasource": {
             "type": "prometheus",
@@ -1191,7 +1191,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(avg_over_time(node_hwmon_temp_celsius[$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+          "expr": "max(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})",
           "legendFormat": "max",
           "datasource": {
             "type": "prometheus",
@@ -1200,7 +1200,7 @@
         },
         {
           "refId": "B",
-          "expr": "avg(avg_over_time(node_hwmon_temp_celsius[$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+          "expr": "avg(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})",
           "legendFormat": "avg",
           "datasource": {
             "type": "prometheus",
@@ -1209,7 +1209,7 @@
         },
         {
           "refId": "C",
-          "expr": "min(avg_over_time(node_hwmon_temp_celsius[$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+          "expr": "min(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})",
           "legendFormat": "min",
           "datasource": {
             "type": "prometheus",
@@ -1320,7 +1320,7 @@
           "sort": "desc"
         }
       },
-      "description": "Min, average and max across every hwmon sensor, each sensor first averaged over the Smoothing window. Raw per-sensor detail and true peaks are in the Temperatures panel above."
+      "description": "Min, average and max across every sensor, smoothed over $smooth. The max line usually belongs to the WiFi chip or the NVMe rather than the CPU, and the WiFi interface is DOWN, so all three rising together means the case is heat-soaking, not that one component is working. The Temperatures panel above says which sensor is which."
     },
     {
       "id": 102,
@@ -1352,7 +1352,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(node_network_receive_bytes_total{device=\"enp3s0\"}[5m]) * 8",
+          "expr": "rate(node_network_receive_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) * 8",
           "legendFormat": "receive",
           "datasource": {
             "type": "prometheus",
@@ -1361,7 +1361,7 @@
         },
         {
           "refId": "B",
-          "expr": "rate(node_network_transmit_bytes_total{device=\"enp3s0\"}[5m]) * 8",
+          "expr": "rate(node_network_transmit_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) * 8",
           "legendFormat": "transmit",
           "datasource": {
             "type": "prometheus",
@@ -1427,7 +1427,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}",
+          "expr": "node_filesystem_size_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"} - node_filesystem_avail_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"}",
           "legendFormat": "used",
           "datasource": {
             "type": "prometheus",
@@ -1436,7 +1436,7 @@
         },
         {
           "refId": "B",
-          "expr": "rate(node_disk_read_bytes_total{device=\"nvme0n1\"}[5m])",
+          "expr": "rate(node_disk_read_bytes_total{instance=\"homelab\",device=\"nvme0n1\"}[5m])",
           "legendFormat": "read",
           "datasource": {
             "type": "prometheus",
@@ -1445,7 +1445,7 @@
         },
         {
           "refId": "C",
-          "expr": "rate(node_disk_written_bytes_total{device=\"nvme0n1\"}[5m])",
+          "expr": "rate(node_disk_written_bytes_total{instance=\"homelab\",device=\"nvme0n1\"}[5m])",
           "legendFormat": "write",
           "datasource": {
             "type": "prometheus",
@@ -1512,7 +1512,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(node_network_receive_errs_total{device=\"enp3s0\"}[5m])",
+          "expr": "rate(node_network_receive_errs_total{instance=\"homelab\",device=\"enp3s0\"}[5m])",
           "legendFormat": "rx errors",
           "datasource": {
             "type": "prometheus",
@@ -1521,7 +1521,7 @@
         },
         {
           "refId": "B",
-          "expr": "rate(node_network_transmit_errs_total{device=\"enp3s0\"}[5m])",
+          "expr": "rate(node_network_transmit_errs_total{instance=\"homelab\",device=\"enp3s0\"}[5m])",
           "legendFormat": "tx errors",
           "datasource": {
             "type": "prometheus",
@@ -1530,7 +1530,7 @@
         },
         {
           "refId": "C",
-          "expr": "rate(node_network_receive_drop_total{device=\"enp3s0\"}[5m])",
+          "expr": "rate(node_network_receive_drop_total{instance=\"homelab\",device=\"enp3s0\"}[5m])",
           "legendFormat": "rx drops",
           "datasource": {
             "type": "prometheus",
@@ -1539,7 +1539,7 @@
         },
         {
           "refId": "D",
-          "expr": "changes(node_network_up{device=\"enp3s0\"}[5m])",
+          "expr": "changes(node_network_up{instance=\"homelab\",device=\"enp3s0\"}[5m])",
           "legendFormat": "link flaps",
           "datasource": {
             "type": "prometheus",
@@ -1601,7 +1601,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m])) * 100)",
+          "expr": "topk(10, sum by (name) (rate(container_cpu_usage_seconds_total{instance=\"homelab\",name!=\"\"}[5m])) * 100)",
           "legendFormat": "{{name}}",
           "datasource": {
             "type": "prometheus",
@@ -1660,7 +1660,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (name) (container_memory_rss{name!=\"\"}))",
+          "expr": "topk(10, sum by (name) (container_memory_rss{instance=\"homelab\",name!=\"\"}))",
           "legendFormat": "{{name}}",
           "datasource": {
             "type": "prometheus",

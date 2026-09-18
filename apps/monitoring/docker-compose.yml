@@ -8,6 +8,8 @@
 #
 # Environment (set in the Dokploy Environment tab):
 #   GRAFANA_ADMIN_PASSWORD  required
+#   QBITTORRENT_USER        required, the qBittorrent WebUI login
+#   QBITTORRENT_PASS        required, its password
 #   GRAFANA_ROOT_URL        optional, e.g. https://grafana.davideghiotto.it
 #   GRAFANA_COOKIE_SECURE   optional, set true once served over HTTPS
 
@@ -96,6 +98,89 @@ services:
     networks:
       - monitoring
 
+  qbittorrent-exporter:
+    image: esanchezm/prometheus-qbittorrent-exporter:sha-5f776a7
+    container_name: homelab-qbittorrent-exporter
+    restart: unless-stopped
+    # Client-wide rates and torrent counts broken down by category and status, so
+    # "was qBittorrent seeding at 07:20" is answerable from history. The WebUI is
+    # on the host, not in this network, so it is reached through the bridge
+    # gateway like node_exporter. The image publishes no semver tags, only latest
+    # and sha-*, hence the sha pin.
+    #
+    # Deliberately NOT per-torrent. The exporters that expose a `name` label put
+    # one churning series per torrent into the TSDB, and the obvious candidate
+    # (ghcr.io/martabal/qbittorrent-exporter) is also broken against qBittorrent
+    # 5.2.3, which answers a successful /auth/login with 204 where the exporter
+    # insists on 200. Live per-torrent numbers come from the WebUI API directly,
+    # where they belong.
+    environment:
+      QBITTORRENT_HOST: host.docker.internal
+      QBITTORRENT_PORT: "8080"
+      QBITTORRENT_USER: ${QBITTORRENT_USER:?set QBITTORRENT_USER in the Dokploy Environment tab}
+      QBITTORRENT_PASS: ${QBITTORRENT_PASS:?set QBITTORRENT_PASS in the Dokploy Environment tab}
+      EXPORTER_PORT: "8000"
+      METRICS_PREFIX: qbittorrent
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:3.7.8
+    container_name: homelab-loki
+    restart: unless-stopped
+    # Root because a fresh named volume comes up owned by root and Loki's
+    # default uid (10001) cannot create /loki/chunks inside it.
+    user: root
+    command:
+      - --config.file=/etc/loki/loki.yml
+    ports:
+      # Loopback only. This exists for one reason: cloudflared runs as a host
+      # systemd service, not a container, and the NAS can only reach Loki
+      # through the tunnel (its tailscaled is userspace-mode, so the NAS has no
+      # tailnet egress at all). Nothing on the LAN can see this.
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - loki-data:/loki
+    configs:
+      - source: loki_yml
+        target: /etc/loki/loki.yml
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: homelab-alloy
+    restart: unless-stopped
+    depends_on:
+      - loki
+    # Root for two reasons: the journal files are root:systemd-journal, and the
+    # Docker socket is root:docker. Promtail would have done this job but went
+    # end-of-life on 2 March 2026.
+    user: root
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - alloy-data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    configs:
+      - source: alloy_config
+        target: /etc/alloy/config.alloy
+    networks:
+      - monitoring
+
   grafana:
     image: grafana/grafana:13.2.1
     container_name: homelab-grafana
@@ -128,12 +213,16 @@ services:
         target: /etc/grafana/provisioning/dashboards/homelab.yml
       - source: grafana_dashboard_overview_json
         target: /var/lib/grafana/dashboards/homelab-overview.json
+      - source: grafana_dashboard_logs_json
+        target: /var/lib/grafana/dashboards/homelab-logs.json
     networks:
       - monitoring
 
 volumes:
   prometheus-data:
   grafana-data:
+  loki-data:
+  alloy-data:
 
 networks:
   monitoring:
@@ -185,6 +274,41 @@ configs:
               replacement: homelab
             - target_label: __address__
               replacement: json-exporter:7979
+
+        - job_name: qbittorrent
+          static_configs:
+            - targets: ["qbittorrent-exporter:8000"]
+              labels:
+                instance: homelab
+
+        - job_name: alloy
+          static_configs:
+            - targets: ["alloy:12345"]
+              labels:
+                instance: homelab
+
+        # The NAS (UGREEN DXP4800 Pro) is on someone else's network and is only
+        # reachable over Tailscale — its LAN address does not answer from here,
+        # and the path is DERP-relayed at 35-80ms with no direct connection, so
+        # these two jobs scrape four times slower than the local ones and allow
+        # a much longer timeout. ${NAS_TAILNET_IP} is a tailnet address, which is
+        # stable, so this is the one place the no-hard-coded-IP rule does not
+        # apply.
+        - job_name: node-nas
+          scrape_interval: 60s
+          scrape_timeout: 20s
+          static_configs:
+            - targets: ["${NAS_TAILNET_IP}:9100"]
+              labels:
+                instance: nas
+
+        - job_name: cadvisor-nas
+          scrape_interval: 60s
+          scrape_timeout: 20s
+          static_configs:
+            - targets: ["${NAS_TAILNET_IP}:8081"]
+              labels:
+                instance: nas
 
   prometheus_rules_yml:
     content: |
@@ -261,9 +385,13 @@ configs:
               annotations:
                 summary: enp3s0 is logging receive errors
 
+            # instance is pinned on these two from here on: node metrics now
+            # arrive from the NAS as well, and an unscoped expression would fire
+            # this rule for the wrong machine with the wrong summary.
             - alert: MemoryPressure
               expr: |
-                (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.90
+                (1 - node_memory_MemAvailable_bytes{instance="homelab"}
+                   / node_memory_MemTotal_bytes{instance="homelab"}) > 0.90
               for: 15m
               labels:
                 severity: warning
@@ -272,8 +400,8 @@ configs:
 
             - alert: DiskFillingUp
               expr: |
-                node_filesystem_avail_bytes{mountpoint="/"}
-                  / node_filesystem_size_bytes{mountpoint="/"} < 0.10
+                node_filesystem_avail_bytes{instance="homelab",mountpoint="/"}
+                  / node_filesystem_size_bytes{instance="homelab",mountpoint="/"} < 0.10
               for: 30m
               labels:
                 severity: warning
@@ -298,6 +426,45 @@ configs:
                 severity: warning
               annotations:
                 summary: CPU die sustained above 90C
+
+        # The NAS. Every one of these arrives over a DERP-relayed tailnet hop,
+        # so NasDown waits 10 minutes: a relay hiccup is not an outage.
+        - name: nas-alerts
+          interval: 30s
+          rules:
+            - alert: NasDown
+              expr: up{job="node-nas"} == 0
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: NAS node_exporter unreachable over the tailnet for 10 minutes
+
+            - alert: NasPoolFillingUp
+              expr: |
+                node_filesystem_avail_bytes{instance="nas",mountpoint="/volume1"}
+                  / node_filesystem_size_bytes{instance="nas",mountpoint="/volume1"} < 0.10
+              for: 30m
+              labels:
+                severity: warning
+              annotations:
+                summary: NAS /volume1 is over 90% full
+
+            - alert: NasRaidDegraded
+              expr: node_md_disks{instance="nas",state="active"} < node_md_disks_required
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: NAS md array has fewer active disks than it requires
+
+            - alert: NasDiskHot
+              expr: max(node_hwmon_temp_celsius{instance="nas"}) > 60
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: NAS sensor sustained above 60C
 
   json_exporter_yml:
     content: |
@@ -332,6 +499,15 @@ configs:
           jsonData:
             timeInterval: 15s
             httpMethod: POST
+        - name: Loki
+          uid: loki
+          type: loki
+          access: proxy
+          url: http://loki:3100
+          jsonData:
+            # Alloy writes `level` as a stream label, so Grafana can colour rows
+            # without having to derive the level from the line itself.
+            derivedFields: []
 
   grafana_dashboard_provider_yml:
     content: |
@@ -347,6 +523,155 @@ configs:
             path: /var/lib/grafana/dashboards
             foldersFromFilesStructure: false
 
+  loki_yml:
+    content: |
+      # Single-binary Loki on local disk. No object store, no ring beyond one
+      # member: this is one box with 297G free, not a cluster.
+      auth_enabled: false
+
+      server:
+        http_listen_port: 3100
+        grpc_listen_port: 9096
+        # Loki is chatty at info and its own logs would end up in itself.
+        log_level: warn
+
+      common:
+        instance_addr: 127.0.0.1
+        path_prefix: /loki
+        storage:
+          filesystem:
+            chunks_directory: /loki/chunks
+            rules_directory: /loki/rules
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+
+      schema_config:
+        configs:
+          - from: 2026-01-01
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+
+      limits_config:
+        # 30 days, against Prometheus's 180. Logs are an order of magnitude
+        # bulkier per day and are read while the question is still fresh.
+        retention_period: 720h
+        ingestion_rate_mb: 16
+        ingestion_burst_size_mb: 32
+        # Forty containers plus the journal is a lot of streams for the default
+        # per-tenant caps, and there is only one tenant.
+        max_streams_per_user: 0
+        max_global_streams_per_user: 0
+        allow_structured_metadata: true
+        volume_enabled: true
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+
+      compactor:
+        working_directory: /loki/compactor
+        # Without this, retention_period above is inert and the disk just grows.
+        retention_enabled: true
+        delete_request_store: filesystem
+        compaction_interval: 10m
+
+      ruler:
+        storage:
+          type: local
+          local:
+            directory: /loki/rules
+
+      analytics:
+        reporting_enabled: false
+
+  alloy_config:
+    content: |
+      // Log collection for the mini PC: every Docker container plus the host's
+      // systemd journal, shipped to Loki next door. Promtail's replacement --
+      // Promtail reached end-of-life on 2 March 2026.
+      logging {
+        level  = "warn"
+        format = "logfmt"
+      }
+
+      discovery.docker "containers" {
+        host             = "unix:///var/run/docker.sock"
+        refresh_interval = "15s"
+      }
+
+      discovery.relabel "containers" {
+        targets = discovery.docker.containers.targets
+
+        // Docker reports names with a leading slash.
+        rule {
+          source_labels = ["__meta_docker_container_name"]
+          regex         = "/(.*)"
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+          target_label  = "compose_project"
+        }
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+          target_label  = "compose_service"
+        }
+        rule {
+          target_label = "job"
+          replacement  = "docker"
+        }
+      }
+
+      loki.source.docker "containers" {
+        host       = "unix:///var/run/docker.sock"
+        targets    = discovery.relabel.containers.output
+        labels     = { host = "homelab" }
+        forward_to = [loki.write.local.receiver]
+      }
+
+      loki.relabel "journal" {
+        forward_to = []
+
+        rule {
+          source_labels = ["__journal__systemd_unit"]
+          target_label  = "unit"
+        }
+        rule {
+          source_labels = ["__journal_priority_keyword"]
+          target_label  = "level"
+        }
+        rule {
+          source_labels = ["__journal_syslog_identifier"]
+          target_label  = "identifier"
+        }
+        // loki.source.journal defaults job to its own component path
+        // ("loki.source.journal.host") and that default beats the `labels`
+        // argument. Relabelling runs afterwards, so this is where job is won.
+        rule {
+          target_label = "job"
+          replacement  = "journal"
+        }
+      }
+
+      loki.source.journal "host" {
+        path          = "/var/log/journal"
+        // A restart should backfill half a day, not the whole persistent journal.
+        max_age       = "12h"
+        relabel_rules = loki.relabel.journal.rules
+        labels        = { host = "homelab" }
+        forward_to    = [loki.write.local.receiver]
+      }
+
+      loki.write "local" {
+        endpoint {
+          url = "http://loki:3100/loki/api/v1/push"
+        }
+      }
+
   grafana_dashboard_overview_json:
     content: |
       {
@@ -357,7 +682,7 @@ configs:
         ],
         "timezone": "browser",
         "schemaVersion": 39,
-        "version": 4,
+        "version": 5,
         "refresh": "30s",
         "time": {
           "from": "now-6h",
@@ -444,7 +769,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m])) * 100)",
                 "legendFormat": "busy",
                 "datasource": {
                   "type": "prometheus",
@@ -509,7 +834,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+                "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance=\"homelab\"} / node_memory_MemTotal_bytes{instance=\"homelab\"})",
                 "legendFormat": "used",
                 "datasource": {
                   "type": "prometheus",
@@ -560,7 +885,7 @@ configs:
             "id": 22,
             "type": "stat",
             "title": "Temperature",
-            "description": "Hottest hwmon sensor on the box, whichever one it is at that moment.",
+            "description": "The hottest sensor on the box right now, named. Sensors the kernel gives no label fall back to their raw hwmon name.",
             "gridPos": {
               "h": 6,
               "w": 4,
@@ -574,8 +899,8 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "max(node_hwmon_temp_celsius)",
-                "legendFormat": "hottest sensor",
+                "expr": "topk(1, (label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"})",
+                "legendFormat": "{{chip_name}} {{display}}",
                 "datasource": {
                   "type": "prometheus",
                   "uid": "prometheus"
@@ -704,7 +1029,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "(rate(node_network_receive_bytes_total{device=\"enp3s0\"}[5m]) + rate(node_network_transmit_bytes_total{device=\"enp3s0\"}[5m])) * 8",
+                "expr": "(rate(node_network_receive_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) + rate(node_network_transmit_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m])) * 8",
                 "legendFormat": "rx + tx",
                 "datasource": {
                   "type": "prometheus",
@@ -769,7 +1094,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "max(100 * (1 - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}))",
+                "expr": "max(100 * (1 - node_filesystem_avail_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"}))",
                 "legendFormat": "root used",
                 "datasource": {
                   "type": "prometheus",
@@ -1158,7 +1483,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m])) * 100)",
                 "legendFormat": "TOTAL",
                 "datasource": {
                   "type": "prometheus",
@@ -1167,7 +1492,7 @@ configs:
               },
               {
                 "refId": "B",
-                "expr": "100 - (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]) * 100)",
+                "expr": "100 - (rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m]) * 100)",
                 "legendFormat": "cpu{{cpu}}",
                 "datasource": {
                   "type": "prometheus",
@@ -1245,7 +1570,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+                "expr": "node_memory_MemTotal_bytes{instance=\"homelab\"} - node_memory_MemAvailable_bytes{instance=\"homelab\"}",
                 "legendFormat": "used",
                 "datasource": {
                   "type": "prometheus",
@@ -1254,7 +1579,7 @@ configs:
               },
               {
                 "refId": "B",
-                "expr": "node_memory_Cached_bytes + node_memory_Buffers_bytes",
+                "expr": "node_memory_Cached_bytes{instance=\"homelab\"} + node_memory_Buffers_bytes{instance=\"homelab\"}",
                 "legendFormat": "cache + buffers",
                 "datasource": {
                   "type": "prometheus",
@@ -1263,7 +1588,7 @@ configs:
               },
               {
                 "refId": "D",
-                "expr": "node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes",
+                "expr": "node_memory_SwapTotal_bytes{instance=\"homelab\"} - node_memory_SwapFree_bytes{instance=\"homelab\"}",
                 "legendFormat": "swap used",
                 "datasource": {
                   "type": "prometheus",
@@ -1272,7 +1597,7 @@ configs:
               },
               {
                 "refId": "C",
-                "expr": "node_memory_MemTotal_bytes",
+                "expr": "node_memory_MemTotal_bytes{instance=\"homelab\"}",
                 "legendFormat": "total",
                 "datasource": {
                   "type": "prometheus",
@@ -1355,7 +1680,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "max(node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names)",
+                "expr": "max((label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"})",
                 "legendFormat": "MAX (all sensors)",
                 "datasource": {
                   "type": "prometheus",
@@ -1364,8 +1689,8 @@ configs:
               },
               {
                 "refId": "B",
-                "expr": "node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names",
-                "legendFormat": "{{chip_name}} {{sensor}}",
+                "expr": "(label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"}",
+                "legendFormat": "{{chip_name}} {{display}}",
                 "datasource": {
                   "type": "prometheus",
                   "uid": "prometheus"
@@ -1442,7 +1767,7 @@ configs:
                 "sort": "desc"
               }
             },
-            "description": "Every hwmon sensor, with the max across all of them drawn as a thick white line."
+            "description": "Every hwmon sensor by its kernel label: Tctl is the CPU die, Composite / Sensor 1 / Sensor 2 are the NVMe, edge is the iGPU, spd5118 are the DIMMs. mt7921_phy0 is the WiFi chip on an interface that is DOWN, so it tracks case temperature rather than load. Sensors the kernel gives no label are named by their chip instead."
           },
           {
             "id": 14,
@@ -1461,7 +1786,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "time() - node_boot_time_seconds",
+                "expr": "time() - node_boot_time_seconds{instance=\"homelab\"}",
                 "legendFormat": "uptime",
                 "datasource": {
                   "type": "prometheus",
@@ -1470,7 +1795,7 @@ configs:
               },
               {
                 "refId": "B",
-                "expr": "node_load1",
+                "expr": "node_load1{instance=\"homelab\"}",
                 "legendFormat": "load 1m",
                 "datasource": {
                   "type": "prometheus",
@@ -1479,7 +1804,7 @@ configs:
               },
               {
                 "refId": "C",
-                "expr": "count(count by (cpu) (node_cpu_seconds_total))",
+                "expr": "count(count by (cpu) (node_cpu_seconds_total{instance=\"homelab\"}))",
                 "legendFormat": "threads",
                 "datasource": {
                   "type": "prometheus",
@@ -1542,7 +1867,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "max(avg_over_time(node_hwmon_temp_celsius[$$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+                "expr": "max(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})",
                 "legendFormat": "max",
                 "datasource": {
                   "type": "prometheus",
@@ -1551,7 +1876,7 @@ configs:
               },
               {
                 "refId": "B",
-                "expr": "avg(avg_over_time(node_hwmon_temp_celsius[$$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+                "expr": "avg(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})",
                 "legendFormat": "avg",
                 "datasource": {
                   "type": "prometheus",
@@ -1560,7 +1885,7 @@ configs:
               },
               {
                 "refId": "C",
-                "expr": "min(avg_over_time(node_hwmon_temp_celsius[$$smooth]) * on(chip) group_left() node_hwmon_chip_names)",
+                "expr": "min(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})",
                 "legendFormat": "min",
                 "datasource": {
                   "type": "prometheus",
@@ -1671,7 +1996,7 @@ configs:
                 "sort": "desc"
               }
             },
-            "description": "Min, average and max across every hwmon sensor, each sensor first averaged over the Smoothing window. Raw per-sensor detail and true peaks are in the Temperatures panel above."
+            "description": "Min, average and max across every sensor, smoothed over $$smooth. The max line usually belongs to the WiFi chip or the NVMe rather than the CPU, and the WiFi interface is DOWN, so all three rising together means the case is heat-soaking, not that one component is working. The Temperatures panel above says which sensor is which."
           },
           {
             "id": 102,
@@ -1703,7 +2028,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "rate(node_network_receive_bytes_total{device=\"enp3s0\"}[5m]) * 8",
+                "expr": "rate(node_network_receive_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) * 8",
                 "legendFormat": "receive",
                 "datasource": {
                   "type": "prometheus",
@@ -1712,7 +2037,7 @@ configs:
               },
               {
                 "refId": "B",
-                "expr": "rate(node_network_transmit_bytes_total{device=\"enp3s0\"}[5m]) * 8",
+                "expr": "rate(node_network_transmit_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) * 8",
                 "legendFormat": "transmit",
                 "datasource": {
                   "type": "prometheus",
@@ -1778,7 +2103,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}",
+                "expr": "node_filesystem_size_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"} - node_filesystem_avail_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"}",
                 "legendFormat": "used",
                 "datasource": {
                   "type": "prometheus",
@@ -1787,7 +2112,7 @@ configs:
               },
               {
                 "refId": "B",
-                "expr": "rate(node_disk_read_bytes_total{device=\"nvme0n1\"}[5m])",
+                "expr": "rate(node_disk_read_bytes_total{instance=\"homelab\",device=\"nvme0n1\"}[5m])",
                 "legendFormat": "read",
                 "datasource": {
                   "type": "prometheus",
@@ -1796,7 +2121,7 @@ configs:
               },
               {
                 "refId": "C",
-                "expr": "rate(node_disk_written_bytes_total{device=\"nvme0n1\"}[5m])",
+                "expr": "rate(node_disk_written_bytes_total{instance=\"homelab\",device=\"nvme0n1\"}[5m])",
                 "legendFormat": "write",
                 "datasource": {
                   "type": "prometheus",
@@ -1863,7 +2188,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "rate(node_network_receive_errs_total{device=\"enp3s0\"}[5m])",
+                "expr": "rate(node_network_receive_errs_total{instance=\"homelab\",device=\"enp3s0\"}[5m])",
                 "legendFormat": "rx errors",
                 "datasource": {
                   "type": "prometheus",
@@ -1872,7 +2197,7 @@ configs:
               },
               {
                 "refId": "B",
-                "expr": "rate(node_network_transmit_errs_total{device=\"enp3s0\"}[5m])",
+                "expr": "rate(node_network_transmit_errs_total{instance=\"homelab\",device=\"enp3s0\"}[5m])",
                 "legendFormat": "tx errors",
                 "datasource": {
                   "type": "prometheus",
@@ -1881,7 +2206,7 @@ configs:
               },
               {
                 "refId": "C",
-                "expr": "rate(node_network_receive_drop_total{device=\"enp3s0\"}[5m])",
+                "expr": "rate(node_network_receive_drop_total{instance=\"homelab\",device=\"enp3s0\"}[5m])",
                 "legendFormat": "rx drops",
                 "datasource": {
                   "type": "prometheus",
@@ -1890,7 +2215,7 @@ configs:
               },
               {
                 "refId": "D",
-                "expr": "changes(node_network_up{device=\"enp3s0\"}[5m])",
+                "expr": "changes(node_network_up{instance=\"homelab\",device=\"enp3s0\"}[5m])",
                 "legendFormat": "link flaps",
                 "datasource": {
                   "type": "prometheus",
@@ -1952,7 +2277,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "topk(10, sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m])) * 100)",
+                "expr": "topk(10, sum by (name) (rate(container_cpu_usage_seconds_total{instance=\"homelab\",name!=\"\"}[5m])) * 100)",
                 "legendFormat": "{{name}}",
                 "datasource": {
                   "type": "prometheus",
@@ -2011,7 +2336,7 @@ configs:
             "targets": [
               {
                 "refId": "A",
-                "expr": "topk(10, sum by (name) (container_memory_rss{name!=\"\"}))",
+                "expr": "topk(10, sum by (name) (container_memory_rss{instance=\"homelab\",name!=\"\"}))",
                 "legendFormat": "{{name}}",
                 "datasource": {
                   "type": "prometheus",
@@ -2049,6 +2374,338 @@ configs:
                 "mode": "multi",
                 "sort": "desc"
               }
+            }
+          }
+        ]
+      }
+
+  grafana_dashboard_logs_json:
+    content: |
+      {
+        "uid": "homelab-logs",
+        "title": "Homelab Logs",
+        "tags": [
+          "homelab",
+          "logs"
+        ],
+        "timezone": "browser",
+        "schemaVersion": 39,
+        "version": 1,
+        "refresh": "30s",
+        "editable": true,
+        "graphTooltip": 1,
+        "time": {
+          "from": "now-6h",
+          "to": "now"
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "host",
+              "label": "Host",
+              "type": "custom",
+              "query": "homelab,nas",
+              "current": {
+                "selected": true,
+                "text": "homelab",
+                "value": "homelab"
+              },
+              "options": [
+                {
+                  "selected": true,
+                  "text": "homelab",
+                  "value": "homelab"
+                },
+                {
+                  "selected": false,
+                  "text": "nas",
+                  "value": "nas"
+                }
+              ],
+              "includeAll": false,
+              "multi": false,
+              "hide": 0
+            },
+            {
+              "name": "container",
+              "label": "Container (regex)",
+              "description": "Matched with =~, so .+ means every container and qbit.* narrows it.",
+              "type": "textbox",
+              "query": ".+",
+              "current": {
+                "selected": false,
+                "text": ".+",
+                "value": ".+"
+              },
+              "options": [],
+              "hide": 0
+            },
+            {
+              "name": "search",
+              "label": "Line contains (regex)",
+              "description": "Empty matches everything. Case-insensitive patterns need (?i).",
+              "type": "textbox",
+              "query": "",
+              "current": {
+                "selected": false,
+                "text": "",
+                "value": ""
+              },
+              "options": [],
+              "hide": 0
+            }
+          ]
+        },
+        "panels": [
+          {
+            "id": 1,
+            "type": "timeseries",
+            "title": "Container log volume",
+            "description": "Lines per interval, by container. A step change here is usually the first sign of a service that started retrying something.",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 16,
+              "x": 0,
+              "y": 0
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "expr": "sum by (container) (count_over_time({host=\"$$host\", job=\"docker\", container=~\"$$container\"} [$$__auto]))",
+                "legendFormat": "{{container}}",
+                "queryType": "range"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "logs",
+                "custom": {
+                  "drawStyle": "bars",
+                  "fillOpacity": 60,
+                  "lineWidth": 0,
+                  "stacking": {
+                    "mode": "normal",
+                    "group": "A"
+                  }
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "right",
+                "showLegend": true,
+                "calcs": [
+                  "sum"
+                ]
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 2,
+            "type": "timeseries",
+            "title": "Error-level lines",
+            "description": "Anything matching error, fatal, panic or critical, case-insensitive, across containers and the journal.",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 16,
+              "y": 0
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "expr": "sum by (container) (count_over_time({host=\"$$host\", job=\"docker\", container=~\"$$container\"} |~ \"(?i)(error|fatal|panic|critical)\" [$$__auto]))",
+                "legendFormat": "{{container}}",
+                "queryType": "range"
+              },
+              {
+                "refId": "B",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "expr": "sum by (unit) (count_over_time({host=\"$$host\", job=\"journal\", level=~\"err|crit|alert|emerg\"} [$$__auto]))",
+                "legendFormat": "journal {{unit}}",
+                "queryType": "range"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "logs",
+                "custom": {
+                  "drawStyle": "bars",
+                  "fillOpacity": 70,
+                  "lineWidth": 0
+                },
+                "color": {
+                  "mode": "continuous-reds"
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 3,
+            "type": "timeseries",
+            "title": "Journal volume by unit",
+            "description": "The host side: kernel, docker.service, cloudflared, tailscaled, sshd. This is what was invisible before Alloy.",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 24,
+              "x": 0,
+              "y": 8
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "expr": "topk(10, sum by (unit) (count_over_time({host=\"$$host\", job=\"journal\"} [$$__auto])))",
+                "legendFormat": "{{unit}}",
+                "queryType": "range"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "logs",
+                "custom": {
+                  "drawStyle": "bars",
+                  "fillOpacity": 60,
+                  "lineWidth": 0,
+                  "stacking": {
+                    "mode": "normal",
+                    "group": "A"
+                  }
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "displayMode": "table",
+                "placement": "right",
+                "showLegend": true,
+                "calcs": [
+                  "sum"
+                ]
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 4,
+            "type": "logs",
+            "title": "Container logs",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "gridPos": {
+              "h": 14,
+              "w": 24,
+              "x": 0,
+              "y": 15
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "expr": "{host=\"$$host\", job=\"docker\", container=~\"$$container\"} |~ \"$$search\"",
+                "queryType": "range",
+                "maxLines": 500
+              }
+            ],
+            "options": {
+              "showTime": true,
+              "showLabels": false,
+              "showCommonLabels": false,
+              "wrapLogMessage": true,
+              "prettifyLogMessage": false,
+              "enableLogDetails": true,
+              "dedupStrategy": "none",
+              "sortOrder": "Descending"
+            }
+          },
+          {
+            "id": 5,
+            "type": "logs",
+            "title": "Journal",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "gridPos": {
+              "h": 14,
+              "w": 24,
+              "x": 0,
+              "y": 29
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki"
+                },
+                "expr": "{host=\"$$host\", job=\"journal\"} |~ \"$$search\"",
+                "queryType": "range",
+                "maxLines": 500
+              }
+            ],
+            "options": {
+              "showTime": true,
+              "showLabels": false,
+              "showCommonLabels": false,
+              "wrapLogMessage": true,
+              "prettifyLogMessage": false,
+              "enableLogDetails": true,
+              "dedupStrategy": "none",
+              "sortOrder": "Descending"
             }
           }
         ]

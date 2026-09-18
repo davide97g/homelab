@@ -14,6 +14,7 @@ INDENT = " " * 6  # under `configs: <name>: content: |`
 
 PLACEHOLDERS = {
     "__DASHBOARD_OVERVIEW__": "dashboards/homelab-overview.json",
+    "__DASHBOARD_LOGS__": "dashboards/homelab-logs.json",
 }
 
 

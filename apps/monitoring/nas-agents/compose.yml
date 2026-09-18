@@ -1,0 +1,97 @@
+# Monitoring agents for the NAS (UGREEN DXP4800 Pro, "DXP4800PRO-21AF").
+#
+# This box is not ours and not on our LAN. It runs plain `docker compose` over
+# SSH -- not Dokploy -- so unlike the main stack these configs are ordinary side
+# files in the same directory. Deploy with ./deploy.py in this folder.
+#
+# Two things about its networking shape drive every decision here:
+#
+#   * Its tailscaled runs with --network host but in USERSPACE mode, so the host
+#     has no tailscale0 device. Inbound tailnet traffic is proxied to the host's
+#     127.0.0.1, which is why binding the exporters to loopback still lets
+#     Prometheus on the mini PC scrape them -- and keeps them off Ilario's LAN.
+#   * There is no tailnet EGRESS at all, and no route to our LAN either. So logs
+#     cannot be pushed to Loki over the tailnet; Alloy sends them out over the
+#     internet to the tunnel instead, gated by a Cloudflare Access service token.
+#
+# Environment: see .env.example. Written directly on the NAS, mode 600.
+
+services:
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.12.1
+    container_name: nas-node-exporter
+    restart: unless-stopped
+    # Host network + host PID so the metrics are the box's own. Root is needed
+    # to read hwmon, RAPL and the md state.
+    network_mode: host
+    pid: host
+    user: root
+    command:
+      # Loopback only: the tailnet proxy reaches 127.0.0.1, Ilario's LAN cannot.
+      - --web.listen-address=127.0.0.1:9100
+      - --path.rootfs=/host
+      - --collector.hwmon
+      - --collector.rapl
+      - --collector.processes
+      # No --collector.systemd here: it wants the systemd private dbus socket,
+      # which is not worth mounting into someone else's box for a metric we do
+      # not plot.
+      - --collector.netdev.device-exclude=^(veth|docker|br-|lo).*$$
+    volumes:
+      - /:/host:ro,rslave
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    container_name: nas-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    command:
+      - --housekeeping_interval=30s
+      - --docker_only=true
+      - --store_container_labels=false
+    ports:
+      # 8080 is free on this box but UGOS is not ours to bet on, so 8081.
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: nas-alloy
+    restart: unless-stopped
+    # Behind a profile, so `docker compose up -d` brings up only the two
+    # exporters. Logs need a Cloudflare Access service token that does not exist
+    # until someone creates it, and an Alloy that starts without one just retries
+    # a 403 forever. `./deploy.py --with-logs` selects this profile.
+    profiles:
+      - logs
+    # Root for the journal files and the Docker socket, same as on the mini PC.
+    user: root
+    command:
+      - run
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      # Soft defaults on purpose: `${VAR:?}` is interpolated for every service in
+      # the file whether or not its profile is selected, so a hard requirement
+      # here would also block the metrics-only deploy.
+      LOKI_PUSH_URL: ${LOKI_PUSH_URL:-}
+      CF_ACCESS_CLIENT_ID: ${CF_ACCESS_CLIENT_ID:-}
+      CF_ACCESS_CLIENT_SECRET: ${CF_ACCESS_CLIENT_SECRET:-}
+    network_mode: host
+    volumes:
+      - alloy-data:/var/lib/alloy/data
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+
+volumes:
+  alloy-data:

@@ -1,19 +1,22 @@
 # Monitoring
 
-Prometheus + Grafana + node_exporter + cAdvisor + json-exporter, deployed as a single Dokploy
-Compose app.
+Prometheus + Grafana + node_exporter + cAdvisor + json-exporter + Loki + Alloy, deployed as a
+single Dokploy Compose app, plus a small set of agents that run on the NAS.
 
 Answers: how many watts is the box drawing, what is the CPU and RAM doing, how busy is the
-ethernet link, and which container is responsible.
+ethernet link, which container is responsible — and, since logs landed, what that container was
+actually saying at the time.
 
 ## Layout
 
 | File | Role |
 |---|---|
-| `compose.base.yml` | Source of truth. Services, Prometheus config, recording rules, alert rules, Grafana provisioning. |
-| `dashboards/homelab-overview.json` | The Grafana dashboard, kept as normal JSON so it stays diffable. |
+| `compose.base.yml` | Source of truth. Services, Prometheus config, recording rules, alert rules, Loki config, Alloy config, Grafana provisioning. |
+| `dashboards/homelab-overview.json` | The metrics dashboard, kept as normal JSON so it stays diffable. |
+| `dashboards/homelab-logs.json` | The logs dashboard. Same deal. |
 | `build.py` | Inlines the dashboards into the compose file. |
 | `deploy.py` | Builds, pushes the compose to Dokploy over its API, and deploys. |
+| `nas-agents/` | node_exporter + cAdvisor + Alloy for the NAS. Plain compose over SSH, its own `deploy.py`. |
 | `.dokploy.env` | **Gitignored.** Dokploy URL, API key, compose id used by `deploy.py`. |
 | `docker-compose.yml` | **Generated.** Self-contained — paste it into Dokploy as-is. |
 
@@ -62,8 +65,13 @@ Settings → API/CLI if it is ever shared or copied elsewhere.
 3. **Environment** tab, set:
    ```
    GRAFANA_ADMIN_PASSWORD=<pick one>
+   QBITTORRENT_USER=<the qBittorrent WebUI login>
+   QBITTORRENT_PASS=<its password>
    ```
-   The compose file refuses to start without it, on purpose.
+   The compose file refuses to start without all three, on purpose — `${VAR:?}` fails the whole
+   file rather than starting the stack with a broken exporter. The corollary is that adding a
+   `${VAR:?}` and deploying before the variable exists takes the stack down, so set them first.
+   The qBittorrent pair is the same one already in `/home/davide/mediarr-dash/.env`.
 4. Deploy.
 5. Copy the compose id out of the browser URL into `.dokploy.env`, and from then on use
    `./deploy.py`.
@@ -145,6 +153,24 @@ Without `GRAFANA_ROOT_URL`, Grafana's redirects and share links point at `localh
 Login happens twice — once at Cloudflare, once at Grafana. Grafana can consume the Access JWT
 (`auth.jwt` with the team-domain certs endpoint) to skip its own login; not wired up.
 
+### `loki-push.davideghiotto.it`
+
+The one write endpoint this stack exposes to the internet, and it exists solely because the NAS
+cannot reach the box any other way.
+
+```
+NAS Alloy → Cloudflare edge → Access (service token only) → tunnel → localhost:3100
+```
+
+Loki binds `127.0.0.1:3100`, so the tunnel is the only thing that can reach it. The Access
+application over this hostname must have **no identity providers** — a single Service Auth
+policy, so a leaked URL on its own returns 403 and only the token pair gets through. Create the
+token under **Zero Trust → Access → Service Auth**; it is shown once, and it goes into
+`~/nas-agents/.env` on the NAS, nowhere else.
+
+Worth adding while you are in there: a WAF custom rule on that hostname blocking every path
+except `/loki/api/v1/push`, so a token that does leak can append logs but cannot read them back.
+
 ## What is collected
 
 | Source | Covers |
@@ -152,10 +178,95 @@ Login happens twice — once at Cloudflare, once at Grafana. Grafana can consume
 | node_exporter (host network, host PID, root) | CPU per core, memory, load, `enp3s0` throughput/errors/drops/link state, NVMe I/O and temperature, hwmon sensors, systemd units |
 | cAdvisor | per-container CPU, memory, network, filesystem |
 | json-exporter + NOUS A1T plug | real wall watts, volts, amps, power factor, cumulative kWh |
+| qBittorrent exporter | client-wide up/down rates, all-time totals, peer and DHT counts, and torrent counts by category × status |
+| Alloy | every container's stdout plus the host's systemd journal, into Loki |
+| NAS agents | the same three, on the UGREEN box, over Tailscale |
 | Prometheus | 180 day retention, capped at 30 GB |
+| Loki | 30 day retention, compactor enforces it |
 
 `veth*`, `docker*`, `br-*` and `lo` are excluded from network metrics — otherwise every
 container interface shows up as noise.
+
+**Everything on the overview dashboard is pinned to `instance="homelab"`.** That was not
+necessary while the box was the only thing being scraped; it became necessary the moment the NAS
+started reporting `node_*` and `container_*` series of its own. An unscoped expression silently
+averages two machines.
+
+### Logs
+
+Alloy replaces Promtail, which reached end-of-life on 2 March 2026. Two sources, both labelled
+`host="homelab"`:
+
+- `job="docker"` — every container by `container`, `compose_project`, `compose_service`.
+- `job="journal"` — the host side by `unit`, `level`, `identifier`. Kernel, `docker.service`,
+  `cloudflared`, `tailscaled`, `sshd`.
+
+Reading the journal over SSH needs group membership that `davide` does not have by default:
+
+```sh
+ssh -t homelab 'sudo /usr/sbin/usermod -aG systemd-journal,adm davide'
+```
+
+`usermod` lives in `/sbin`, which is not on a non-root `PATH` — hence `command not found` rather
+than a permission error if you try it without the full path. Log out and back in afterwards.
+
+The Docker daemon ships with **no log rotation**, so container JSON logs grow unbounded. Worth
+fixing once, deliberately, because it restarts every container on the box:
+
+```sh
+# /etc/docker/daemon.json
+{ "log-driver": "json-file", "log-opts": { "max-size": "50m", "max-file": "3" } }
+```
+
+### Why the qBittorrent metrics are not per-torrent
+
+Tempting, and wrong twice over. A `name`-labelled series per torrent is one new time series per
+torrent that ever exists, churning as they come and go — the textbook cardinality mistake, on a
+box that keeps 180 days. And the exporter that does expose them,
+`ghcr.io/martabal/qbittorrent-exporter`, cannot authenticate against qBittorrent 5.2.3 at all:
+that version answers a **successful** `POST /api/v2/auth/login` with `204`, and the exporter
+treats anything but `200` as a failed login. It logs `authentication failed, status code: 204`
+forever with correct credentials.
+
+So history is aggregate — rates, totals, and counts by category × status, which is enough to say
+"it was seeding hard at 07:20". Naming the individual torrent is a live question, answered from
+the WebUI API by whatever is asking.
+
+### The NAS
+
+The UGREEN DXP4800 Pro is Ilario's box on Ilario's network. Its shape dictates the design:
+
+- Its `tailscaled` runs `--network host` but in **userspace mode**, so the host has no
+  `tailscale0` device. Inbound tailnet traffic is proxied to the host's `127.0.0.1` — which is
+  why the exporters there bind to loopback and are still scrapable, while staying invisible to
+  Ilario's LAN.
+- There is **no tailnet egress and no route to our LAN** (its `192.168.15.0/24` matching ours is
+  a coincidence). So metrics are **pulled** and logs are **pushed out over the internet** to
+  `loki-push.davideghiotto.it` on our tunnel, behind a Cloudflare Access service token. A reverse
+  SSH tunnel is not an option either: its sshd sets `AllowTcpForwarding no`.
+- The hop is DERP-relayed at 35–80 ms with no direct connection, so `node-nas` and `cadvisor-nas`
+  scrape every 60 s with a 20 s timeout, and `NasDown` waits 10 minutes before firing.
+
+`${NAS_TAILNET_IP}` is hard-coded in the scrape config. That is the one place the no-hard-coded-IP
+rule below does not apply — a tailnet address is stable, and the NAS's LAN address is useless
+from here.
+
+Deploy the agents separately, and note that the disk picture there is worse than the badge
+suggests: four bays, **one** disk fitted, a ~2007 Seagate ST3320820AS in a single-member `md1`
+raid1. `raid1` with one member is not redundancy. `/volume1` is at 82 %, and `smartctl` is not
+installed, so SMART health cannot be scraped without adding it.
+
+```sh
+cd nas-agents
+./deploy.py              # copy up, start node_exporter + cAdvisor
+./deploy.py --with-logs  # also start Alloy, once the Access token exists
+./deploy.py --pull       # pull newer images first
+./deploy.py --follow     # follow alloy afterwards
+```
+
+`nas-agents/.env` holds the Cloudflare Access service token and lives **only on the NAS**, mode
+600. `deploy.py` refuses to deploy if it is missing rather than creating it, so the token never
+passes through this repo.
 
 ## The power numbers
 
@@ -321,6 +432,12 @@ They are visible under Grafana → Alerting → Prometheus rules.
 `HostDown`, `EthernetLinkFlapping`, `EthernetErrors`, `MemoryPressure`, `DiskFillingUp`,
 `CPUHot`, `SmartPlugDown`. `HostDown` and `EthernetLinkFlapping` exist because of the September 2026 suspend
 problem — if the box ever goes to sleep again, this is what notices.
+
+`MemoryPressure` and `DiskFillingUp` carry an explicit `instance="homelab"` for the same reason
+the dashboard does: the NAS reports the same metric names.
+
+The NAS has its own group: `NasDown`, `NasPoolFillingUp`, `NasRaidDegraded`, `NasDiskHot`.
+`NasPoolFillingUp` sits close to firing by design — `/volume1` is at 82 % and only gets fuller.
 
 Add Alertmanager, or wire Grafana's own alerting to a notification channel, to actually get
 told.
