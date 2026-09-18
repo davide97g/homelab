@@ -1,6 +1,7 @@
 import { limited } from "../limiter.js";
 import type { ActionResult, AuditEntry } from "../wire.js";
 import { record } from "./audit.js";
+import { Denied } from "./denied.js";
 import { ACTIONS } from "./registry.js";
 
 // One dispatcher, not twelve routes.
@@ -135,7 +136,11 @@ export async function dispatch(input: DispatchInput): Promise<ActionResult> {
       return await finish({ action, target, outcome: "ok", message, from: input.from });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return await finish({ action, target, outcome: "failed", message, from: input.from });
+      // Denied means nothing was attempted -- a deny-listed container, a target
+      // that does not resolve, an id off the allow-list. Recording that as
+      // "failed" would send someone to look at a service that is perfectly fine.
+      const outcome = err instanceof Denied ? "denied" : "failed";
+      return await finish({ action, target, outcome, message, from: input.from });
     }
   })();
 

@@ -3,6 +3,7 @@ import { containerCommand, dockerConfigured } from "../docker/client.js";
 import { resolveManaged } from "../collect/containers.js";
 import { arrCommand, arrConfigured, dokployDeploy, qbitAll, qbitConfigured } from "../media/clients.js";
 import type { ActionDef, ActionRisk, ActionTargetKind } from "../wire.js";
+import { Denied } from "./denied.js";
 
 // Every write the hub can perform, in one file, in the same spirit as the series
 // registry: the browser sends an id and a target, never a command.
@@ -50,7 +51,9 @@ async function container(target: string, command: "start" | "stop" | "restart"):
   // Resolved against the live list, so a name the browser invented cannot reach
   // Docker, and the deny-list is applied here rather than trusted from the UI.
   const found = await resolveManaged(target);
-  if ("error" in found) throw new Error(found.error);
+  // A name that does not resolve, a container on the NAS and a deny-listed one
+  // are all refusals rather than failures — nothing was attempted.
+  if ("error" in found) throw new Denied(found.error);
   await containerCommand(found.id, command);
   return `${command}ed ${found.name}`;
 }
@@ -163,7 +166,7 @@ export const ACTIONS: Record<string, Definition> = {
     choices: dokployApps,
     run: async (target) => {
       const allowed = dokployApps().find((a) => a.value === target);
-      if (!allowed) throw new Error("that compose app is not on the allow-list");
+      if (!allowed) throw new Denied("that compose app is not on the allow-list");
       const message = await dokployDeploy(allowed.value);
       return `${allowed.label}: ${message}`;
     },
