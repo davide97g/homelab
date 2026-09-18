@@ -71,19 +71,38 @@ network, which is the only reason `http://prometheus:9090` and
 
 ### Through the tunnel
 
-Cloudflare Zero Trust → Networks → Tunnels → Public Hostname:
-`monitoring.davideghiotto.it` → `HTTP localhost:3003`. Then an Access
-application over that hostname with the same policy as the mediarr one, and
-`COOKIE_SECURE=true` in `.env`.
+Live at `https://monitoring.davideghiotto.it`, gated by Cloudflare Access. Same
+shape as `grafana.`: nothing is open inbound, the box dials out.
 
-Two consequences of that last flag, both inherited from mediarr-dash and both
-easy to be surprised by:
+```
+browser → Cloudflare edge → Access policy → tunnel → localhost:3003
+```
+
+Three edits, all made with `CF_API_TOKEN` from the homelab `.env`:
+
+| What | Where |
+|---|---|
+| Proxied `CNAME` `monitoring` → `$CF_TUNNEL_ID.cfargotunnel.com` | `zones/$CF_ZONE_ID/dns_records` |
+| Ingress rule `monitoring.davideghiotto.it` → `http://localhost:3003` | `accounts/$CF_ACCOUNT_ID/cfd_tunnel/$CF_TUNNEL_ID/configurations` |
+| Access application `hub`, reusing grafana's `email-access` policy | `accounts/$CF_ACCOUNT_ID/access/apps` |
+
+**The tunnel config API replaces the whole ingress list.** Read it, edit it,
+write it back, and keep the `http_status:404` catch-all last or it swallows every
+rule after it.
+
+The Access policy is Cloudflare's reusable one, attached by id rather than
+copied, so there is one place to change who gets in rather than one per
+hostname.
+
+`COOKIE_SECURE=true` is now set in `/home/davide/hub/.env`. Two consequences,
+both inherited from mediarr-dash and both easy to be surprised by:
 
 - A browser will not store a `Secure` cookie over plain HTTP, so
   `http://<box>:3003` can no longer complete a login. End-to-end verification
   runs on the box against `127.0.0.1:3003`.
 - Access gates `/healthz` too, so an external uptime probe needs its own Access
-  application scoped to that path with action **Bypass**.
+  application scoped to that path with action **Bypass**. Not set up: nothing
+  probes it yet.
 
 ## What is built
 
