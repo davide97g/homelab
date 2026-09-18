@@ -239,3 +239,82 @@ export function Ring({
     </div>
   );
 }
+
+/** The pill group used for ranges, machines and anything else with a handful of
+ *  mutually exclusive options. Three copies of this had appeared by the third
+ *  page, which is where it stopped being a coincidence. */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  className,
+}: {
+  options: readonly T[] | readonly { value: T; label: string }[];
+  value: T;
+  onChange: (next: T) => void;
+  label: string;
+  className?: string;
+}) {
+  const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+
+  return (
+    <div className={cn("neu-inset flex gap-0.5 p-0.5", className)} role="group" aria-label={label}>
+      {items.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          aria-pressed={o.value === value}
+          className={cn(
+            "rounded-[calc(var(--radius)-0.75rem)] px-2.5 py-1 text-[11px] font-medium transition-colors",
+            o.value === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The same pills, but any number of them can be on at once. Used for log
+ *  levels, where "errors and warnings" is the question you actually ask. */
+export function Toggles<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  toneOf,
+  className,
+}: {
+  options: readonly T[];
+  value: T[];
+  onChange: (next: T[]) => void;
+  label: string;
+  toneOf?: (option: T) => Tone;
+  className?: string;
+}) {
+  return (
+    <div className={cn("neu-inset flex gap-0.5 p-0.5", className)} role="group" aria-label={label}>
+      {options.map((o) => {
+        const on = value.includes(o);
+        return (
+          <button
+            key={o}
+            type="button"
+            onClick={() => onChange(on ? value.filter((v) => v !== o) : [...value, o])}
+            aria-pressed={on}
+            className={cn(
+              "rounded-[calc(var(--radius)-0.75rem)] px-2.5 py-1 text-[11px] font-medium transition-colors",
+              on ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+              on && toneOf ? TONE_TEXT[toneOf(o)] : on && "text-foreground",
+            )}
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

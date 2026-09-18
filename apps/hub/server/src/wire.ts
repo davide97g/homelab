@@ -274,3 +274,53 @@ export type NasDetail = {
   /** Caveats that belong on the page rather than in a commit message. */
   notes: string[];
 };
+
+// ——— Logs ——————————————————————————————————————————————————————————————————
+
+/** Shorter than the metric ranges on purpose. A log window is read, not
+ *  watched, and 30 days of lines is not a thing a browser should be asked to
+ *  hold. Declared as a union for the same reason `Range` is -- this file must
+ *  stay types-only, so both sides keep their own list typed against it. */
+export type LogRange = "5m" | "15m" | "1h" | "6h" | "24h" | "7d";
+
+export type LogLevel = "error" | "warn" | "info" | "debug";
+
+export type LogLine = {
+  /** Stable across polls, so the tail can append without re-keying the list. */
+  id: string;
+  /** Unix nanoseconds, as a string: a double cannot hold one without losing the
+   *  last few digits, and those digits are what orders two lines in the same
+   *  millisecond. */
+  ts: string;
+  atMs: number;
+  host: string;
+  job: string;
+  /** The container or the systemd unit -- whichever this stream has. */
+  source: string;
+  level: LogLevel | "unknown";
+  line: string;
+};
+
+export type LogsResponse = {
+  at: string;
+  /** The LogQL the server assembled. Shown on the page, because a filter UI that
+   *  hides what it asked for is impossible to debug from the outside. */
+  query: string;
+  lines: LogLine[];
+  /** Newest nanosecond timestamp in this batch. Send it back as `since` and the
+   *  next call returns only what arrived after it. */
+  cursor: string | null;
+  /** Loki returned exactly the limit, so there are older lines in this window
+   *  that are not here. */
+  truncated: boolean;
+  grafana: string;
+};
+
+/** The live label sets, so the filter UI offers only streams that exist and the
+ *  server can reject anything else. */
+export type LogOptions = {
+  hosts: string[];
+  containers: string[];
+  units: string[];
+  levels: LogLevel[];
+};

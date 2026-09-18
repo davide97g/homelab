@@ -1,6 +1,7 @@
 import type { Summary } from "@wire";
 import { HomePage } from "@/pages/home";
 import { MetricsPage } from "@/pages/metrics-page";
+import { LogsPage } from "@/pages/logs";
 import { NasPage } from "@/pages/nas";
 import { Placeholder } from "@/pages/placeholder";
 
@@ -75,16 +76,7 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
       />
     ),
   },
-  {
-    path: "/logs",
-    element: () => (
-      <Placeholder
-        title="Logs"
-        blurb="Loki, filtered by host, container or systemd unit, with a level filter and a live tail. The thing that was missing entirely until this week."
-        phase="Loki is running and ingesting; the query proxy and the viewer are next."
-      />
-    ),
-  },
+  { path: "/logs", element: () => <LogsPage /> },
   {
     path: "/media",
     element: () => (

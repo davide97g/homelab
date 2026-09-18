@@ -7,6 +7,7 @@ import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.j
 import { nasDetail } from "./collect/nas.js";
 import { summary } from "./collect/summary.js";
 import { config } from "./config.js";
+import { logOptions, logs, parseLogRequest } from "./loki/query.js";
 import { catalog, parseRequest, series } from "./prom/series.js";
 import { clientIp, forgive, limited } from "./limiter.js";
 
@@ -93,6 +94,29 @@ app.get("/api/series", async (c) => {
   const data = await series(parsed);
   c.header("Cache-Control", "no-store");
   return c.json(data);
+});
+
+/** The live label sets behind the log filters. Cached 60 s upstream, so this is
+ *  cheap enough for the page to refresh it whenever it likes. */
+app.get("/api/logs/options", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await logOptions());
+});
+
+/** Structured filters in, LogQL assembled here — never a query from the
+ *  browser. A stream selector is mandatory in LogQL but `{job=~".+"}` is a legal
+ *  one, and over 30 days of retention that is every line the stack has written.
+ *  See server/src/loki/query.ts. */
+app.get("/api/logs", async (c) => {
+  const parsed = await parseLogRequest(new URL(c.req.url).searchParams);
+  if ("error" in parsed) return c.json({ error: parsed.error }, 400);
+  try {
+    const data = await logs(parsed);
+    c.header("Cache-Control", "no-store");
+    return c.json(data);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
+  }
 });
 
 /** Unauthenticated, because it is the container healthcheck's target. It says

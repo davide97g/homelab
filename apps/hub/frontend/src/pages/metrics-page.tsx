@@ -2,8 +2,8 @@ import type { Range } from "@wire";
 import { useState } from "react";
 import { Panel } from "@/components/charts/time-series";
 import { RangePicker } from "@/components/charts/range-picker";
+import { Segmented } from "@/components/primitives";
 import { useSeries } from "@/hooks/use-series";
-import { cn } from "@/lib/utils";
 
 export type PanelSpec = { id: string; wide?: boolean; height?: number };
 
@@ -32,22 +32,7 @@ export function MetricsPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         {machines.length > 1 && (
-          <div className="neu-inset flex gap-0.5 p-0.5" role="group" aria-label="Machine">
-            {machines.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setInstance(m)}
-                aria-pressed={m === instance}
-                className={cn(
-                  "rounded-[calc(var(--radius)-0.75rem)] px-3 py-1 text-[11px] font-medium transition-colors",
-                  m === instance ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+          <Segmented options={machines} value={instance} onChange={setInstance} label="Machine" />
         )}
         <RangePicker value={range} onChange={setRange} />
         {note && <p className="text-muted-foreground text-[11px]">{note}</p>}
