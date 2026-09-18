@@ -20,11 +20,13 @@ export function TopologyMap({
   topology,
   focus,
   onFocus,
+  onSelect,
   className,
 }: {
   topology: Topology;
   focus: Focus;
   onFocus: (focus: Focus) => void;
+  onSelect: (focus: Exclude<Focus, null>) => void;
   className?: string;
 }) {
   const renderer = useRenderer();
@@ -35,7 +37,7 @@ export function TopologyMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const markers = useMemo(() => markersOf(topology), [shape]);
 
-  const flat = <TopologyFlat topology={topology} focus={focus} onFocus={onFocus} />;
+  const flat = <TopologyFlat topology={topology} focus={focus} onFocus={onFocus} onSelect={onSelect} />;
 
   // Behind both renderers, not just the canvas: the flat SVG is a real renderer
   // and gets the same ground. It is `aria-hidden` and behind everything, so it
@@ -58,7 +60,7 @@ export function TopologyMap({
     <div className={cn("relative", className)}>
       {ground}
       <Suspense fallback={flat}>
-        <TopologyScene topology={topology} markers={markers} elements={elements} />
+        <TopologyScene topology={topology} markers={markers} elements={elements} focus={focus} />
       </Suspense>
 
       {/* The labels, which are also the hit targets.
@@ -98,9 +100,10 @@ export function TopologyMap({
               // flash in the top-left corner on the way in.
               style={{ opacity: 0 }}
               aria-label={node ? `${node.label}, ${nodeStatusLabel(node.status)}` : `${link?.carries}: ${text}`}
+              aria-pressed={active}
               onMouseEnter={() => onFocus({ kind: marker.kind, id: marker.id })}
               onFocus={() => onFocus({ kind: marker.kind, id: marker.id })}
-              onClick={() => onFocus({ kind: marker.kind, id: marker.id })}
+              onClick={() => onSelect({ kind: marker.kind, id: marker.id })}
               className={cn(
                 "pointer-events-auto absolute top-0 left-0 flex items-center rounded-full border",
                 "transition-[opacity,background-color,border-color,padding] duration-200 motion-reduce:transition-none",

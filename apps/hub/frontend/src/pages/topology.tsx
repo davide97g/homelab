@@ -29,9 +29,17 @@ export function TopologyPage({ data }: { data: Summary }) {
   const load = useCallback((signal: AbortSignal) => fetchTopology(signal), []);
   const { data: topology, error } = usePoll<Topology>(load, 5000);
 
-  // Hover and keyboard focus are the same gesture here, and a click pins it —
-  // which on a touch screen is the only one of the three available.
-  const [focus, setFocus] = useState<Focus>(null);
+  // Hover is a preview. A click is a separate, persistent choice: before this
+  // split the next hover (or leaving the picture) silently replaced a clicked
+  // resource, which made the detail card feel like it could not be locked.
+  const [hovered, setHovered] = useState<Focus>(null);
+  const [selected, setSelected] = useState<Focus>(null);
+  const focus = selected ?? hovered;
+
+  const sameFocus = (a: Focus, b: Focus) => a?.kind === b?.kind && a?.id === b?.id;
+  const select = useCallback((next: Exclude<Focus, null>) => {
+    setSelected((current) => (sameFocus(current, next) ? null : next));
+  }, []);
 
   if (error && !topology) {
     return (
@@ -57,14 +65,18 @@ export function TopologyPage({ data }: { data: Summary }) {
     <div className="flex h-full min-h-0 flex-col gap-4 pt-1">
       <div
         className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]"
-        // Leaving the picture clears the card rather than leaving the last thing
-        // you touched pinned to the corner claiming to be current.
-        onMouseLeave={() => setFocus(null)}
+        // Only the transient preview leaves with the pointer. A chosen resource
+        // remains selected until it is clicked again or cleared with Escape.
+        onMouseLeave={() => setHovered(null)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setSelected(null);
+        }}
       >
         <Ledger
           topology={topology}
           focus={focus}
-          onFocus={setFocus}
+          onFocus={setHovered}
+          onSelect={select}
           className="order-2 lg:order-1 lg:sticky lg:top-2 lg:self-start"
         />
 
@@ -72,13 +84,20 @@ export function TopologyPage({ data }: { data: Summary }) {
             wide and shallow, and a tall box on a phone just letterboxes it.
             From lg up it fills the column instead. */}
         <div className="relative order-1 aspect-[1.6] lg:order-2 lg:aspect-auto lg:h-full lg:min-h-[420px]">
-          <TopologyMap topology={topology} focus={focus} onFocus={setFocus} className="absolute inset-0" />
+          <TopologyMap
+            topology={topology}
+            focus={focus}
+            onFocus={setHovered}
+            onSelect={select}
+            className="absolute inset-0"
+          />
 
           {/* Anchored to the corner rather than to the pointer: a card that
               follows the cursor covers the thing you are pointing at. */}
           <DetailCard
             topology={topology}
             focus={focus}
+            selected={selected !== null}
             className="animate-in fade-in-0 pointer-events-auto absolute right-0 bottom-0 duration-150"
           />
         </div>

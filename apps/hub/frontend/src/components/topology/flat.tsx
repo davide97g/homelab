@@ -91,11 +91,13 @@ export function TopologyFlat({
   topology,
   focus,
   onFocus,
+  onSelect,
   className,
 }: {
   topology: Topology;
   focus: Focus;
   onFocus: (focus: Focus) => void;
+  onSelect: (focus: Exclude<Focus, null>) => void;
   className?: string;
 }) {
   const geometry = useMemo(() => linkGeometry(topology), [topology]);
@@ -350,9 +352,10 @@ export function TopologyFlat({
             tabIndex={0}
             role="button"
             aria-label={node ? `${node.label}, ${nodeStatusLabel(node.status)}` : `${link?.carries}: ${text}`}
+            aria-pressed={active}
             onMouseEnter={() => onFocus({ kind: marker.kind, id: marker.id })}
             onFocus={() => onFocus({ kind: marker.kind, id: marker.id })}
-            onClick={() => onFocus({ kind: marker.kind, id: marker.id })}
+            onClick={() => onSelect({ kind: marker.kind, id: marker.id })}
             className="focus-visible:outline-ring cursor-pointer focus-visible:outline-2"
           >
             <rect

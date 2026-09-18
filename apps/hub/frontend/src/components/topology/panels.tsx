@@ -79,11 +79,13 @@ export function Ledger({
   topology,
   focus,
   onFocus,
+  onSelect,
   className,
 }: {
   topology: Topology;
   focus: Focus;
   onFocus: (focus: Focus) => void;
+  onSelect: (focus: Exclude<Focus, null>) => void;
   className?: string;
 }) {
   const list = useRef<HTMLDivElement>(null);
@@ -126,7 +128,7 @@ export function Ledger({
                   aria-pressed={active}
                   onMouseEnter={() => onFocus({ kind: "node", id: node.id })}
                   onFocus={() => onFocus({ kind: "node", id: node.id })}
-                  onClick={() => onFocus({ kind: "node", id: node.id })}
+                  onClick={() => onSelect({ kind: "node", id: node.id })}
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-[10px] px-1.5 py-1.5 text-left",
                     "focus-visible:ring-ring/60 transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none",
@@ -266,7 +268,17 @@ function LinkDetail({ link, from, to }: { link: TopoLink; from?: TopoNode; to?: 
   );
 }
 
-export function DetailCard({ topology, focus, className }: { topology: Topology; focus: Focus; className?: string }) {
+export function DetailCard({
+  topology,
+  focus,
+  selected = false,
+  className,
+}: {
+  topology: Topology;
+  focus: Focus;
+  selected?: boolean;
+  className?: string;
+}) {
   const node = focus?.kind === "node" ? topology.nodes.find((n) => n.id === focus.id) : undefined;
   const link = focus?.kind === "link" ? topology.links.find((l) => l.id === focus.id) : undefined;
 
@@ -274,6 +286,7 @@ export function DetailCard({ topology, focus, className }: { topology: Topology;
 
   return (
     <div className={cn("glass flex w-[16.5rem] flex-col gap-3 p-4", className)}>
+      {selected && <span className="text-muted-foreground self-end text-[10px] tracking-wide uppercase">Pinned · Esc clears</span>}
       {node ? (
         <NodeDetail node={node} />
       ) : link ? (

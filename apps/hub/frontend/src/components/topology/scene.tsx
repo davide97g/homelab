@@ -10,6 +10,7 @@ import { FrameDriver, useActive } from "@/components/three/loop";
 import { MiniPc, Nas, Router, SmartPlug } from "@/components/three/machines";
 import { ContactShadow } from "@/components/three/parts";
 import { useSceneColors, type SceneColors } from "@/components/three/webgl";
+import type { Focus } from "@/components/topology/panels";
 import {
   estateBounds,
   estateCentre,
@@ -243,11 +244,21 @@ function curveOf(from: Vec3, control: Vec3, to: Vec3): THREE.QuadraticBezierCurv
  *  A path nothing measures is drawn thinner and dimmer and carries no beads. It
  *  is deliberately not drawn as "quiet traffic": the flat renderer dashes it and
  *  this one dims it, and both mean the same thing — there is no number here. */
-function Conduit({ link, curve, colour }: { link: TopoLink; curve: THREE.QuadraticBezierCurve3; colour: string }) {
+function Conduit({
+  link,
+  curve,
+  colour,
+  active,
+}: {
+  link: TopoLink;
+  curve: THREE.QuadraticBezierCurve3;
+  colour: string;
+  active: boolean;
+}) {
   const measured = link.status !== "unconfigured";
   const geometry = useMemo(
-    () => new THREE.TubeGeometry(curve, 44, measured ? 0.035 : 0.018, 6, false),
-    [curve, measured],
+    () => new THREE.TubeGeometry(curve, 44, active ? 0.052 : measured ? 0.035 : 0.018, 6, false),
+    [curve, measured, active],
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -261,7 +272,7 @@ function Conduit({ link, curve, colour }: { link: TopoLink; curve: THREE.Quadrat
     return { at, turn };
   }, [curve]);
 
-  const opacity = link.status === "down" ? 0.3 : measured ? 0.62 : 0.28;
+  const opacity = active ? 0.98 : link.status === "down" ? 0.3 : measured ? 0.62 : 0.28;
 
   return (
     <>
@@ -282,6 +293,7 @@ function Conduit({ link, curve, colour }: { link: TopoLink; curve: THREE.Quadrat
 }
 
 type BeadPlan = {
+  id: string;
   curve: THREE.QuadraticBezierCurve3;
   colour: THREE.Color;
   /** Continuous flow: how many beads are in transit at once, and how long each
@@ -306,6 +318,7 @@ function planBeads(link: TopoLink, curve: THREE.QuadraticBezierCurve3, colour: s
 
   if (link.cadenceS !== undefined) {
     return {
+      id: link.id,
       curve,
       colour: shade,
       count: 1,
@@ -325,6 +338,7 @@ function planBeads(link: TopoLink, curve: THREE.QuadraticBezierCurve3, colour: s
   const scaled = Math.max(0, Math.min(1, magnitude));
 
   return {
+    id: link.id,
     curve,
     colour: shade,
     count: Math.max(1, Math.round(1 + scaled * 5)),
@@ -338,7 +352,7 @@ function planBeads(link: TopoLink, curve: THREE.QuadraticBezierCurve3, colour: s
  *  A mesh per bead would be a draw call per bead and this scene is already
  *  carrying two machines, two routers and a plug. Instances that are not in
  *  flight are scaled to zero rather than removed, so the buffer never resizes. */
-function Beads({ plans }: { plans: BeadPlan[] }) {
+function Beads({ plans, focus }: { plans: BeadPlan[]; focus: Focus }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const point = useMemo(() => new THREE.Vector3(), []);
@@ -364,6 +378,7 @@ function Beads({ plans }: { plans: BeadPlan[] }) {
     let i = 0;
 
     for (const plan of plans) {
+      const emphasised = focus?.kind === "link" && focus.id === plan.id;
       for (let n = 0; n < plan.count && i < MAX_BEADS; n += 1, i += 1) {
         let progress: number;
 
@@ -384,7 +399,7 @@ function Beads({ plans }: { plans: BeadPlan[] }) {
           // Fade in and out at the ends so a bead does not pop into existence on
           // top of the machine it came from.
           const edge = Math.min(1, Math.min(progress, 1 - progress) * 8);
-          dummy.scale.setScalar(0.085 * edge);
+          dummy.scale.setScalar((emphasised ? 0.115 : 0.085) * edge);
         }
 
         dummy.updateMatrix();
@@ -406,6 +421,38 @@ function Beads({ plans }: { plans: BeadPlan[] }) {
       <sphereGeometry args={[1, 10, 8]} />
       <meshBasicMaterial toneMapped={false} />
     </instancedMesh>
+  );
+}
+
+/** One selected resource gets a slow, physical locator rather than a flashing
+ * outline. It stays in world space, so it remains attached while orbiting. */
+function FocusLock({ focus, curves, colour }: { focus: Focus; curves: Map<string, THREE.QuadraticBezierCurve3>; colour: string }) {
+  const ring = useRef<THREE.Group>(null);
+  const at = useMemo(() => {
+    if (!focus) return null;
+    if (focus.kind === "node") return NODE_AT[focus.id];
+    return curves.get(focus.id)?.getPoint(0.5).toArray() as Vec3 | undefined;
+  }, [focus, curves]);
+
+  useFrame(({ clock }) => {
+    if (!ring.current) return;
+    const pulse = 1 + Math.sin(clock.elapsedTime * 2.1) * 0.07;
+    ring.current.scale.setScalar(pulse);
+    ring.current.rotation.y = clock.elapsedTime * 0.45;
+  });
+
+  if (!at) return null;
+  return (
+    <group ref={ring} position={at}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.38, 0.018, 8, 36]} />
+        <meshBasicMaterial color={colour} transparent opacity={0.9} depthWrite={false} toneMapped={false} />
+      </mesh>
+      <mesh rotation={[Math.PI / 2, 0, Math.PI / 4]}>
+        <torusGeometry args={[0.5, 0.01, 6, 24]} />
+        <meshBasicMaterial color={colour} transparent opacity={0.28} depthWrite={false} toneMapped={false} />
+      </mesh>
+    </group>
   );
 }
 
@@ -565,8 +612,8 @@ function Controls({
     };
   }, [camera, gl, api]);
 
-  // Damping needs a frame after the pointer stops, which the 30 fps driver is
-  // already providing whenever the canvas is on screen and in front.
+  // Damping needs a frame after the pointer stops; the display-smooth driver
+  // provides it whenever the canvas is on screen and in front.
   useFrame(() => api.current?.update());
 
   return null;
@@ -576,11 +623,13 @@ export default function TopologyScene({
   topology,
   markers,
   elements,
+  focus,
   className,
 }: {
   topology: Topology;
   markers: Marker[];
   elements: RefObject<Map<string, HTMLElement>>;
+  focus: Focus;
   className?: string;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -588,14 +637,11 @@ export default function TopologyScene({
   const colors = useSceneColors();
   const controls = useRef<OrbitControls | null>(null);
   const [moved, setMoved] = useState(false);
-  const [interacting, setInteracting] = useState(false);
 
   // `moved` is sticky and drives the reset button — offered only once the view
   // is no longer the one the page chose, because a reset on an unmoved camera
-  // is a control that does nothing. `interacting` is momentary and only raises
-  // the frame rate for the duration of the gesture.
+  // is a control that does nothing.
   const onInteract = useCallback((active: boolean) => {
-    setInteracting(active);
     if (active) setMoved(true);
   }, []);
 
@@ -649,10 +695,9 @@ export default function TopologyScene({
         }}
         camera={{ position: [0, 9, 16], fov: 33 }}
       >
-        {/* 60 for the length of a gesture, 30 the rest of the time. A drag at
-            30 fps reads as a stutter in a way an idle scene never does, and
-            there is no reason to keep paying for it afterwards. */}
-        <FrameDriver active={active} fps={interacting ? 60 : 30} />
+        {/* Beads carry live traffic. Keep their cadence at display smoothness;
+            visibility still stops all work when this canvas is offscreen. */}
+        <FrameDriver active={active} fps={60} />
         <Lights />
         <Controls onInteract={onInteract} api={controls} />
         <FitView enabled={!moved} api={controls} />
@@ -714,10 +759,19 @@ export default function TopologyScene({
           {topology.links.map((link) => {
             const curve = curves.get(link.id);
             if (!curve) return null;
-            return <Conduit key={link.id} link={link} curve={curve} colour={colors.transport[link.transport]} />;
+            return (
+              <Conduit
+                key={link.id}
+                link={link}
+                curve={curve}
+                colour={colors.transport[link.transport]}
+                active={focus?.kind === "link" && focus.id === link.id}
+              />
+            );
           })}
 
-          <Beads plans={plans} />
+          <Beads plans={plans} focus={focus} />
+          <FocusLock focus={focus} curves={curves} colour={colors.tone.accent} />
 
           <Projector markers={markers} elements={elements} />
         </group>
