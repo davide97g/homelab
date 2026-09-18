@@ -4,7 +4,7 @@ import { AlertStrip } from "@/components/cards/alert-strip";
 import { ContainerTile } from "@/components/cards/container-tile";
 import { HostCard } from "@/components/cards/host-card";
 import { MetricCard } from "@/components/cards/metric-card";
-import { MiniPcFlat } from "@/components/hero/mini-pc-flat";
+import { MachineHero } from "@/components/hero/machine-hero";
 import { ArcGauge, FieldLabel } from "@/components/primitives";
 
 /** The mini PC is the hero and the NAS is a card, because that is the actual
@@ -25,7 +25,7 @@ export function HomePage({ data }: { data: Summary }) {
     <div className="space-y-5">
       <section className="hero-glow grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <MiniPcFlat hotspots={box.hotspots} className="mx-auto" />
+          <MachineHero machine="homelab" hotspots={box.hotspots} className="mx-auto" />
 
           <ArcGauge
             value={power.wallW}

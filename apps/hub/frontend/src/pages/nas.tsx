@@ -3,7 +3,7 @@ import { ArrowUpRight, Info } from "lucide-react";
 import { useCallback } from "react";
 import { MetricCard } from "@/components/cards/metric-card";
 import { SensorList } from "@/components/cards/sensor-list";
-import { NasFlat } from "@/components/hero/nas-flat";
+import { MachineHero } from "@/components/hero/machine-hero";
 import { ArrayCard, BayStrip, FilesystemList } from "@/components/nas/storage";
 import { ArcGauge, FieldLabel, StatusDot, STATUS_LABEL, TONE_TEXT } from "@/components/primitives";
 import { MetricsPage } from "@/pages/metrics-page";
@@ -36,7 +36,7 @@ export function NasPage() {
     <div className="space-y-5">
       <section className="hero-glow grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <NasFlat hotspots={host.hotspots} className="mx-auto" />
+          <MachineHero machine="nas" hotspots={host.hotspots} className="mx-auto" />
 
           <ArcGauge
             value={pool?.percent ?? null}
