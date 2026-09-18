@@ -8,12 +8,13 @@
 #     ssh -t homelab 'bash ~/hub/scripts/collect-env.sh'
 #
 # Re-running is safe: existing answers are kept and only what is missing is
-# asked for. NONINTERACTIVE=1 asks nothing and generates what it can.
+# asked for. NONINTERACTIVE=1 asks nothing and generates what it can, which is
+# the right form for a re-run after a deploy.
 #
-# Right now the hub is read-only, so this is short. It grows when the actions
-# layer lands and needs the *arr keys, the qBittorrent login and the Dokploy
-# token -- at which point the extraction logic in mediarr-dash's
-# scripts/collect-env.sh is the thing to copy, since it already works.
+# Everything the actions layer needs is optional. A blank key does not break the
+# hub: the action it belongs to reports itself `unavailable` with the reason, so
+# an uncollected credential is a greyed-out button rather than a failure at the
+# click.
 
 set -euo pipefail
 umask 077
@@ -30,6 +31,8 @@ if [[ -f "$TARGET" ]]; then
   echo "found an existing $TARGET — keeping what is already set"
 fi
 
+mask() { local v="$1"; [[ -z "$v" ]] && echo "(empty)" || echo "${v:0:4}…${v: -2} (${#v} chars)"; }
+
 ask() {
   local key="$1" prompt="$2" secret="${3:-}"
   local current="${ENV[$key]:-}"
@@ -45,12 +48,35 @@ ask() {
 
   local answer
   if [[ -n "$secret" ]]; then
-    read -rsp "  $prompt: " answer
+    read -rsp "  $prompt: " answer </dev/tty
     echo
   else
-    read -rp "  $prompt: " answer
+    read -rp "  $prompt: " answer </dev/tty
   fi
   ENV["$key"]="$answer"
+}
+
+# Read a value straight out of a running container. Copied in spirit from
+# mediarr-dash's collect-env.sh, which already does this and works: every *arr
+# keeps its API key in its own config file, so the key never has to be typed and
+# never travels anywhere.
+from_container() {
+  local container="$1"; shift
+  docker exec "$container" "$@" 2>/dev/null | tr -d '\r\n' || true
+}
+
+refresh_from_container() {
+  local key="$1" container="$2"; shift 2
+  local value
+  value="$(from_container "$container" "$@")"
+  if [[ -n "$value" ]]; then
+    ENV["$key"]="$value"
+    echo "  $key: read from $container  $(mask "$value")"
+  elif [[ -n "${ENV[$key]:-}" ]]; then
+    echo "  $key: $container did not answer — keeping what is already set"
+  else
+    echo "  $key: $container did not answer and nothing is set — that action stays unavailable"
+  fi
 }
 
 echo "hub environment"
@@ -77,6 +103,24 @@ fi
 # can no longer log in and verification moves to the box itself.
 ENV[COOKIE_SECURE]="${ENV[COOKIE_SECURE]:-false}"
 
+echo
+echo "media write actions — keys are read out of the containers, not typed"
+refresh_from_container RADARR_API_KEY radarr sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' /config/config.xml
+refresh_from_container SONARR_API_KEY sonarr sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' /config/config.xml
+
+echo
+echo "qBittorrent — its Web UI login cannot be read from the container"
+ask QBITTORRENT_USER "qBittorrent username (blank if auth is bypassed for this subnet)"
+ask QBITTORRENT_PASS "qBittorrent password" secret
+
+echo
+echo "Dokploy redeploy — optional, and the most dangerous thing here"
+echo "  Dokploy has no scoped tokens: this key can delete every service on the box."
+echo "  DOKPLOY_ALLOW is what keeps it to the apps you name, as label=composeId"
+echo "  pairs separated by commas. Leave the key blank to keep redeploy off."
+ask DOKPLOY_API_KEY "Dokploy API key (Settings → API/CLI)" secret
+ask DOKPLOY_ALLOW "allow-list, e.g. monitoring=abc123,hub=def456"
+
 {
   echo "# Written by scripts/collect-env.sh on $(date -Is). Mode 600, never in git."
   for key in "${!ENV[@]}"; do
@@ -85,4 +129,6 @@ ENV[COOKIE_SECURE]="${ENV[COOKIE_SECURE]:-false}"
 } > "$TARGET"
 
 chmod 600 "$TARGET"
+echo
 echo "wrote $TARGET"
+echo "restart the hub to pick it up:  cd ~/hub && docker compose up -d"

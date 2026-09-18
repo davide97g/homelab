@@ -3,6 +3,9 @@ import { Hono } from "hono";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { tail } from "./actions/audit.js";
+import { dispatch } from "./actions/dispatch.js";
+import { catalog as actionCatalog } from "./actions/registry.js";
 import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
 import { containers } from "./collect/containers.js";
 import { nasDetail } from "./collect/nas.js";
@@ -126,6 +129,42 @@ app.get("/api/logs", async (c) => {
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
   }
+});
+
+/** What the hub can change, and what it cannot change yet and why. Availability
+ *  is computed from what is actually configured on the box, so an action whose
+ *  credential has never been collected says so instead of failing at the click. */
+app.get("/api/actions", (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json({ actions: actionCatalog() });
+});
+
+/** The only write path in the hub. One dispatcher rather than a route per
+ *  action, so throttle, confirmation, idempotency, audit and error shaping exist
+ *  once -- see server/src/actions/dispatch.ts. */
+app.post("/api/actions", async (c) => {
+  const body = await c.req
+    .json<Record<string, unknown>>()
+    .catch(() => ({}) as Record<string, unknown>);
+  const result = await dispatch({
+    action: body.action,
+    target: body.target,
+    key: body.key,
+    confirm: body.confirm,
+    from: clientIp((k) => c.req.header(k)),
+  });
+  c.header("Cache-Control", "no-store");
+  // Always 200: the outcome is in the payload. A refusal is a normal answer that
+  // the page renders, not a transport failure, and shaping it as a status code
+  // would make "denied" and "the tunnel dropped" indistinguishable in the client.
+  return c.json(result);
+});
+
+/** The audit, newest first. Read-only and unfiltered: an audit with a filter in
+ *  front of it is a report. */
+app.get("/api/actions/log", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json({ entries: await tail(200), path: config.auditPath });
 });
 
 /** Unauthenticated, because it is the container healthcheck's target. It says

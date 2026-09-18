@@ -1,6 +1,7 @@
 import type { Summary } from "@wire";
 import { HomePage } from "@/pages/home";
 import { MetricsPage } from "@/pages/metrics-page";
+import { ActionsPage } from "@/pages/actions";
 import { ContainersPage } from "@/pages/containers";
 import { LogsPage } from "@/pages/logs";
 import { NasPage } from "@/pages/nas";
@@ -74,20 +75,11 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
     element: () => (
       <Placeholder
         title="Media pipeline"
-        blurb="Queue depth, wanted subtitles, active streams and torrent states, plus the write actions. The pipeline graph itself stays where it already works, on mediarr."
-        phase="Waiting on the actions layer."
+        blurb="Queue depth, wanted subtitles, active streams and torrent states. The pipeline graph itself stays where it already works, on mediarr."
+        phase="The write side of this already exists on Actions — searches and torrent control. What is left is the read side, which needs the Jellyfin and Jellyseerr keys collecting on the box."
       />
     ),
   },
   { path: "/nas", element: () => <NasPage /> },
-  {
-    path: "/actions",
-    element: () => (
-      <Placeholder
-        title="Actions"
-        blurb="Container restarts, media pipeline writes, Dokploy redeploys — each behind an allow-list, each written to an audit log."
-        phase="Last, deliberately: everything else is read-only and carries no risk."
-      />
-    ),
-  },
+  { path: "/actions", element: () => <ActionsPage /> },
 ];

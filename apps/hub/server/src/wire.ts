@@ -376,3 +376,61 @@ export type ContainersResponse = {
   counts: { running: number; stopped: number; total: number };
   containers: ContainerDetail[];
 };
+
+// ——— Actions ———————————————————————————————————————————————————————————————
+
+export type ActionRisk = "low" | "medium" | "high";
+
+/** What kind of thing the action needs pointing at, so the page can render the
+ *  right control without knowing any action by name. */
+export type ActionTargetKind = "container" | "dokploy" | "none";
+
+export type ActionDef = {
+  id: string;
+  label: string;
+  /** One line saying what will actually happen, shown before the click rather
+   *  than in a tooltip after it. */
+  description: string;
+  risk: ActionRisk;
+  /** Whether the UI must ask twice. The server refuses without `confirm` either
+   *  way -- this only tells the page to expect that. */
+  confirm: boolean;
+  target: ActionTargetKind;
+  /** Targets the caller may choose from, when the set is fixed and short. */
+  choices?: { value: string; label: string }[];
+  available: boolean;
+  /** Why not, when it is not: almost always a credential that has never been
+   *  collected on the box. */
+  unavailable?: string;
+  /** True when a second call does a second thing upstream -- a queued search, a
+   *  second deploy. These are the ones the idempotency key is really for. */
+  replayable: boolean;
+};
+
+export type ActionCatalog = { actions: ActionDef[] };
+
+export type ActionOutcome = "ok" | "denied" | "failed" | "deduped";
+
+export type ActionResult = {
+  ok: boolean;
+  action: string;
+  target?: string;
+  outcome: ActionOutcome;
+  /** One line, for the toast and for the audit. They are the same sentence on
+   *  purpose: what you were told and what was written down cannot disagree. */
+  message: string;
+  at: string;
+};
+
+export type AuditEntry = {
+  at: string;
+  action: string;
+  target?: string;
+  outcome: ActionOutcome;
+  message: string;
+  /** As far as it can be known -- cf-connecting-ip through the tunnel, and
+   *  "local" for everything on the LAN, which shares one bucket. */
+  from: string;
+};
+
+export type AuditResponse = { entries: AuditEntry[]; path: string };

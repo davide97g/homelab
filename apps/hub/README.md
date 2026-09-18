@@ -19,6 +19,9 @@ nothing; it is a reader.
 | `frontend/` | Vite + React 19 + Tailwind v4, shadcn/ui components. |
 | `Dockerfile` | Builds both, ships one container. |
 | `docker-compose.yml` | What runs on the box. |
+| `server/src/prom/registry.ts` | Every PromQL expression the hub can ask for. |
+| `server/src/loki/query.ts` | Structured log filters → LogQL. Nothing else assembles a query. |
+| `server/src/actions/` | The one write path: registry, dispatcher, audit. |
 | `deploy.py` | Copy up, build there, bring it up. |
 | `scripts/collect-env.sh` | Runs **on the box**, writes `.env` mode 600. |
 
@@ -87,11 +90,12 @@ easy to be surprised by:
 | Route | State |
 |---|---|
 | `/` Overview | **Built.** Hero, power dial, the mini PC's headline metrics, energy and cost, busiest containers, the NAS card, alerts, links out. |
-| `/compute` `/power` `/network` `/storage` | Routes exist, waiting on the series registry and chart layer. |
-| `/containers` | Waiting on the Docker socket proxy. |
-| `/logs` | Loki is running and ingesting; the query proxy and viewer are next. |
-| `/media` `/actions` | Waiting on the actions layer. |
-| `/nas` | Its metrics are already collected; the page and its 3D model are next. |
+| `/compute` `/power` `/network` `/storage` | **Built.** The series registry and the uPlot chart layer. |
+| `/nas` | **Built.** Pool, md arrays stated honestly, the four bays, sensors, its containers, and its own charts. |
+| `/containers` | **Built.** Both machines, running and stopped, with start/stop/restart on the ones the deny-list allows. |
+| `/logs` | **Built.** Loki behind structured filters, with a 5 s live tail. |
+| `/actions` | **Built.** The dispatcher, the media writes, Dokploy redeploy, and the audit. |
+| `/media` | Waiting on the Jellyfin and Jellyseerr keys. Its *write* side already exists on `/actions`. |
 
 Each unbuilt route says what it is waiting on rather than showing an empty panel
 that looks broken.
@@ -131,3 +135,48 @@ WebGL scene and the flat SVG fallback are fed from exactly one place.
 **Alerts are read-only and stay that way.** There is no Alertmanager on the box,
 so an acknowledge button whose state lived only in this process would be worse
 than no button: it would look like the alert had been handled.
+
+**The Docker socket is never mounted into the hub.** `:ro` on a socket mount
+does not make the Docker API read-only — it applies to the file node, not the
+protocol. `POST /containers/x/stop` works through one, and so does `POST
+/containers/create` with `Binds: ["/:/host"]`, which is root on the box. So the
+hub talks to `tecnativa/docker-socket-proxy` on an `internal: true` network with
+`CONTAINERS`, `INFO`, `VERSION` and `POST` and nothing else. The proxy is the
+layer that still holds if this server has a bug.
+
+**`/api/logs` takes filters, never LogQL.** Same reasoning as the series
+registry, with a sharper edge: a stream selector is mandatory in LogQL, but
+`{job=~".+"}` is a legal one and over 30 days of retention that is every line
+the stack has written. `contains` becomes an escaped `|=` rather than a user
+regex, because a catastrophically backtracking pattern cannot be detected
+reliably before running it.
+
+**The log level filter speaks two vocabularies.** `level` is a real stream label
+and only journal streams have one — Alloy sets it from the syslog priority, so
+it says `err` and `warning`. Docker streams have no level label at all; they
+have Loki's `detected_level`, which says `error` and `warn`. A filter that knew
+one of the two would silently return nothing for half the stack, which reads
+exactly like "there are no errors".
+
+**One action dispatcher, not a route per action.** Auth, throttle, confirmation,
+idempotency, audit and error shaping happen once. Split across twelve routes
+they would happen eleven times and then not the twelfth. Idempotency keys are
+client-generated and held for five minutes, which covers a double-click, a
+tunnel replay and a retry-after-timeout with one mechanism; the stored entry is
+the in-flight *promise*, so a key arriving mid-call waits rather than starting a
+second one.
+
+**The audit records attempts, not successes.** Refusals are the interesting
+half: "nothing happened" and "something tried and was stopped" look identical
+from outside. It lives on a named volume, because `deploy.py` clears the
+directories it owns and an audit log a deploy erases is a log of the last five
+minutes.
+
+**Dokploy's key is allow-listed by app id.** Dokploy has no scoped tokens: the
+key can delete every service on the box. `DOKPLOY_ALLOW` is `label=composeId`
+pairs, and it is the only thing between a bug here and that.
+
+**The NAS page does not claim a RAID level.** node_exporter does not export one.
+It exports `node_md_disks_required`, and that is the number that decides whether
+the word means anything: `md1` requires one member, so `node_md_degraded` reads
+0 and will keep reading 0 right until that disk dies.

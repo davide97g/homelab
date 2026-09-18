@@ -1,10 +1,11 @@
-import type { ContainerDetail, ContainersResponse } from "@wire";
+import type { ActionDef, ContainerDetail, ContainersResponse } from "@wire";
 import { Info, Search } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActionButton } from "@/components/actions/action-button";
 import { MiniBar, Segmented, TONE_BG, TONE_TEXT } from "@/components/primitives";
 import { Input } from "@/components/ui/input";
 import { usePoll } from "@/hooks/use-poll";
-import { fetchContainers } from "@/lib/api";
+import { fetchActions, fetchContainers } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const STATE_TONE = {
@@ -29,9 +30,24 @@ type Scope = "all" | "homelab" | "nas" | "problems";
  *  covers the NAS, which has no socket here to proxy. */
 export function ContainersPage() {
   const load = useCallback((signal: AbortSignal) => fetchContainers(signal), []);
-  const { data, error } = usePoll<ContainersResponse>(load, 5000);
+  const { data, error, refresh } = usePoll<ContainersResponse>(load, 5000);
   const [scope, setScope] = useState<Scope>("all");
   const [search, setSearch] = useState("");
+
+  // The action buttons live here rather than on /actions, next to the container
+  // they act on: a list of container names on a separate page is a way to
+  // restart the wrong one. Their definitions still come from the server, so
+  // nothing about risk or confirmation is duplicated in the browser.
+  const [actions, setActions] = useState<Record<string, ActionDef>>({});
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchActions(controller.signal)
+      .then((c) =>
+        setActions(Object.fromEntries(c.actions.filter((a) => a.target === "container").map((a) => [a.id, a]))),
+      )
+      .catch(() => setActions({}));
+    return () => controller.abort();
+  }, []);
 
   const rows = useMemo(() => {
     const all = data?.containers ?? [];
@@ -93,7 +109,9 @@ export function ContainersPage() {
         {rows.length === 0 ? (
           <p className="text-muted-foreground p-4 text-sm">Nothing matches.</p>
         ) : (
-          rows.map((c) => <Row key={`${c.instance}:${c.id}`} container={c} peak={peak} />)
+          rows.map((c) => (
+            <Row key={`${c.instance}:${c.id}`} container={c} peak={peak} actions={actions} onDone={refresh} />
+          ))
         )}
       </div>
     </div>
@@ -109,8 +127,24 @@ function matches(c: ContainerDetail, needle: string): boolean {
   );
 }
 
-function Row({ container: c, peak }: { container: ContainerDetail; peak: number }) {
+function Row({
+  container: c,
+  peak,
+  actions,
+  onDone,
+}: {
+  container: ContainerDetail;
+  peak: number;
+  actions: Record<string, ActionDef>;
+  onDone: () => void;
+}) {
   const tone = STATE_TONE[c.state];
+  // A stopped container can only be started, a running one stopped or
+  // restarted. Offering the other half would be a button that exists to return
+  // an error.
+  const offered = (c.state === "running" ? ["container.restart", "container.stop"] : ["container.start"])
+    .map((id) => actions[id])
+    .filter((a): a is ActionDef => Boolean(a) && a!.available);
 
   return (
     <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)_auto] items-center gap-3 px-3 py-2.5">
@@ -142,11 +176,34 @@ function Row({ container: c, peak }: { container: ContainerDetail; peak: number 
         )}
       </div>
 
-      <div className="flex w-40 shrink-0 flex-col items-end gap-1">
-        <span className="text-muted-foreground tnum text-[11px]">
-          {c.cpuPercent === null ? "—" : `${c.cpuPercent.toFixed(1)}%`} · {c.rssDisplay}
-        </span>
-        <MiniBar value={(c.cpuPercent ?? 0) / peak} tone="accent" className="w-24" />
+      <div className="flex shrink-0 items-center gap-3">
+        <div className="flex w-32 flex-col items-end gap-1">
+          <span className="text-muted-foreground tnum text-[11px]">
+            {c.cpuPercent === null ? "—" : `${c.cpuPercent.toFixed(1)}%`} · {c.rssDisplay}
+          </span>
+          <MiniBar value={(c.cpuPercent ?? 0) / peak} tone="accent" className="w-24" />
+        </div>
+
+        <div className="flex min-w-[9rem] items-center justify-end gap-1.5">
+          {c.managed ? (
+            offered.map((a) => (
+              <ActionButton
+                key={a.id}
+                action={a.id}
+                target={c.name}
+                label={a.id.split(".")[1] ?? a.label}
+                confirm={a.confirm}
+                title={a.description}
+                variant="ghost"
+                onDone={onDone}
+              />
+            ))
+          ) : (
+            <span className="text-muted-foreground max-w-[9rem] truncate text-[10.5px]" title={c.reason}>
+              {c.reason ? "read-only" : ""}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
