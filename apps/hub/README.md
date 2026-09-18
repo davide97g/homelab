@@ -140,9 +140,41 @@ than no button: it would look like the alert had been handled.
 does not make the Docker API read-only — it applies to the file node, not the
 protocol. `POST /containers/x/stop` works through one, and so does `POST
 /containers/create` with `Binds: ["/:/host"]`, which is root on the box. So the
-hub talks to `tecnativa/docker-socket-proxy` on an `internal: true` network with
-`CONTAINERS`, `INFO`, `VERSION` and `POST` and nothing else. The proxy is the
-layer that still holds if this server has a bug.
+hub talks to a socket proxy on an `internal: true` network and holds no socket
+of its own. The proxy is the layer that still holds if this server has a bug.
+
+**The proxy filters by method and path, not by resource.** This is
+`wollomatic/socket-proxy`, not the more common
+`tecnativa/docker-socket-proxy`, and the difference is the whole point.
+Tecnativa's flags are per-resource: `CONTAINERS=1` with `POST=1` allows every
+POST and DELETE under `/containers` — which includes `create` (with any bind
+mount, so root on the host), `exec`, `kill` and `remove`, not just the three
+verbs this needs. That was measured on the box, not assumed: against that
+config `POST /containers/{id}/exec` answered **201** and `POST
+/containers/create` reached the daemon. Its `ALLOW_START` and `ALLOW_RESTARTS`
+variables do not rescue it, because the rule above them denies every non-GET
+unless `POST` is set, so they are unreachable.
+
+The replacement takes a regex per method, so the allow-list *is* the set of
+requests the hub can make:
+
+```
+-allowGET  /(v[0-9.]+/)?(version|info|_ping|containers/json|containers/[a-zA-Z0-9_.-]+/json)
+-allowPOST /(v[0-9.]+/)?containers/[a-zA-Z0-9_.-]+/(start|stop|restart)
+```
+
+Everything else is 403 — images, volumes, networks, events, exec, create,
+delete, `kill`, and path traversal out of `/containers`. `kill` is left out on
+purpose: the dispatcher offers a graceful stop, and a path that skips the grace
+period is not one the hub should be able to take by accident.
+
+Two operational notes. The image runs as `nobody`, so it needs the host's
+docker group to read the socket — `DOCKER_GID`, which `collect-env.sh` reads off
+the box rather than baking in. And it is distroless, so it carries **no**
+healthcheck: a compose healthcheck of any shape would exit -1 and mark a
+perfectly healthy proxy unhealthy forever, exactly as happened to Loki in the
+monitoring stack. Whether it works is visible where it matters — `/api/containers`
+reports `source: "cadvisor"` instead of `"docker"` the moment it does not.
 
 **`/api/logs` takes filters, never LogQL.** Same reasoning as the series
 registry, with a sharper edge: a stream selector is mandatory in LogQL, but

@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { tail } from "./actions/audit.js";
+import { tail, writable } from "./actions/audit.js";
 import { dispatch } from "./actions/dispatch.js";
 import { catalog as actionCatalog } from "./actions/registry.js";
 import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
@@ -164,7 +164,8 @@ app.post("/api/actions", async (c) => {
  *  front of it is a report. */
 app.get("/api/actions/log", async (c) => {
   c.header("Cache-Control", "no-store");
-  return c.json({ entries: await tail(200), path: config.auditPath });
+  const [entries, ok] = await Promise.all([tail(200), writable()]);
+  return c.json({ entries, path: config.auditPath, writable: ok });
 });
 
 /** Unauthenticated, because it is the container healthcheck's target. It says

@@ -433,4 +433,10 @@ export type AuditEntry = {
   from: string;
 };
 
-export type AuditResponse = { entries: AuditEntry[]; path: string };
+export type AuditResponse = {
+  entries: AuditEntry[];
+  path: string;
+  /** False means the log cannot be appended to, which is not the same as empty
+   *  and must never render as it. */
+  writable: boolean;
+};

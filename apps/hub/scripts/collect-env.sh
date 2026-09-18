@@ -103,6 +103,17 @@ fi
 # can no longer log in and verification moves to the box itself.
 ENV[COOKIE_SECURE]="${ENV[COOKIE_SECURE]:-false}"
 
+# The socket proxy runs as nobody and needs the host's docker group to read the
+# socket. The gid is host-specific, so it is read here rather than baked into the
+# compose file -- the same rule as every address in this repo.
+DOCKER_GID_NOW="$(getent group docker | cut -d: -f3 || true)"
+if [[ -n "$DOCKER_GID_NOW" ]]; then
+  ENV[DOCKER_GID]="$DOCKER_GID_NOW"
+  echo "  DOCKER_GID: $DOCKER_GID_NOW (this host's docker group)"
+else
+  echo "  DOCKER_GID: no docker group found — the socket proxy will not be able to read the socket"
+fi
+
 echo
 echo "media write actions — keys are read out of the containers, not typed"
 refresh_from_container RADARR_API_KEY radarr sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' /config/config.xml

@@ -50,26 +50,55 @@ services:
   # `:ro` on a socket mount does not make the Docker API read-only. It applies to
   # the file node, not the protocol: POST /containers/x/stop works through one,
   # and so does POST /containers/create with Binds: ["/:/host"], which is root on
-  # the box. So the hub gets a filtered HTTP API instead and no socket at all,
-  # and this proxy is the layer that still holds if the hub has a bug.
+  # the box. So the hub gets a filtered HTTP API instead and no socket at all.
   #
-  # Everything not listed below defaults to 0 in this image: no IMAGES, no
-  # VOLUMES, no NETWORKS, no EXEC, no BUILD, no SWARM, no SECRETS. POST is on
-  # because start/stop/restart are POSTs; it is not a blanket write permission,
-  # since the paths those verbs could reach are gated by the resource flags.
+  # This is wollomatic/socket-proxy rather than the more common
+  # tecnativa/docker-socket-proxy, and the difference matters. Tecnativa filters
+  # by *resource*: CONTAINERS=1 with POST=1 allows every POST and DELETE under
+  # /containers — which is `create` (with any bind mount, so root on the host),
+  # `exec`, `kill` and `remove`, not just the three verbs wanted here. Measured,
+  # not assumed: against that config `POST /containers/{id}/exec` answered 201
+  # and `POST /containers/create` reached the daemon. Its ALLOW_START and
+  # ALLOW_RESTARTS variables do not help, because the rule above them denies
+  # every non-GET unless POST is set, so they are unreachable.
+  #
+  # This one filters by method *and* path regex, so the allow-list below is the
+  # literal set of requests the hub can make. Everything else is 403, including
+  # path traversal out of /containers.
   docker-proxy:
-    image: tecnativa/docker-socket-proxy:0.3.0
+    image: wollomatic/socket-proxy:1
     container_name: hub-docker-proxy
     restart: unless-stopped
-    environment:
-      CONTAINERS: 1
-      INFO: 1
-      VERSION: 1
-      POST: 1
+    # The image runs as nobody and cannot read the socket without the host's
+    # docker group. That gid is host-specific -- `getent group docker | cut -d: -f3`
+    # -- so it comes from .env, which scripts/collect-env.sh fills in on the box.
+    user: "65534:${DOCKER_GID:-989}"
+    command:
+      - -loglevel=info
+      - -listenip=0.0.0.0
+      # Resolved at request time against the source address, so only the hub can
+      # reach this even though the network is shared.
+      - -allowfrom=homelab-hub
+      # Everything the containers page reads. Note what is not here: no /images,
+      # no /volumes, no /networks, no /events, no /exec.
+      - -allowGET=/(v[0-9.]+/)?(version|info|_ping|containers/json|containers/[a-zA-Z0-9_.-]+/json)
+      # Everything the actions layer writes. Three verbs, on one container each.
+      # `kill` is deliberately absent: the dispatcher offers a graceful stop, and
+      # a path that skips the grace period is not one the hub should be able to
+      # take by accident.
+      - -allowPOST=/(v[0-9.]+/)?containers/[a-zA-Z0-9_.-]+/(start|stop|restart)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - docker-proxy
+    # No healthcheck, deliberately. This image is distroless -- no shell, no
+    # curl, not even an `ls` -- so a compose healthcheck of any shape exits -1
+    # and marks a perfectly healthy proxy unhealthy forever. That is exactly what
+    # happened to Loki in the monitoring stack, for 110 consecutive checks while
+    # it served reads and writes fine. The binary's own -allowhealthcheck only
+    # permits an *external* HEAD to :55555/health, which nothing here does.
+    # Whether the proxy is working is visible where it matters: /api/containers
+    # reports source "cadvisor" instead of "docker" the moment it is not.
 
 volumes:
   hub-data:

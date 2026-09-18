@@ -79,7 +79,15 @@ export function ActionsPage() {
 
       <section className="space-y-2">
         <FieldLabel>Audit</FieldLabel>
-        {!audit || audit.entries.length === 0 ? (
+        {audit && !audit.writable ? (
+          // An unwritable log and an empty one look identical, and only one of
+          // them means "nothing has happened". Saying so is the whole point of
+          // having an audit.
+          <div className="neu text-tone-bad p-4 text-sm">
+            The audit log cannot be written: <code className="font-mono">{audit.path}</code> is not writable by this
+            container. Actions still run — they are just not being recorded.
+          </div>
+        ) : !audit || audit.entries.length === 0 ? (
           <div className="neu text-muted-foreground p-4 text-sm">Nothing has been attempted yet.</div>
         ) : (
           <div className="neu divide-border divide-y p-1">

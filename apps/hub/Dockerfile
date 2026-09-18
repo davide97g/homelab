@@ -37,6 +37,16 @@ COPY --from=build /app/server/node_modules ./server/node_modules
 COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/server/package.json ./server/package.json
 
+# The audit volume's mountpoint, created here and owned by the runtime user.
+# Docker copies an image's ownership at a mountpoint into a *named volume the
+# first time it is mounted empty*, which is the only chance to get this right --
+# a volume mounted onto a root-owned directory stays root-owned, and the server
+# runs as `node`, so every audit write would fail with EACCES. It would fail
+# quietly, too: an audit that can fail a request would make arranging for it to
+# fail the safest thing an attacker could do, so record() swallows its errors.
+RUN mkdir -p /data && chown node:node /data
+VOLUME /data
+
 USER node
 EXPOSE 8080
 

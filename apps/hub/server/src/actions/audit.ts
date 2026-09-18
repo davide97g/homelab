@@ -1,4 +1,5 @@
-import { appendFile, mkdir, open, stat } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, appendFile, mkdir, open, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 import { config } from "../config.js";
 import type { AuditEntry } from "../wire.js";
@@ -65,5 +66,24 @@ export async function tail(limit = 200): Promise<AuditEntry[]> {
     return [];
   } finally {
     await handle?.close();
+  }
+}
+
+/** Whether the log can actually be appended to.
+ *
+ *  Worth asking, because `record` deliberately swallows its errors: an audit
+ *  that can fail a request would make arranging for it to fail the safest thing
+ *  an attacker could do. The cost of that choice is that a broken audit looks
+ *  exactly like an empty one -- a volume mounted onto a root-owned directory
+ *  under a container running as `node` produces EACCES on every write and a
+ *  page that cheerfully reports nothing has ever been attempted. So the page is
+ *  told, and says so. */
+export async function writable(): Promise<boolean> {
+  try {
+    await ensureDir();
+    await access(dirname(config.auditPath), constants.W_OK);
+    return true;
+  } catch {
+    return false;
   }
 }
