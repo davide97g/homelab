@@ -45,7 +45,10 @@ def main() -> int:
         print("agents stopped")
         return 0
 
-    ssh(f"mkdir -p {REMOTE_DIR}")
+    # 700, and the .env inside it 600, enforced every deploy: UGOS puts a
+    # default ACL on /home/davide that makes everything world-writable, so a
+    # umask alone silently leaves the Access token readable by anyone.
+    ssh(f"mkdir -p {REMOTE_DIR} && chmod 700 {REMOTE_DIR} && if [ -f {REMOTE_DIR}/.env ]; then chmod 600 {REMOTE_DIR}/.env; fi")
 
     # Piped through `cat`, not scp. UGOS chroots the SFTP subsystem that modern
     # scp speaks to a share-only root -- an `sftp` session shows just `docker`,

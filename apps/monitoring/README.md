@@ -162,14 +162,22 @@ cannot reach the box any other way.
 NAS Alloy → Cloudflare edge → Access (service token only) → tunnel → localhost:3100
 ```
 
-Loki binds `127.0.0.1:3100`, so the tunnel is the only thing that can reach it. The Access
-application over this hostname must have **no identity providers** — a single Service Auth
-policy, so a leaked URL on its own returns 403 and only the token pair gets through. Create the
-token under **Zero Trust → Access → Service Auth**; it is shown once, and it goes into
-`~/nas-agents/.env` on the NAS, nowhere else.
+Set up and verified. Loki binds `127.0.0.1:3100`, so the tunnel is the only thing that can reach
+it. Three layers, each of which holds on its own:
 
-Worth adding while you are in there: a WAF custom rule on that hostname blocking every path
-except `/loki/api/v1/push`, so a token that does leak can append logs but cannot read them back.
+- **Access, service-token only.** The application over this hostname has no identity providers and
+  one `non_identity` policy bound to the `nas-alloy` service token. A request without the token
+  pair gets 403 at the Cloudflare edge, before the tunnel sees it.
+- **Path-restricted ingress.** The tunnel rule carries `path: loki/api/v1/push`, the same shape the
+  `deploy-*` hostnames already use. Anything else falls through to the catch-all 404 — so a token
+  that does leak can append logs and cannot read them back. Verified: the push path answers 204
+  with the token, the label API answers 404 with the same token, and everything answers 403
+  without it.
+- **Loopback origin.** Nothing on the LAN can reach Loki at all.
+
+The token lives in `/home/davide/nas-agents/.env` on the NAS and nowhere else. Note that UGOS puts
+a default ACL on `/home/davide` which makes new files world-readable regardless of `umask`, so
+`nas-agents/deploy.py` re-asserts `700` on the directory and `600` on the `.env` every run.
 
 ## What is collected
 
@@ -182,7 +190,7 @@ except `/loki/api/v1/push`, so a token that does leak can append logs but cannot
 | Alloy | every container's stdout plus the host's systemd journal, into Loki |
 | NAS agents | the same three, on the UGREEN box, over Tailscale |
 | Prometheus | 180 day retention, capped at 30 GB |
-| Loki | 30 day retention, compactor enforces it |
+| Loki | 30 day retention, compactor enforces it. No container healthcheck: the image is distroless, so any `test:` exits -1 and marks a healthy Loki unhealthy forever. `up{job="loki"}` and the `LokiDown` alert do that job properly. |
 
 `veth*`, `docker*`, `br-*` and `lo` are excluded from network metrics — otherwise every
 container interface shows up as noise.
