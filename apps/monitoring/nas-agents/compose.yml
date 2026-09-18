@@ -30,6 +30,13 @@ services:
       # Loopback only: the tailnet proxy reaches 127.0.0.1, Ilario's LAN cannot.
       - --web.listen-address=127.0.0.1:9100
       - --path.rootfs=/host
+      # --path.rootfs alone does not redirect procfs and sysfs, and Docker masks
+      # /sys/devices/virtual/powercap inside containers (the CVE-2020-8694
+      # mitigation), so RAPL silently reports nothing: the collector succeeds and
+      # emits no series. Reading the host's sysfs through the bind mount fixes it,
+      # and RAPL is the only power signal this box has -- it is not on a plug.
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
       - --collector.hwmon
       - --collector.rapl
       - --collector.processes

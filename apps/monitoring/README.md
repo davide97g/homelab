@@ -244,12 +244,28 @@ The UGREEN DXP4800 Pro is Ilario's box on Ilario's network. Its shape dictates t
   a coincidence). So metrics are **pulled** and logs are **pushed out over the internet** to
   `loki-push.davideghiotto.it` on our tunnel, behind a Cloudflare Access service token. A reverse
   SSH tunnel is not an option either: its sshd sets `AllowTcpForwarding no`.
-- The hop is DERP-relayed at 35–80 ms with no direct connection, so `node-nas` and `cadvisor-nas`
-  scrape every 60 s with a 20 s timeout, and `NasDown` waits 10 minutes before firing.
+- The hop goes through Tailscale and the path is not stable: it was DERP-relayed at 35–80 ms when
+  first measured and negotiated a direct connection at 3 ms an hour later. `node-nas` and
+  `cadvisor-nas` therefore scrape every 60 s with a 20 s timeout sized for the relayed case, and
+  `NasDown` waits 10 minutes before firing. Do not tighten either on the strength of a direct
+  path that may not be there tomorrow.
 
 `${NAS_TAILNET_IP}` is hard-coded in the scrape config. That is the one place the no-hard-coded-IP
 rule below does not apply — a tailnet address is stable, and the NAS's LAN address is useless
 from here.
+
+Its `node-exporter` sets `--path.procfs=/host/proc` and `--path.sysfs=/host/sys`, which the mini
+PC's does not. `--path.rootfs` alone does not redirect those two, and Docker masks
+`/sys/devices/virtual/powercap` inside containers (the CVE-2020-8694 mitigation), so the RAPL
+collector reports success and emits nothing at all. Reading the host's sysfs through the bind
+mount fixes it, and RAPL is the only power signal that box has — it is not on a metering plug.
+`nas:power_package_watts` and `nas:power_core_watts` are the recording rules.
+
+The same fix would give the mini PC RAPL too, and it is deliberately **not** applied there. The
+box already measures real wall power at the plug, so RAPL would only duplicate the CPU half of a
+number we have — while `homelab:power_package_watts` joins `node_hwmon_chip_names` on `chip`, and
+changing the sysfs root under a working series with 180 days of history to gain a duplicate is a
+bad trade. Revisit if the plug ever goes away.
 
 Deploy the agents separately, and note that the disk picture there is worse than the badge
 suggests: four bays, **one** disk fitted, a ~2007 Seagate ST3320820AS in a single-member `md1`

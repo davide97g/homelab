@@ -427,8 +427,19 @@ configs:
               annotations:
                 summary: CPU die sustained above 90C
 
-        # The NAS. Every one of these arrives over a DERP-relayed tailnet hop,
-        # so NasDown waits 10 minutes: a relay hiccup is not an outage.
+        # The NAS is not on a metering plug, so Intel RAPL is the only power
+        # signal it has -- CPU package and cores, nothing for the disk or the
+        # board. A 5m window because that job scrapes every 60s.
+        - name: nas-power
+          interval: 60s
+          rules:
+            - record: nas:power_package_watts
+              expr: rate(node_rapl_package_joules_total{instance="nas"}[5m])
+            - record: nas:power_core_watts
+              expr: rate(node_rapl_core_joules_total{instance="nas"}[5m])
+
+        # Every one of these arrives over a DERP-relayed tailnet hop, so NasDown
+        # waits 10 minutes: a relay hiccup is not an outage.
         - name: nas-alerts
           interval: 30s
           rules:
