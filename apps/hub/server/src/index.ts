@@ -11,6 +11,7 @@ import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.j
 import { containers } from "./collect/containers.js";
 import { nasDetail } from "./collect/nas.js";
 import { summary } from "./collect/summary.js";
+import { topology } from "./collect/topology.js";
 import { config } from "./config.js";
 import { logOptions, logs, parseLogRequest } from "./loki/query.js";
 import { catalog, frames, parseRequest, rangeSeconds, series } from "./prom/series.js";
@@ -70,6 +71,18 @@ app.get("/api/summary", async (c) => {
   const data = await summary();
   // Every number here is seconds old by design; never let a proxy or the browser
   // serve an older one on top of that.
+  c.header("Cache-Control", "no-store");
+  return c.json(data);
+});
+
+/** The estate as a graph: both flats, every device, and the paths between them.
+ *
+ *  Built on top of /api/summary rather than beside it, so the landing page and
+ *  the machine pages cannot disagree about whether the NAS is up. What it adds
+ *  is the part no other endpoint knows: which paths exist, which of them
+ *  anything actually measures, and which one is only inferred. */
+app.get("/api/topology", async (c) => {
+  const data = await topology();
   c.header("Cache-Control", "no-store");
   return c.json(data);
 });

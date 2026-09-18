@@ -9,6 +9,7 @@ import {
   PanelLeftOpen,
   ScrollText,
   Server,
+  Waypoints,
   Wrench,
   Zap,
 } from "lucide-react";
@@ -16,12 +17,13 @@ import { Link, useLocation } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-/** One icon per domain, in the order you would actually walk a problem: what is
- *  it doing, what is it drawing, what is it moving, where is it writing, what is
- *  running, what did it say, then the two machine-specific pages and the
- *  controls. */
+/** One icon per domain, in the order you would actually walk a problem: where
+ *  everything is and how it is connected, then what one machine is doing, what
+ *  it is drawing, what it is moving, where it is writing, what is running, what
+ *  it said, then the two machine-specific pages and the controls. */
 export const ROUTES = [
-  { to: "/", icon: LayoutDashboard, label: "Overview" },
+  { to: "/", icon: Waypoints, label: "Topology" },
+  { to: "/overview", icon: LayoutDashboard, label: "Overview" },
   { to: "/compute", icon: Cpu, label: "Compute & thermals" },
   { to: "/power", icon: Zap, label: "Power & energy" },
   { to: "/network", icon: Network, label: "Network" },

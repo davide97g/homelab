@@ -1,4 +1,4 @@
-import type { Tone } from "@wire";
+import type { Tone, Transport } from "@wire";
 import { useEffect, useState } from "react";
 import { readTheme } from "@/components/charts/theme";
 
@@ -77,6 +77,55 @@ export function useToneColors(): ToneColors {
 
   useEffect(() => {
     const observer = new MutationObserver(() => setColors(read()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return colors;
+}
+
+/** Everything the topology scene needs to colour itself, read once.
+ *
+ *  One hook and one observer rather than three: the scene wants tones for the
+ *  device lamps, the categorical ramp for the conduits, and two surface colours
+ *  for the floors, and they all come from the same document read.
+ *
+ *  Links are coloured by *transport*, from the categorical ramp, and not by the
+ *  semantic tokens. Orange means power and cyan means throughput on every other
+ *  page in this app, and a topology scene that spent them on "this hop is a
+ *  tunnel" would break that everywhere at once. Status still overrides: a link
+ *  that is down or unverified takes its tone instead, which is the one thing
+ *  that should be able to shout over the palette. */
+const TRANSPORT_TOKEN: Record<Transport, string> = {
+  tailnet: "chart-2",
+  tunnel: "chart-4",
+  internet: "chart-4",
+  lan: "chart-8",
+  wifi: "chart-6",
+};
+
+export type SceneColors = {
+  tone: ToneColors;
+  transport: Record<Transport, string>;
+  /** The floor slabs and their outlines. */
+  surface: string;
+  outline: string;
+};
+
+function readScene(): SceneColors {
+  const theme = readTheme();
+  const transport = {} as Record<Transport, string>;
+  for (const [key, token] of Object.entries(TRANSPORT_TOKEN)) {
+    transport[key as Transport] = theme.resolve(token, 0);
+  }
+  return { tone: read(), transport, surface: theme.muted, outline: theme.text };
+}
+
+export function useSceneColors(): SceneColors {
+  const [colors, setColors] = useState<SceneColors>(readScene);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setColors(readScene()));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);

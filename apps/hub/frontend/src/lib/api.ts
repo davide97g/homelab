@@ -11,6 +11,7 @@ import type {
   SeriesFrame,
   SeriesResponse,
   Summary,
+  Topology,
 } from "@wire";
 
 // Types come from the server's wire.ts through the @wire alias, so there is no
@@ -36,6 +37,13 @@ const same: RequestInit = { credentials: "same-origin" };
 
 export function fetchSummary(signal?: AbortSignal): Promise<Summary> {
   return fetch("/api/summary", { ...same, signal }).then((r) => json<Summary>(r));
+}
+
+/** The estate as a graph. Everything the landing page draws comes from here,
+ *  including which links are genuinely unmeasured — see the `rate: null` rule in
+ *  server/src/collect/topology.ts. */
+export function fetchTopology(signal?: AbortSignal): Promise<Topology> {
+  return fetch("/api/topology", { ...same, signal }).then((r) => json<Topology>(r));
 }
 
 export function fetchSession(): Promise<{ authenticated: boolean }> {

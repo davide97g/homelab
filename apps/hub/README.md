@@ -89,7 +89,8 @@ easy to be surprised by:
 
 | Route | State |
 |---|---|
-| `/` Overview | **Built.** Hero, power dial, the mini PC's headline metrics, energy and cost, busiest containers, the NAS card, alerts, links out. |
+| `/` Topology | **Built.** The landing page: both flats on a ground plane, every device modelled, and the paths between them animating at their real cadence. WebGL with a flat SVG twin. |
+| `/overview` Overview | **Built.** Hero, power dial, the mini PC's headline metrics, energy and cost, busiest containers, the NAS card, alerts, links out. |
 | `/compute` `/power` `/network` `/storage` | **Built.** The series registry and the uPlot chart layer. |
 | `/nas` | **Built.** Pool, md arrays stated honestly, the four bays, sensors, its containers, and its own charts. |
 | `/containers` | **Built.** Both machines, running and stopped, with start/stop/restart on the ones the deny-list allows. |
@@ -101,6 +102,69 @@ Each unbuilt route says what it is waiting on rather than showing an empty panel
 that looks broken.
 
 ## Decisions worth not undoing
+
+**Nothing on the topology page moves unless something measures it.** A link with
+no metric behind it carries `rate: null`, and it must never be rendered as a
+zero: a zero is a measurement, and drawing the absence of one the same way is
+where a dashboard starts lying. There is a whole link on that page — the NAS's
+own tunnel out to `cinema.` — that nothing in this stack observes, and it sits
+perfectly still and says so. The corollary is the nice half: a *pulled* link
+knows its scrape interval, so it fires one bead per interval rather than a
+continuous flow, and you can watch Prometheus scrape.
+
+**The Cloudflare edge's status is evidence, not a metric.** `cloudflared` is a
+host systemd service on both boxes and exports nothing here, so there is no
+series to read. What is knowable is whether pushed NAS log lines have arrived,
+and that single fact clears Alloy, its egress, the Access service token, the
+ingress rule and Loki's write path at once. Ten minutes of silence downgrades it
+to `warn` with the reason, rather than leaving a green dot the payload cannot
+justify. Every latency on that page is likewise a **scrape round trip and says
+so** — there is no blackbox exporter in this estate and nothing here may be
+called a ping.
+
+**Both public hostnames are Cloudflare's, and the picture is drawn to say so.**
+Nothing in this estate has a port open to the internet: `loki-push.` reaches the
+mini PC down a tunnel `cloudflared` dialled outward, and `cinema.` reaches the
+NAS down a second, entirely separate one. So the cloud column holds two edges
+rather than one — they have two credentials and two failure modes, and only the
+first has any evidence behind it — plus a `viewer` node standing for whoever is
+watching Jellyfin, because "the NAS is reached *through* Cloudflare" is the fact
+a reader will otherwise replace with "there must be a forwarded port on Ilario's
+router", and there is not one. Every link also carries an arrowhead pointing the
+way the connection is **dialled**. That is not motion and it is drawn on the
+unmeasured paths too: who dials whom is a fact about the configuration and is
+known even where the rate is not.
+
+**The flats are drawn as glass houses.** They used to be a wireframe box, which
+never read as a building, and the alternative — solid walls — would have hidden
+whichever machine was behind them. Four walls and a pitched roof at six per cent
+opacity catch just enough light to say "there is a surface here" while the
+hardware inside stays legible through it, and the whole building is two draw
+calls: one triangle soup, one line list. Both are `depthWrite: false`, because a
+transparent surface that writes depth punches a hole in everything queued behind
+it. The flat SVG twin draws the same house as a line drawing, and the page sits
+on a dot field so that orbiting the camera moves the estate against something
+rather than against nothing.
+
+**The topology camera has no fixed position.** The field of view is vertical, so
+a taller canvas *narrows* what is visible horizontally — giving the picture the
+full height of the page therefore zoomed it in and pushed both flats off the
+sides. The camera now takes the eight corners of the estate's bounding box,
+which `layout.ts` derives from the node positions rather than hard-coding, and
+solves for the closest distance that keeps all of them inside both frustum
+planes. It re-solves whenever the canvas changes shape, and stops as soon as the
+reader takes the camera; "Reset view" hands it back rather than restoring a
+saved position that was right for a different window.
+
+**Theme tokens are resolved by painting a pixel, not by reading a computed
+style.** `charts/theme.ts` used to set a token on a throwaway element and read
+`getComputedStyle().color` back. That quietly stopped working: the computed
+value of `color` preserves the colour function, so Chrome returns
+`oklch(0.265 0.013 63)` unchanged. uPlot never noticed, because a canvas fill
+parses `oklch()` fine — but `THREE.Color` cannot, and falls back to **white**
+without throwing, so every material in the 3D scenes was painting white over
+whatever token it had been given. It now fills one pixel and reads it back,
+which is sRGB bytes by definition.
 
 **`/api/series` will take an id, never PromQL.** Accepting a query string from
 the browser would put a query engine behind one password: a single

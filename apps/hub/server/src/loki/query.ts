@@ -1,7 +1,7 @@
 import { Cache } from "../cache.js";
 import { config } from "../config.js";
 import type { LogLevel, LogLine, LogOptions, LogRange, LogsResponse } from "../wire.js";
-import { labelValues, queryRange } from "./client.js";
+import { instantMetric, labelValues, queryRange } from "./client.js";
 
 // The browser sends structured filters; this file assembles the LogQL. It never
 // receives a query.
@@ -244,4 +244,40 @@ export async function logs(req: LogRequest): Promise<LogsResponse> {
     truncated: lines.length >= req.limit,
     grafana: grafanaLink(query, rangeS),
   };
+}
+
+/** Evidence that the log path from the NAS is alive, for the topology page.
+ *
+ *  There is no metric anywhere for the Cloudflare tunnel or for Access: both are
+ *  a host `cloudflared` service that exports nothing here. What *is* observable
+ *  is whether lines the NAS pushed have arrived, and that single fact clears the
+ *  whole chain at once -- Alloy is running, it has egress, Access accepted the
+ *  service token, the ingress rule still matches, and Loki wrote them.
+ *
+ *  So the edge node's status is evidence rather than a measurement, and the card
+ *  says exactly that. `lastAtMs` is null when nothing has arrived in the window,
+ *  which is not the same as zero and must not render as "0 s ago".
+ *
+ *  The selector is a constant. Nothing here takes a caller's string. */
+export async function nasLogPulse(): Promise<{ linesPerSec: number | null; lastAtMs: number | null }> {
+  const endMs = Date.now();
+  const startMs = endMs - 3600_000;
+
+  const [linesPerSec, newest] = await Promise.all([
+    instantMetric('sum(rate({host="nas"}[5m]))').catch(() => null),
+    queryRange({
+      query: '{host="nas"}',
+      startNs: String(startMs * 1e6),
+      endNs: String(endMs * 1e6),
+      limit: 1,
+      direction: "backward",
+    }).catch(() => []),
+  ]);
+
+  // Nanoseconds as a string: a double cannot hold one, and only the millisecond
+  // part is wanted here anyway.
+  const ts = newest[0]?.values[0]?.[0];
+  const lastAtMs = ts ? Math.floor(Number(ts.slice(0, -6))) : null;
+
+  return { linesPerSec, lastAtMs: Number.isFinite(lastAtMs) ? lastAtMs : null };
 }

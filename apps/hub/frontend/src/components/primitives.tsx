@@ -1,4 +1,4 @@
-import type { Health, Status, Tone } from "@wire";
+import type { Health, Metric, Status, Tone } from "@wire";
 import { useLayoutEffect, useRef, useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
@@ -85,6 +85,43 @@ export function FieldLabel({ children, className }: { children: React.ReactNode;
     <span className={cn("text-muted-foreground text-[9.5px] font-medium tracking-[0.14em] uppercase", className)}>
       {children}
     </span>
+  );
+}
+
+/** Metrics as rows rather than cards: a label, the number, and a bar where the
+ *  metric has a natural ceiling.
+ *
+ *  The compact counterpart to MetricCard, and it keeps the same promise — no
+ *  per-metric branch, ever. Anything a metric needs to say goes in `hint`,
+ *  `fraction` or `health`, which is what makes "put a new number on the page" a
+ *  server-side change. */
+export function MetricRows({
+  metrics,
+  limit,
+  className,
+}: {
+  metrics: Metric[];
+  limit?: number;
+  className?: string;
+}) {
+  const shown = limit === undefined ? metrics : metrics.slice(0, limit);
+  return (
+    <div className={cn("grid gap-2.5", className)}>
+      {shown.map((m) => (
+        <div key={m.id} className="grid gap-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <FieldLabel>{m.label}</FieldLabel>
+            <span className="tnum text-[13px] font-medium">{m.display}</span>
+          </div>
+          {m.fraction !== undefined && <MiniBar value={m.fraction} tone={HEALTH_TONE[m.health]} />}
+          {m.hint && (
+            <p className="text-muted-foreground truncate text-[10.5px] leading-tight" title={m.hint}>
+              {m.hint}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 

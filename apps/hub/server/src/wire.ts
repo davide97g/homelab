@@ -440,3 +440,82 @@ export type AuditResponse = {
    *  and must never render as it. */
   writable: boolean;
 };
+
+// ——— Topology ——————————————————————————————————————————————————————————————
+
+/** What a node is, which is also what it gets drawn as. `router` and `edge` are
+ *  in here because a path crosses them, not because anything scrapes them. */
+export type TopoKind = "host" | "nas" | "plug" | "router" | "edge" | "viewer";
+
+/** How a link physically gets there. Colour follows this, not status -- a busy
+ *  tailnet hop and a busy LAN hop are different things and read differently. */
+export type Transport = "lan" | "tailnet" | "internet" | "tunnel" | "wifi";
+
+export type TopoAddress = { value: string; kind: "lan" | "tailnet" | "public" | "none" };
+
+export type TopoNode = {
+  id: string;
+  label: string;
+  kind: TopoKind;
+  site: "davide" | "ilario" | "cloud";
+  /** What it is, in one line. */
+  role: string;
+  /** Every address it answers on, so the card can say which network each belongs
+   *  to. Both flats are 192.168.15.0/24 and that is a coincidence, not a route. */
+  addresses: TopoAddress[];
+  status: Status;
+  /** Why it is not `up`, or why it has no status to give at all. */
+  note?: string;
+  /** Empty for anything that is not scraped. Rendered generically, as everywhere
+   *  else -- there is no per-metric branch on this page either. */
+  metrics: Metric[];
+  /** Only the two modelled machines carry these, and they are the same map the
+   *  hero scene reads. */
+  hotspots?: Record<string, HotspotState>;
+  /** Names of alerts firing against this node, resolved from `Alert.instance`. */
+  alerts: string[];
+  /** In-app route, when the node has a page of its own. */
+  href?: string;
+};
+
+export type TopoLink = {
+  id: string;
+  from: string;
+  to: string;
+  /** Drawn through this node when the path is not direct. The log push is one
+   *  decision by one Alloy instance, so it is one link bent through the edge. */
+  via?: string;
+  transport: Transport;
+  /** What moves and which way: "metrics, pulled" / "logs, pushed". */
+  carries: string;
+  status: Status;
+  /** **null means nothing measures this path.** It must never be rendered as a
+   *  zero: a zero is a measurement, and drawing the two alike is how a dashboard
+   *  starts lying. */
+  rate: { value: number; unit: Unit; display: string } | null;
+  /** Set when the link is a poll rather than a stream, so the scene can fire one
+   *  bead per interval instead of a continuous flow. This is the whole point of
+   *  the page: you can watch Prometheus scrape. */
+  cadenceS?: number;
+  /** A scrape round trip, not ICMP -- there is no blackbox exporter in this
+   *  estate. The card says so rather than implying a ping. */
+  latencyMs?: number | null;
+  /** One sentence: why this path exists, or why nothing measures it. */
+  note: string;
+};
+
+export type TopoSite = {
+  id: "davide" | "ilario" | "cloud";
+  label: string;
+  subnet?: string;
+  note?: string;
+};
+
+export type Topology = {
+  at: string;
+  /** Same meaning as on `Summary`: the numbers below are the last good ones. */
+  stale: boolean;
+  sites: TopoSite[];
+  nodes: TopoNode[];
+  links: TopoLink[];
+};

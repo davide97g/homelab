@@ -258,6 +258,28 @@
     box-shadow: 0 10px 30px var(--glass-shadow);
   }
 
+  /* The ground the estate stands on.
+
+     A dot field rather than a flat panel or a ruled grid: the picture is a
+     wide, shallow slab floating in an empty column, and without something
+     behind it there is nothing for the depth to read against — orbiting the
+     camera moved the houses and the page stayed perfectly still. Dots give the
+     parallax a texture to slide over and, unlike a grid, they never line up
+     with the isometric floors and pretend to be part of the drawing.
+
+     One repeating gradient, masked to fade before it reaches the page chrome.
+     Cheaper than a second canvas by every measure that matters. */
+  .dotfield {
+    background-image: radial-gradient(
+      color-mix(in oklch, var(--muted-foreground) 30%, transparent) 1.1px,
+      transparent 1.1px
+    );
+    background-size: 22px 22px;
+    background-position: -11px -11px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 46%, #000 45%, transparent 100%);
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 46%, #000 45%, transparent 100%);
+  }
+
   /* A panel with a question outstanding.
 
      A grey pulsing rectangle is the honest generic answer and it tells you

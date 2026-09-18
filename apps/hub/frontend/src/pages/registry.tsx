@@ -1,5 +1,6 @@
 import type { Summary } from "@wire";
 import { HomePage } from "@/pages/home";
+import { TopologyPage } from "@/pages/topology";
 import { MetricsPage } from "@/pages/metrics-page";
 import { ActionsPage } from "@/pages/actions";
 import { ContainersPage } from "@/pages/containers";
@@ -10,7 +11,10 @@ import { Placeholder } from "@/pages/placeholder";
 /** Route content in one place, so adding a page is one entry here and one in the
  *  sidebar rather than a hunt through a router tree. */
 export const PAGES: { path: string; element: (data: Summary) => React.ReactNode }[] = [
-  { path: "/", element: (data) => <HomePage data={data} /> },
+  // The landing page is the estate. The machine view it replaced is still here
+  // one route down, which keeps the change reversible and costs one rail entry.
+  { path: "/", element: (data) => <TopologyPage data={data} /> },
+  { path: "/overview", element: (data) => <HomePage data={data} /> },
   {
     path: "/compute",
     element: (data) => (

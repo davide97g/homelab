@@ -53,3 +53,25 @@ export async function labelValues(label: string, sinceMs = 6 * 3600_000): Promis
   if (!body || body.status !== "success") throw new Error(`loki label ${label} failed`);
   return body.data ?? [];
 }
+
+type VectorResult = {
+  status: string;
+  data?: { resultType: string; result: { metric: Record<string, string>; value: [number, string] }[] };
+};
+
+/** An instant *metric* query -- a LogQL expression that aggregates to a number
+ *  rather than returning lines, such as `sum(rate({host="nas"}[5m]))`.
+ *
+ *  Different endpoint from `queryRange` and a different result type, so it gets
+ *  its own function rather than a flag. Null means the expression matched
+ *  nothing, which for a log stream means no lines in the window -- a real answer
+ *  and not an error. */
+export async function instantMetric(query: string): Promise<number | null> {
+  const search = new URLSearchParams({ query });
+  const body = await getJson<VectorResult>(`${config.loki}/loki/api/v1/query?${search}`);
+  if (!body || body.status !== "success") throw new Error("loki metric query failed");
+  const first = body.data?.result?.[0];
+  if (!first) return null;
+  const n = Number(first.value[1]);
+  return Number.isFinite(n) ? n : null;
+}

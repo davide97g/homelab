@@ -1,7 +1,7 @@
 import type { HostSummary } from "@wire";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
-import { FieldLabel, HEALTH_TONE, MiniBar, StatusDot, STATUS_LABEL, TONE_TEXT } from "@/components/primitives";
+import { MetricRows, StatusDot, STATUS_LABEL, TONE_TEXT } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 
 /** The compact form of a machine: status, role, and its metrics as rows rather
@@ -37,17 +37,7 @@ export function HostCard({ host, to }: { host: HostSummary; to?: string }) {
       {host.error ? (
         <p className="text-tone-bad text-xs leading-snug">{host.error}</p>
       ) : (
-        <div className="grid gap-2.5">
-          {host.metrics.slice(0, 5).map((m) => (
-            <div key={m.id} className="grid gap-1">
-              <div className="flex items-baseline justify-between gap-2">
-                <FieldLabel>{m.label}</FieldLabel>
-                <span className="tnum text-[13px] font-medium">{m.display}</span>
-              </div>
-              {m.fraction !== undefined && <MiniBar value={m.fraction} tone={HEALTH_TONE[m.health]} />}
-            </div>
-          ))}
-        </div>
+        <MetricRows metrics={host.metrics} limit={5} />
       )}
     </div>
   );

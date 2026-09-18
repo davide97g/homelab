@@ -98,6 +98,29 @@ export const config = {
    *  same 0.27 EUR; see monitoring/README.md for the derivation. */
   costPerKwh: Number(process.env.COST_PER_KWH ?? 0.27),
 
+  /** Addresses shown on the topology page.
+   *
+   *  These are **declared, not discovered**, and that is not a slip. Every
+   *  scrape job relabels `instance` to `homelab` or `nas`, so nothing in the
+   *  metrics carries a real address any more -- which is the right trade for
+   *  every other page and leaves this one with nothing to read.
+   *
+   *  It does not break the no-LAN-IP-defaults rule either: nothing here is ever
+   *  dialled. They are captions. A wrong one prints a wrong caption; a wrong
+   *  address in `boxUrl` breaks the hub. Override any of them when DHCP moves. */
+  topology: {
+    boxLan: process.env.TOPO_BOX_LAN ?? "192.168.15.126",
+    boxTailnet: process.env.TOPO_BOX_TAILNET ?? "${BOX_TAILNET_IP}",
+    nasTailnet: process.env.TOPO_NAS_TAILNET ?? "${NAS_TAILNET_IP}",
+    plugLan: process.env.TOPO_PLUG_LAN ?? "192.168.15.132",
+    routerLan: process.env.TOPO_ROUTER_LAN ?? "192.168.15.1",
+    subnet: process.env.TOPO_SUBNET ?? "192.168.15.0/24",
+    lokiPush: process.env.TOPO_LOKI_PUSH ?? "loki-push.davideghiotto.it",
+    /** The hostname Cloudflare publishes for the NAS's own tunnel. A caption
+     *  like the rest of this block -- `links.cinema` is the one that is dialled. */
+    cinemaHost: process.env.TOPO_CINEMA_HOST ?? "cinema.davideghiotto.it",
+  },
+
   links: {
     grafana: publicUrl("GRAFANA_PUBLIC_URL", 3001),
     dokploy: publicUrl("DOKPLOY_PUBLIC_URL", 3000),

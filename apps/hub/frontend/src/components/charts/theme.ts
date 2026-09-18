@@ -18,17 +18,39 @@ function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-/** Some browsers still refuse `oklch()` inside a canvas fill on older engines.
- *  Rather than shipping a colour-space conversion, let the browser do it: paint
- *  the value onto a throwaway element and read back what it computed. */
+/** Every token in this app is `oklch()`, and the two things that have to draw
+ *  with them — the uPlot canvas and the three.js materials — both want plain
+ *  sRGB. Rather than shipping a colour-space conversion, let the browser do it.
+ *
+ *  This used to read the value back off a throwaway element's computed `color`,
+ *  which is a trick that quietly stopped working: the computed value of `color`
+ *  preserves the colour function, so Chrome hands back `oklch(0.265 0.013 63)`
+ *  unchanged. uPlot did not care, because a canvas fill parses oklch fine — but
+ *  `THREE.Color` cannot, and falls back to **white** without throwing, which is
+ *  why every material in the 3D scenes was painting white over whatever token it
+ *  had been given.
+ *
+ *  Painting one pixel and reading it back cannot drift the same way: whatever
+ *  comes out of `getImageData` is sRGB bytes by definition. */
+let probe: CanvasRenderingContext2D | null = null;
+
 function concrete(value: string): string {
   if (!value) return "#888";
-  const probe = document.createElement("span");
-  probe.style.color = value;
-  document.body.appendChild(probe);
-  const resolved = getComputedStyle(probe).color;
-  probe.remove();
-  return resolved || value;
+  probe ??= document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+  if (!probe) return value;
+  try {
+    // A colour the browser cannot parse leaves fillStyle untouched, so the
+    // previous pixel would be read back as this one. Clearing first makes an
+    // unparseable value obvious rather than contagious.
+    probe.fillStyle = "#000000";
+    probe.fillStyle = value;
+    probe.clearRect(0, 0, 1, 1);
+    probe.fillRect(0, 0, 1, 1);
+    const [r, g, b] = probe.getImageData(0, 0, 1, 1).data;
+    return `rgb(${r}, ${g}, ${b})`;
+  } catch {
+    return value;
+  }
 }
 
 export function readTheme(): ChartTheme {

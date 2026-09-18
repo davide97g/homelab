@@ -2,7 +2,7 @@ import type { HotspotState } from "@wire";
 import { lazy, Suspense } from "react";
 import { MiniPcFlat } from "@/components/hero/mini-pc-flat";
 import { NasFlat } from "@/components/hero/nas-flat";
-import { useRenderer } from "@/components/hero/webgl";
+import { useRenderer } from "@/components/three/webgl";
 
 /** One machine, two renderers, one data path.
  *
