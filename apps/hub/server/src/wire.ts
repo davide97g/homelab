@@ -187,3 +187,90 @@ export type CatalogEntry = {
  *  runtime import in the browser bundle. Both sides declare their own
  *  `Range[]` list, typed against this, so a mismatch fails to compile. */
 export type Range = "15m" | "1h" | "6h" | "24h" | "7d" | "30d";
+
+// ——— The NAS page ——————————————————————————————————————————————————————————
+
+/** One physical bay. Four of them exist whatever is plugged in, because an
+ *  empty bay is information: it is why the array has no redundancy. */
+export type NasBay = {
+  /** 0-based, front to back as the chassis is labelled 1..4. */
+  index: number;
+  occupied: boolean;
+  /** Kernel name of the disk in this bay, when there is one. */
+  device?: string;
+  sizeBytes?: number | null;
+  sizeDisplay?: string;
+  rotational?: boolean;
+  /** Read + write right now, so a working bay can be seen working. */
+  ioBytesPerSec?: number | null;
+  ioDisplay?: string;
+  /** Always null on this machine: smartctl is not installed on UGOS, so disk
+   *  health and drive temperature genuinely cannot be read. Kept in the shape
+   *  rather than omitted, so the page can say that rather than imply health. */
+  tempC?: number | null;
+  label: string;
+};
+
+/** An md array as node_exporter reports it, plus the honest reading of it.
+ *
+ *  node_exporter does not export the RAID *level*, so nothing here claims one.
+ *  What it does export is how many members the array requires, and that is the
+ *  number that matters: an array requiring one disk has no redundancy however
+ *  it is labelled, and `node_md_degraded` reads 0 right up to the moment that
+ *  disk dies. */
+export type RaidArray = {
+  device: string;
+  state: string;
+  active: number;
+  failed: number;
+  spare: number;
+  required: number;
+  degraded: boolean;
+  redundancy: "none" | "redundant" | "unknown";
+  /** One sentence saying what the numbers above actually mean. */
+  note: string;
+  /** 0..1 while resyncing or recovering, null when fully in sync. */
+  syncFraction: number | null;
+};
+
+export type SensorRow = {
+  key: string;
+  chip: string;
+  label: string;
+  tempC: number | null;
+  display: string;
+  health: Health;
+};
+
+export type Filesystem = {
+  mountpoint: string;
+  device: string;
+  fstype: string;
+  sizeBytes: number | null;
+  usedBytes: number | null;
+  availBytes: number | null;
+  percent: number | null;
+  sizeDisplay: string;
+  usedDisplay: string;
+  availDisplay: string;
+};
+
+export type NasDetail = {
+  at: string;
+  host: HostSummary;
+  /** From node_uname_info, so it is what the box calls itself. */
+  nodename: string | null;
+  kernel: string | null;
+  pool: Filesystem | null;
+  filesystems: Filesystem[];
+  arrays: RaidArray[];
+  bays: NasBay[];
+  sensors: SensorRow[];
+  containers: ContainerRow[];
+  /** Package power from RAPL. There is no plug on this machine, so this is the
+   *  CPU package and nothing else -- not the disk, the board or the brick. */
+  packageW: number | null;
+  links: { cinema: string; immich: string };
+  /** Caveats that belong on the page rather than in a commit message. */
+  notes: string[];
+};

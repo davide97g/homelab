@@ -72,7 +72,7 @@ export const RANGE_SECONDS: Record<Range, number> = {
  *  WiFi chip and the ACPI zone do not, so an inner join silently drops them.
  *  Unlabelled sensors fall back to their *chip*, because both DIMM sensors are
  *  called `temp1` and would otherwise draw two identically named lines. */
-function namedSensors(i: Instance): string {
+export function namedSensors(i: Instance): string {
   const labelled =
     `label_replace(node_hwmon_temp_celsius{instance="${i}"}` +
     ` * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance="${i}"}` +

@@ -73,30 +73,40 @@ export function nasHotspots(input: {
   rx: number | null;
   tx: number | null;
   fsPercent: number | null;
-  raid: { members: number; expected: number } | null;
+  /** How many bays actually hold a disk, queried rather than assumed. */
+  occupiedBays: number;
+  raid: { members: number; expected: number; redundancy: "none" | "redundant" | "unknown" } | null;
 }): Record<string, HotspotState> {
   const cpu = input.cpuPercent ?? 0;
   const thermal = heat(input.tempC);
   const net = (input.rx ?? 0) + (input.tx ?? 0);
   const fill = input.fsPercent === null ? 0 : input.fsPercent / 100;
   const degraded = input.raid !== null && input.raid.members < input.raid.expected;
+  // An array that requires one member is not redundancy, whatever it is called.
+  // It is not an alert either -- nothing is broken -- so it reads as warn on the
+  // status light and says why, rather than sitting green.
+  const unprotected = input.raid?.redundancy === "none";
 
-  // Four bays, one disk. Bays 1-3 are drawn unlit and matte because they are
-  // empty, which is the honest picture: md1 is a raid1 with a single member, so
-  // the array label promises redundancy the hardware does not have.
-  const bays: Record<string, HotspotState> = {
-    bay0: state("Bay 1 · /volume1", display(input.fsPercent, "percent"), fill,
-      fill >= 0.9 ? "bad" : fill >= 0.8 ? "warn" : "good"),
-    bay1: state("Bay 2", "empty", 0, "default"),
-    bay2: state("Bay 3", "empty", 0, "default"),
-    bay3: state("Bay 4", "empty", 0, "default"),
-  };
+  // Four bays. The occupied ones carry the pool's fill; the empty ones are drawn
+  // unlit and matte, which is the honest picture rather than a decorative one:
+  // three dark bays next to a single-member array is the whole storage story in
+  // one glance.
+  const bays: Record<string, HotspotState> = {};
+  for (let i = 0; i < 4; i += 1) {
+    bays[`bay${i}`] =
+      i < input.occupiedBays
+        ? state(`Bay ${i + 1} · /volume1`, display(input.fsPercent, "percent"), fill,
+            fill >= 0.9 ? "bad" : fill >= 0.8 ? "warn" : "good")
+        : state(`Bay ${i + 1}`, "empty", 0, "default");
+  }
 
   return {
     ...bays,
     led: degraded
       ? state("Array", "degraded", 1, "bad", 0.5)
-      : state("Status", display(input.cpuPercent, "percent"), 0.2 + 0.8 * clamp01(cpu / 100), "good", 0.4),
+      : unprotected
+        ? state("Array", "no redundancy", 0.7, "warn", 0.25)
+        : state("Status", display(input.cpuPercent, "percent"), 0.2 + 0.8 * clamp01(cpu / 100), "good", 0.4),
     fan: state("Hottest sensor", display(input.tempC, "celsius"), thermal.level, thermal.tone),
     nic0: state("Network", display(net || null, "bytesPerSec"), throughputLevel(net || null), "accent",
       net > 0 ? Math.min(6, 1 + Math.log1p(net / 1e5)) : 0),

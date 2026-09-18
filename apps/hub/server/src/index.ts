@@ -4,6 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
+import { nasDetail } from "./collect/nas.js";
 import { summary } from "./collect/summary.js";
 import { config } from "./config.js";
 import { catalog, parseRequest, series } from "./prom/series.js";
@@ -63,6 +64,15 @@ app.get("/api/summary", async (c) => {
   const data = await summary();
   // Every number here is seconds old by design; never let a proxy or the browser
   // serve an older one on top of that.
+  c.header("Cache-Control", "no-store");
+  return c.json(data);
+});
+
+/** The NAS in full: pool, arrays, bays, sensors and its containers. Separate
+ *  from /api/summary because only one page needs it and it is the one machine
+ *  whose answers arrive over a relayed tailnet hop. */
+app.get("/api/nas", async (c) => {
+  const data = await nasDetail();
   c.header("Cache-Control", "no-store");
   return c.json(data);
 });

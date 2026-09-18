@@ -1,6 +1,7 @@
 import type { Summary } from "@wire";
 import { HomePage } from "@/pages/home";
 import { MetricsPage } from "@/pages/metrics-page";
+import { NasPage } from "@/pages/nas";
 import { Placeholder } from "@/pages/placeholder";
 
 /** Route content in one place, so adding a page is one entry here and one in the
@@ -94,16 +95,7 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
       />
     ),
   },
-  {
-    path: "/nas",
-    element: () => (
-      <Placeholder
-        title="NAS"
-        blurb="The UGREEN box in full: pool fill, the RAID picture as it really is, temperatures, its containers and its logs, with its own 3D model."
-        phase="Its metrics are already in Prometheus; the page and the model are next."
-      />
-    ),
-  },
+  { path: "/nas", element: () => <NasPage /> },
   {
     path: "/actions",
     element: () => (

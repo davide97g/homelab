@@ -3,6 +3,7 @@ import { display } from "../format.js";
 import { byLabel, instant, scalar } from "../prom/client.js";
 import type { Health, HostSummary, Metric, Unit } from "../wire.js";
 import { miniPcHotspots, nasHotspots } from "./hotspots.js";
+import { collectArrays } from "./raid.js";
 
 /** Both machines are described by the same shape, and everything that differs
  *  between them lives here rather than in an `if (id === "nas")` further down.
@@ -241,10 +242,33 @@ export async function collectHost(id: "homelab" | "nas"): Promise<HostSummary> {
     return acc;
   }, "ok");
 
+  // The NAS's bay picture is a real query rather than a constant: four bays with
+  // one disk is today's answer, not a property of the chassis, and the moment a
+  // second disk lands the model should light a second bay without a deploy.
+  // Both of these are instant queries against series that are already cached, so
+  // this costs the summary nothing measurable.
+  const nasShape =
+    id === "nas"
+      ? await Promise.all([
+          collectArrays(i).catch(() => []),
+          scalar(`count(node_disk_info{instance="${i}",device=~"sd[a-z]+"})`).catch(() => null),
+        ])
+      : null;
+
+  const array = nasShape?.[0]?.[0] ?? null;
+
   const hotspots =
     id === "homelab"
       ? miniPcHotspots({ cpuPercent, tempC, rx, tx, diskRead, diskWrite, load1, cores })
-      : nasHotspots({ cpuPercent, tempC, rx, tx, fsPercent, raid: null });
+      : nasHotspots({
+          cpuPercent,
+          tempC,
+          rx,
+          tx,
+          fsPercent,
+          occupiedBays: nasShape?.[1] === null || nasShape?.[1] === undefined ? 1 : Math.round(nasShape[1]),
+          raid: array ? { members: array.active, expected: array.required, redundancy: array.redundancy } : null,
+        });
 
   return {
     id,
