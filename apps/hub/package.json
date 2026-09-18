@@ -1,0 +1,10 @@
+{
+  "name": "homelab-hub",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter ./server --filter ./frontend dev",
+    "build": "pnpm --filter ./frontend build && pnpm --filter ./server build",
+    "typecheck": "pnpm --filter ./server typecheck && pnpm --filter ./frontend typecheck"
+  }
+}

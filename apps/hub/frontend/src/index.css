@@ -1,0 +1,291 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* The hub's own palette, not mediarr-dash's. That app is dark-only and built on
+   tweakcn's "ESLinks"; this one is light-first and warm, because the whole point
+   of a separate hostname is that it reads as a different surface.
+
+   Light is the default and dark is a real second theme rather than an
+   afterthought: the box is looked at from a phone in a dark room as often as
+   from a desk. Both sets carry the same token names, so nothing downstream
+   branches on theme. */
+
+:root {
+  /* Warm paper rather than white. Pure white next to the glass cards makes the
+     cards disappear; a few degrees of warmth keeps them legible. */
+  --background: oklch(0.9740 0.0090 85);
+  --foreground: oklch(0.2600 0.0180 60);
+
+  --card: oklch(0.9980 0.0030 90);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.9980 0.0030 90);
+  --popover-foreground: var(--foreground);
+
+  /* Orange carries power, energy and the primary action -- it is the colour the
+     energy reference leans on and the one thing on screen that should pull the
+     eye first. */
+  --primary: oklch(0.6900 0.1700 48);
+  --primary-foreground: oklch(0.9950 0.0050 90);
+
+  --secondary: oklch(0.9350 0.0120 85);
+  --secondary-foreground: oklch(0.3200 0.0200 60);
+
+  --muted: oklch(0.9450 0.0090 85);
+  --muted-foreground: oklch(0.5100 0.0180 65);
+
+  /* Cyan is throughput: network, disk, anything moving. Deliberately far from
+     the orange so a busy link never reads as a warning. */
+  --accent: oklch(0.6600 0.1150 215);
+  --accent-foreground: oklch(0.9950 0.0050 90);
+
+  --destructive: oklch(0.5800 0.2100 25);
+  --destructive-foreground: oklch(0.9950 0.0050 90);
+
+  --border: oklch(0.8950 0.0110 80);
+  --input: oklch(0.9200 0.0100 82);
+  --ring: oklch(0.6900 0.1700 48);
+
+  /* Health tones. mediarr-dash writes its amber as a literal because "amber has
+     no slot in the shadcn palette"; here every tone is a token, so the tone maps
+     in primitives.tsx are data and the dark theme re-points them for free. */
+  --tone-default: oklch(0.5100 0.0180 65);
+  --tone-good: oklch(0.6300 0.1300 155);
+  --tone-warn: oklch(0.7500 0.1450 75);
+  --tone-bad: oklch(0.5800 0.2100 25);
+  --tone-accent: oklch(0.6600 0.1150 215);
+
+  /* A categorical ramp that survives being read in both themes. */
+  --chart-1: oklch(0.6900 0.1700 48);
+  --chart-2: oklch(0.6600 0.1150 215);
+  --chart-3: oklch(0.6300 0.1300 155);
+  --chart-4: oklch(0.6200 0.1600 300);
+  --chart-5: oklch(0.7500 0.1450 75);
+  --chart-6: oklch(0.5500 0.1500 255);
+  --chart-7: oklch(0.6000 0.1700 10);
+  --chart-8: oklch(0.5800 0.0900 190);
+
+  /* The neumorphic pair from the smart-home reference: one light source, top
+     left, so every raised surface agrees about where the sun is. */
+  --neu-light: oklch(1 0 0 / 0.85);
+  --neu-dark: oklch(0.7200 0.0200 70 / 0.42);
+
+  /* Glass, for the cards that float over the 3D hero. */
+  --glass-bg: oklch(1 0 0 / 0.62);
+  --glass-border: oklch(1 0 0 / 0.70);
+  --glass-shadow: oklch(0.5500 0.0300 70 / 0.16);
+
+  --rail: oklch(0.2450 0.0180 60);
+  --rail-foreground: oklch(0.9200 0.0100 85);
+
+  --radius: 1rem;
+}
+
+.dark {
+  --background: oklch(0.1850 0.0120 65);
+  --foreground: oklch(0.9250 0.0090 85);
+
+  --card: oklch(0.2300 0.0140 63);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.2300 0.0140 63);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.7400 0.1650 52);
+  --primary-foreground: oklch(0.1850 0.0120 65);
+
+  --secondary: oklch(0.2750 0.0150 63);
+  --secondary-foreground: oklch(0.9000 0.0100 85);
+
+  --muted: oklch(0.2650 0.0130 63);
+  --muted-foreground: oklch(0.7000 0.0140 75);
+
+  --accent: oklch(0.7200 0.1050 215);
+  --accent-foreground: oklch(0.1850 0.0120 65);
+
+  --destructive: oklch(0.6500 0.1950 25);
+  --destructive-foreground: oklch(0.9800 0.0050 90);
+
+  --border: oklch(0.3200 0.0150 63);
+  --input: oklch(0.3000 0.0140 63);
+  --ring: oklch(0.7400 0.1650 52);
+
+  --tone-default: oklch(0.7000 0.0140 75);
+  --tone-good: oklch(0.7300 0.1400 155);
+  --tone-warn: oklch(0.8100 0.1400 78);
+  --tone-bad: oklch(0.6800 0.1900 25);
+  --tone-accent: oklch(0.7200 0.1050 215);
+
+  --chart-1: oklch(0.7400 0.1650 52);
+  --chart-2: oklch(0.7200 0.1050 215);
+  --chart-3: oklch(0.7300 0.1400 155);
+  --chart-4: oklch(0.7000 0.1500 300);
+  --chart-5: oklch(0.8100 0.1400 78);
+  --chart-6: oklch(0.6600 0.1400 255);
+  --chart-7: oklch(0.7000 0.1600 10);
+  --chart-8: oklch(0.6800 0.0850 190);
+
+  /* Inverted light source: in the dark theme the highlight is the faint one and
+     the shadow does the lifting, otherwise raised cards look like holes. */
+  --neu-light: oklch(1 0 0 / 0.06);
+  --neu-dark: oklch(0 0 0 / 0.55);
+
+  --glass-bg: oklch(0.2600 0.0140 63 / 0.62);
+  --glass-border: oklch(1 0 0 / 0.10);
+  --glass-shadow: oklch(0 0 0 / 0.45);
+
+  --rail: oklch(0.1500 0.0100 65);
+  --rail-foreground: oklch(0.8600 0.0100 85);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-tone-default: var(--tone-default);
+  --color-tone-good: var(--tone-good);
+  --color-tone-warn: var(--tone-warn);
+  --color-tone-bad: var(--tone-bad);
+  --color-tone-accent: var(--tone-accent);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+
+  --color-rail: var(--rail);
+  --color-rail-foreground: var(--rail-foreground);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 0.35rem);
+  --radius-sm: calc(var(--radius) - 0.6rem);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Numbers on a dashboard are read as a column and compared to each other, so
+     they get tabular figures everywhere rather than per-component. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  /* A raised surface, lit from the top left. The inset hairline is what sells
+     it -- without it the card reads as a flat rectangle with a drop shadow. */
+  .neu {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow:
+      -2px -2px 6px var(--neu-light),
+      6px 8px 20px var(--neu-dark),
+      inset 0 1px 0 var(--neu-light);
+  }
+
+  /* The same surface pressed in, for tracks, wells and inactive segments. */
+  .neu-inset {
+    background: var(--muted);
+    border-radius: var(--radius-md);
+    box-shadow:
+      inset 2px 2px 5px var(--neu-dark),
+      inset -1px -1px 3px var(--neu-light);
+  }
+
+  /* For cards that sit over the 3D hero. Capped deliberately: backdrop-filter is
+     a full-screen GPU pass per element, and a handful of these composited over a
+     live canvas is the difference between smooth and not. */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: 0 10px 30px var(--glass-shadow);
+  }
+
+  /* The warm wash behind the hero, standing in for the light the 3D scene will
+     throw once it exists. */
+  .hero-glow {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .hero-glow::before {
+    content: "";
+    position: absolute;
+    inset: -10% -5% 0;
+    z-index: -1;
+    background:
+      radial-gradient(60% 55% at 30% 15%, color-mix(in oklch, var(--primary) 22%, transparent), transparent 70%),
+      radial-gradient(50% 50% at 78% 40%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 72%);
+    filter: blur(8px);
+    pointer-events: none;
+  }
+}
+
+/* Thin scrollbars, so a scrolling panel does not shove the layout sideways. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

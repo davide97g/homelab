@@ -1,0 +1,42 @@
+# What runs on the box. The image is built there -- there is no registry in this
+# setup -- so this file only ever names it.
+#
+# One container, one origin, one port: the server serves both /api and the built
+# page, so there is no CORS to configure, the session cookie is same-origin by
+# construction, and the Cloudflare Tunnel has exactly one thing to point at.
+
+services:
+  hub:
+    image: ${HUB_IMAGE:-homelab-hub:latest}
+    container_name: homelab-hub
+    restart: unless-stopped
+    env_file:
+      - path: /home/davide/hub/.env
+        required: false
+    environment:
+      PORT: 8080
+      # Never a LAN IP: the box is on DHCP and a new lease has already broken
+      # every baked-in address once. host-gateway resolves the box from inside
+      # this container whatever address it holds today.
+      HOMELAB_HOST: ${HOMELAB_HOST:-homelab-host}
+      HOMELAB_PUBLIC_HOST: ${HOMELAB_PUBLIC_HOST:-debian}
+      # Reachable only because this container joins the monitoring network below.
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
+      LOKI_URL: ${LOKI_URL:-http://loki:3100}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TZ: ${TZ:-Europe/Rome}
+    extra_hosts:
+      - homelab-host:host-gateway
+    ports:
+      # 3000 is Dokploy, 3001 Grafana, 3002 mediarr-dash.
+      - "${HUB_PORT:-3003}:8080"
+    networks:
+      - monitoring
+
+networks:
+  # Created by the monitoring stack, and the name carries Dokploy's app slug, so
+  # it changes if that app is ever renamed. `docker network ls | grep monitoring`
+  # and set MONITORING_NETWORK if this stops resolving.
+  monitoring:
+    external: true
+    name: ${MONITORING_NETWORK:-monitoring-frontend-fnhjyi_monitoring}
