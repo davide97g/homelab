@@ -1,6 +1,7 @@
 import type { Summary } from "@wire";
 import { HomePage } from "@/pages/home";
 import { MetricsPage } from "@/pages/metrics-page";
+import { ContainersPage } from "@/pages/containers";
 import { LogsPage } from "@/pages/logs";
 import { NasPage } from "@/pages/nas";
 import { Placeholder } from "@/pages/placeholder";
@@ -66,16 +67,7 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
       />
     ),
   },
-  {
-    path: "/containers",
-    element: () => (
-      <Placeholder
-        title="Containers"
-        blurb="Every container on both machines with state, restarts, CPU and memory, and a log tail per container."
-        phase="Waiting on the Docker socket proxy, which is what keeps this from making the hub root-equivalent on the box."
-      />
-    ),
-  },
+  { path: "/containers", element: () => <ContainersPage /> },
   { path: "/logs", element: () => <LogsPage /> },
   {
     path: "/media",

@@ -1,4 +1,12 @@
-import type { LogOptions, LogsResponse, NasDetail, Range, SeriesResponse, Summary } from "@wire";
+import type {
+  ContainersResponse,
+  LogOptions,
+  LogsResponse,
+  NasDetail,
+  Range,
+  SeriesResponse,
+  Summary,
+} from "@wire";
 
 // Types come from the server's wire.ts through the @wire alias, so there is no
 // second copy to keep in step. Only the calls live here.
@@ -83,4 +91,8 @@ export function fetchLogs(query: LogQuery, signal?: AbortSignal): Promise<LogsRe
 
 export function fetchLogOptions(signal?: AbortSignal): Promise<LogOptions> {
   return fetch("/api/logs/options", { ...same, signal }).then((r) => json<LogOptions>(r));
+}
+
+export function fetchContainers(signal?: AbortSignal): Promise<ContainersResponse> {
+  return fetch("/api/containers", { ...same, signal }).then((r) => json<ContainersResponse>(r));
 }

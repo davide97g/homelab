@@ -23,6 +23,10 @@ services:
       # Reachable only because this container joins the monitoring network below.
       PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
       LOKI_URL: ${LOKI_URL:-http://loki:3100}
+      # The Docker API, and note what is *not* here: no /var/run/docker.sock
+      # mount. See the proxy below.
+      DOCKER_HOST: ${DOCKER_HOST:-tcp://hub-docker-proxy:2375}
+      AUDIT_PATH: /data/actions.jsonl
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       TZ: ${TZ:-Europe/Rome}
     extra_hosts:
@@ -30,8 +34,45 @@ services:
     ports:
       # 3000 is Dokploy, 3001 Grafana, 3002 mediarr-dash.
       - "${HUB_PORT:-3003}:8080"
+    volumes:
+      # The action audit. A named volume rather than a bind, and deliberately not
+      # inside the source tree: deploy.py clears the directories it owns on every
+      # sync, and an audit log a deploy erases is a log of the last five minutes.
+      - hub-data:/data
     networks:
       - monitoring
+      - docker-proxy
+    depends_on:
+      - docker-proxy
+
+  # The only thing on the box with the Docker socket.
+  #
+  # `:ro` on a socket mount does not make the Docker API read-only. It applies to
+  # the file node, not the protocol: POST /containers/x/stop works through one,
+  # and so does POST /containers/create with Binds: ["/:/host"], which is root on
+  # the box. So the hub gets a filtered HTTP API instead and no socket at all,
+  # and this proxy is the layer that still holds if the hub has a bug.
+  #
+  # Everything not listed below defaults to 0 in this image: no IMAGES, no
+  # VOLUMES, no NETWORKS, no EXEC, no BUILD, no SWARM, no SECRETS. POST is on
+  # because start/stop/restart are POSTs; it is not a blanket write permission,
+  # since the paths those verbs could reach are gated by the resource flags.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: hub-docker-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      INFO: 1
+      VERSION: 1
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-proxy
+
+volumes:
+  hub-data:
 
 networks:
   # Created by the monitoring stack, and the name carries Dokploy's app slug, so
@@ -40,3 +81,9 @@ networks:
   monitoring:
     external: true
     name: ${MONITORING_NETWORK:-monitoring-frontend-fnhjyi_monitoring}
+
+  # internal: true means no gateway and no route off the box. The proxy holds the
+  # most dangerous handle on the machine; it has no business being reachable from
+  # anywhere except the one container that needs it.
+  docker-proxy:
+    internal: true

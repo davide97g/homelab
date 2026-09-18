@@ -324,3 +324,55 @@ export type LogOptions = {
   units: string[];
   levels: LogLevel[];
 };
+
+// ——— Containers ————————————————————————————————————————————————————————————
+
+export type ContainerState =
+  | "running"
+  | "exited"
+  | "created"
+  | "paused"
+  | "restarting"
+  | "removing"
+  | "dead"
+  | "unknown";
+
+export type ContainerHealth = "healthy" | "unhealthy" | "starting" | "none";
+
+export type ContainerDetail = {
+  /** Short id. The long one is never needed and is forty characters of noise in
+   *  an audit line. */
+  id: string;
+  name: string;
+  image: string;
+  instance: "homelab" | "nas";
+  state: ContainerState;
+  /** Docker's own phrasing — "Up 3 days (healthy)", "Exited (137) 2 hours ago".
+   *  Worth keeping verbatim: the exit code in it is often the whole answer. */
+  status: string;
+  health: ContainerHealth;
+  createdMs: number | null;
+  /** Only read for containers that are not simply running, because it costs an
+   *  inspect call each and is only interesting when something is wrong. */
+  restarts: number | null;
+  compose?: { project: string; service: string };
+  cpuPercent: number | null;
+  rssBytes: number | null;
+  rssDisplay: string;
+  ports: string[];
+  /** Whether the actions layer will touch it. False is not a permission the UI
+   *  applies — the dispatcher refuses independently. */
+  managed: boolean;
+  /** Why not, when it is not. */
+  reason?: string;
+};
+
+export type ContainersResponse = {
+  at: string;
+  /** `docker` sees stopped containers; `cadvisor` cannot. */
+  source: "docker" | "cadvisor";
+  /** Set when the list is degraded, saying what is missing from it. */
+  notice?: string;
+  counts: { running: number; stopped: number; total: number };
+  containers: ContainerDetail[];
+};

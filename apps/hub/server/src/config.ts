@@ -22,6 +22,14 @@ function publicUrl(envKey: string, port: number): string {
   return (process.env[envKey] ?? `http://${PUBLIC_BOX}:${port}`).replace(/\/+$/, "");
 }
 
+/** The same thing for a service **this process** calls rather than links to.
+ *  The distinction is the whole reason there are two host notions: a link has to
+ *  resolve in a browser on someone's laptop, and a fetch has to resolve inside
+ *  this container, where `debian` may not. */
+function boxUrl(envKey: string, port: number): string {
+  return (process.env[envKey] ?? `http://${BOX}:${port}`).replace(/\/+$/, "");
+}
+
 export const config = {
   port: Number(process.env.PORT ?? 8080),
   host: PUBLIC_BOX,
@@ -47,6 +55,44 @@ export const config = {
 
   prometheus: (process.env.PROMETHEUS_URL ?? "http://prometheus:9090").replace(/\/+$/, ""),
   loki: (process.env.LOKI_URL ?? "http://loki:3100").replace(/\/+$/, ""),
+
+  /** The Docker API, reached only through tecnativa/docker-socket-proxy on an
+   *  internal network. The hub never mounts the socket itself, and this is the
+   *  reason why: `:ro` on a docker socket does not make the Docker API
+   *  read-only. It applies to the file node, not the protocol, so
+   *  `POST /containers/x/stop` still works through a read-only mount -- and so
+   *  does `POST /containers/create` with `Binds: ["/:/host"]`, which is root on
+   *  the box. The proxy is the layer that still holds if this server has a bug.
+   *
+   *  Unset means the containers page falls back to what cAdvisor can see, which
+   *  is running containers only. That is a degraded page, not a broken one. */
+  docker: (process.env.DOCKER_HOST ?? "").replace(/^tcp:\/\//, "http://").replace(/\/+$/, ""),
+
+  /** Dokploy, for the redeploy action. There are no scoped tokens in Dokploy:
+   *  this key can delete every service on the box, so the ids it may be used
+   *  against are allow-listed rather than free-form. */
+  dokployUrl: process.env.DOKPLOY_API_KEY ? boxUrl("DOKPLOY_URL", 3000) : "",
+  dokployKey: process.env.DOKPLOY_API_KEY ?? "",
+  dokployAllow: (process.env.DOKPLOY_ALLOW ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+
+  /** Where the append-only action audit lands. A named volume in the compose
+   *  file, so it survives a redeploy -- an audit log that a deploy erases is a
+   *  log of the last five minutes. */
+  auditPath: process.env.AUDIT_PATH ?? "/data/actions.jsonl",
+
+  /** The *arr and qBittorrent endpoints the media actions write to. Every one of
+   *  these is blank until scripts/collect-env.sh has run on the box; a blank one
+   *  makes its actions `unconfigured` rather than failing at the click. */
+  radarr: { url: boxUrl("RADARR_URL", 7878), key: process.env.RADARR_API_KEY ?? "" },
+  sonarr: { url: boxUrl("SONARR_URL", 8989), key: process.env.SONARR_API_KEY ?? "" },
+  qbittorrent: {
+    url: boxUrl("QBITTORRENT_URL", 8080),
+    user: process.env.QBITTORRENT_USER ?? "",
+    pass: process.env.QBITTORRENT_PASS ?? "",
+  },
 
   /** All-in marginal tariff. The Grafana dashboard's textbox defaults to the
    *  same 0.27 EUR; see monitoring/README.md for the derivation. */

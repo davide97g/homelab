@@ -4,6 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
+import { containers } from "./collect/containers.js";
 import { nasDetail } from "./collect/nas.js";
 import { summary } from "./collect/summary.js";
 import { config } from "./config.js";
@@ -94,6 +95,14 @@ app.get("/api/series", async (c) => {
   const data = await series(parsed);
   c.header("Cache-Control", "no-store");
   return c.json(data);
+});
+
+/** Every container on both machines. Docker's list for the mini PC -- which is
+ *  the only way a *stopped* container is visible at all -- and cAdvisor's
+ *  numbers on top of it. See server/src/collect/containers.ts. */
+app.get("/api/containers", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await containers());
 });
 
 /** The live label sets behind the log filters. Cached 60 s upstream, so this is

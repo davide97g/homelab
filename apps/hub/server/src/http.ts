@@ -14,6 +14,10 @@ export type FetchOptions = {
   /** Cookie jar entry, for qBittorrent's session login. */
   cookie?: string;
   timeoutMs?: number;
+  /** Statuses to treat as success alongside 2xx. Docker answers 304 to a start
+   *  on an already-running container, which is the correct answer to an
+   *  idempotent verb and must not read as a failure. */
+  allowStatus?: number[];
 };
 
 /** A JSON GET with a hard timeout and an error that says which service broke.
@@ -48,7 +52,7 @@ export async function request(url: string, opts: FetchOptions = {}): Promise<Res
     const reason = err instanceof Error ? err.message : String(err);
     throw new ServiceError(reason.includes("timed out") ? "timed out" : reason);
   }
-  if (!res.ok) {
+  if (!res.ok && !(opts.allowStatus ?? []).includes(res.status)) {
     throw new ServiceError(`HTTP ${res.status}`, res.status);
   }
   return res;
