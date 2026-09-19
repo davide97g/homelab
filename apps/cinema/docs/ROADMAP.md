@@ -23,7 +23,7 @@ because the name no longer resolves. That includes Cinema for iOS on the phone, 
 **Working:** auth and session restore, home with feature band and carousels, sortable library grid,
 search, detail page with a technical media panel, direct-play/transcode negotiation, HLS via hls.js,
 external subtitles, custom controls with keyboard shortcuts, progress reporting and resume,
-offline-drive detection.
+offline-drive detection, a live viewer count in the header with who is watching what.
 
 **Next, in rough order of value:**
 

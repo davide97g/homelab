@@ -48,3 +48,20 @@ export function itemBackdropUrl(
 }
 
 export { ImageType }
+
+/**
+ * A user's avatar. Sessions carry the id and the tag but not a `UserDto`, so
+ * the two fields the URL builder actually reads are passed as one.
+ */
+export function userImageUrl(
+  api: Api,
+  userId: string | null | undefined,
+  tag: string | null | undefined,
+  params: ImageRequestParameters = {},
+): string | undefined {
+  if (!userId || !tag) return undefined
+  return getImageApi(api).getUserImageUrl(
+    { Id: userId, PrimaryImageTag: tag },
+    { quality: 90, fillWidth: 64, fillHeight: 64, ...params },
+  )
+}

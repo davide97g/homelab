@@ -84,6 +84,14 @@ Request `ItemFields` explicitly: `CARD_FIELDS` for grids, `DETAIL_FIELDS` (with 
 `MediaStreams`) for the detail page. Asking for everything everywhere is the easiest way to make a
 large library feel slow.
 
+**Who is watching.** `useActiveViewers` is the one polling query in the app: `GET /Sessions` every
+ten seconds, the interval the player already reports progress at, mapped into a plain `Viewer[]`
+for the header pill. Sessions without a `NowPlayingItem` are idle clients, not viewers, and
+`activeWithinSeconds: 90` drops the ones the server has stopped hearing from. **The server only
+shows other people's sessions to an administrator** — a normal account sees its own, or gets a 403.
+The query therefore does not retry and the pill renders nothing on failure, so a non-admin account
+loses the feature rather than the page.
+
 ---
 
 ## 4. Playback

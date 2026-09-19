@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { AccountMenu } from './AccountMenu'
 import { MobileNav } from './MobileNav'
 import { Sidebar } from './Sidebar'
+import { ViewersMenu } from './ViewersMenu'
 
 /**
  * Rail on the left, one scrolling content column on the right. No top bar:
@@ -15,7 +16,8 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3 px-4 pt-4 md:px-8 md:pt-6">
           <MobileNav />
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <ViewersMenu />
             <AccountMenu />
           </div>
         </div>
