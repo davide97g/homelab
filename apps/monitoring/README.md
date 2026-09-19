@@ -363,7 +363,9 @@ reads — and maps it onto `jellyfin_*` metrics. The Jellyfin server stays **unm
 Prometheus plugin, which is the rule the Cinema repo is built on.
 
 It needs an API key (Jellyfin **Dashboard → Advanced → API Keys**), set as `JELLYFIN_API_KEY` in
-`nas-agents/.env` on the NAS. Without one it answers `jellyfin_up 0` and stops there, rather than
+`nas-agents/.env` on the NAS. That box runs **Jellyfin 12.1**, which answers 401 to the legacy
+`X-Emby-Token` and `X-MediaBrowser-Token` headers; `Authorization: MediaBrowser Token="…"` is the
+only form it still accepts, and it is what the exporter sends. Without one it answers `jellyfin_up 0` and stops there, rather than
 retrying a 401 forever — so a key that was never created shows as a panel saying so, not as a dead
 scrape target. One series per *active* session, labelled with the user and the title: that
 cardinality is the point of the panel, and it disappears when playback stops.
