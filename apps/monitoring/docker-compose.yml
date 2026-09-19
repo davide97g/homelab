@@ -218,6 +218,10 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in the Dokploy Environment tab}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      # Business Text: the one panel that runs JavaScript, which is what draws
+      # the viewers in 3D. Grafana installs it at container start, so the box
+      # needs to reach grafana.com the first time it comes up.
+      GF_INSTALL_PLUGINS: marcusolsson-dynamictext-panel
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/homelab-overview.json
@@ -338,6 +342,19 @@ configs:
           scrape_timeout: 20s
           static_configs:
             - targets: ["${NAS_TAILNET_IP}:8081"]
+              labels:
+                instance: nas
+
+        # Who is watching what on the NAS's Jellyfin -- the server behind
+        # cinema.davideghiotto.it. Same tailnet path, same slower cadence as the
+        # two jobs above. The exporter answers jellyfin_up 0 rather than failing
+        # the scrape when its API key is missing, so a key that was never
+        # created shows up as a panel saying so, not as a dead target.
+        - job_name: jellyfin-nas
+          scrape_interval: 60s
+          scrape_timeout: 20s
+          static_configs:
+            - targets: ["${NAS_TAILNET_IP}:9101"]
               labels:
                 instance: nas
 
@@ -732,7 +749,7 @@ configs:
         ],
         "timezone": "browser",
         "schemaVersion": 39,
-        "version": 5,
+        "version": 6,
         "refresh": "30s",
         "time": {
           "from": "now-6h",
@@ -2419,6 +2436,329 @@ configs:
                 ],
                 "sortBy": "Max",
                 "sortDesc": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          {
+            "id": 104,
+            "type": "row",
+            "title": "Cinema",
+            "collapsed": false,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 68
+            },
+            "panels": []
+          },
+          {
+            "id": 30,
+            "type": "marcusolsson-dynamictext-panel",
+            "title": "Who is watching",
+            "description": "One screen per active Jellyfin session on the NAS, drawn with three.js. The library is imported from a CDN at render time, so this panel needs the browser to reach jsdelivr.",
+            "gridPos": {
+              "h": 11,
+              "w": 16,
+              "x": 0,
+              "y": 69
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "jellyfin_session_progress_ratio{instance=\"nas\"}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "instant": true,
+                "range": false
+              },
+              {
+                "refId": "B",
+                "expr": "jellyfin_session_position_seconds{instance=\"nas\"}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "instant": true,
+                "range": false
+              }
+            ],
+            "options": {
+              "renderMode": "data",
+              "content": "",
+              "defaultContent": "",
+              "editors": [
+                "afterRender"
+              ],
+              "helpers": "",
+              "styles": "",
+              "externalStyles": [],
+              "contentPartials": [],
+              "wrap": false,
+              "status": "",
+              "afterRender": "/*\n * The \"Who is watching\" panel, in three dimensions.\n *\n * This is the `afterRender` code of a Business Text panel\n * (marcusolsson-dynamictext-panel). build.py inlines it into\n * homelab-overview.json, so it can be read and edited as JavaScript instead of\n * as one escaped line inside a dashboard.\n *\n * The contract, from the plugin's source: the code is a function body called\n * with one argument, `context`, holding `element` (the panel's div),\n * `panelData`, `data` and `grafana`. Whatever it returns is called on unmount,\n * which is where the renderer, the geometries and the animation frame go --\n * without that, every dashboard refresh leaks a WebGL context and Chrome kills\n * the oldest one after sixteen.\n *\n * Data comes from two queries on the same labels, instant, no legend format so\n * that `__name__` survives in the field labels:\n *   A  jellyfin_session_progress_ratio{instance=\"nas\"}\n *   B  jellyfin_session_position_seconds{instance=\"nas\"}\n */\n\nconst element = context.element;\nconst theme = context.grafana.theme;\n\n/** One row per person watching, merged across the two metrics. */\nconst byViewer = new Map();\nfor (const frame of context.panelData?.series ?? []) {\n  const field = frame.fields?.find((candidate) => candidate.type === 'number');\n  const labels = field?.labels ?? {};\n  if (!field || !labels.user) {\n    continue;\n  }\n\n  const values = typeof field.values?.toArray === 'function' ? field.values.toArray() : field.values;\n  let value = null;\n  for (let index = values.length - 1; index >= 0; index -= 1) {\n    if (values[index] != null && Number.isFinite(values[index])) {\n      value = values[index];\n      break;\n    }\n  }\n  if (value == null) {\n    continue;\n  }\n\n  const key = `$${labels.user}|$${labels.item}|$${labels.device}`;\n  const viewer = byViewer.get(key) ?? {\n    user: labels.user,\n    item: labels.item || 'Something',\n    kind: labels.kind || '',\n    client: labels.client || '',\n    method: labels.method || '',\n    paused: labels.paused === 'true',\n    progress: 0,\n    position: 0,\n  };\n  if ((labels.__name__ || '').endsWith('progress_ratio')) {\n    viewer.progress = Math.max(0, Math.min(1, value));\n  }\n  if ((labels.__name__ || '').endsWith('position_seconds')) {\n    viewer.position = value;\n  }\n  byViewer.set(key, viewer);\n}\n\nconst viewers = [...byViewer.values()].sort((a, b) => a.user.localeCompare(b.user));\n\nconst host = document.createElement('div');\nhost.style.cssText = 'position:relative;width:100%;height:100%;min-height:220px;';\nelement.replaceChildren(host);\n\nconst caption = document.createElement('div');\ncaption.style.cssText = [\n  'position:absolute',\n  'left:12px',\n  'top:10px',\n  'font:600 12px/1.2 Inter,system-ui,sans-serif',\n  'letter-spacing:0.14em',\n  'text-transform:uppercase',\n  `color:$${theme.colors.text.secondary}`,\n  'pointer-events:none',\n].join(';');\ncaption.textContent = viewers.length\n  ? `$${viewers.length} watching`\n  : 'nobody watching';\nhost.appendChild(caption);\n\nif (!viewers.length) {\n  // An empty house is the normal state of a home server. A WebGL context for\n  // nothing is not worth the memory, so the empty state is plain DOM.\n  const empty = document.createElement('div');\n  empty.style.cssText = [\n    'display:grid',\n    'place-items:center',\n    'width:100%',\n    'height:100%',\n    'font:400 13px/1.4 Inter,system-ui,sans-serif',\n    `color:$${theme.colors.text.disabled}`,\n  ].join(';');\n  empty.textContent = 'The screens are dark.';\n  host.appendChild(empty);\n  return () => element.replaceChildren();\n}\n\nlet disposed = false;\nlet dispose = () => {};\n\n/** A viewer's card, drawn on a 2D canvas and used as the screen's texture. */\nconst drawCard = (viewer) => {\n  const canvas = document.createElement('canvas');\n  canvas.width = 640;\n  canvas.height = 360;\n  const ctx = canvas.getContext('2d');\n\n  ctx.fillStyle = '#101216';\n  ctx.fillRect(0, 0, canvas.width, canvas.height);\n\n  // The red hairline is the only accent, same as the Cinema cards.\n  ctx.fillStyle = viewer.paused ? '#6b7280' : '#e11d2e';\n  ctx.fillRect(0, 0, 8, canvas.height);\n\n  ctx.fillStyle = '#f5f5f5';\n  ctx.font = '600 44px Inter, system-ui, sans-serif';\n  ctx.fillText(viewer.user, 44, 96);\n\n  ctx.fillStyle = '#c7c9cd';\n  ctx.font = '400 34px Inter, system-ui, sans-serif';\n  const title = viewer.item.length > 26 ? `$${viewer.item.slice(0, 25)}\u2026` : viewer.item;\n  ctx.fillText(title, 44, 154);\n\n  const hours = Math.floor(viewer.position / 3600);\n  const minutes = Math.floor((viewer.position % 3600) / 60);\n  const seconds = Math.floor(viewer.position % 60);\n  const timecode = hours\n    ? `$${hours}:$${String(minutes).padStart(2, '0')}:$${String(seconds).padStart(2, '0')}`\n    : `$${minutes}:$${String(seconds).padStart(2, '0')}`;\n\n  ctx.fillStyle = '#8b8e95';\n  ctx.font = '400 26px Inter, system-ui, sans-serif';\n  ctx.fillText(\n    [timecode, viewer.client, viewer.method, viewer.paused ? 'paused' : null]\n      .filter(Boolean)\n      .join('  \u00b7  '),\n    44,\n    214,\n  );\n\n  ctx.fillStyle = '#26282e';\n  ctx.fillRect(44, 268, canvas.width - 88, 10);\n  ctx.fillStyle = viewer.paused ? '#6b7280' : '#e11d2e';\n  ctx.fillRect(44, 268, (canvas.width - 88) * viewer.progress, 10);\n\n  return canvas;\n};\n\n(async () => {\n  // Three is not bundled with Grafana and the plugin's external-scripts option\n  // was removed in Grafana 11, so the module comes from a CDN at render time.\n  // The box needs outbound HTTPS for this panel and only this panel.\n  const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js');\n  if (disposed) {\n    return;\n  }\n\n  const scene = new THREE.Scene();\n  const camera = new THREE.PerspectiveCamera(42, 2, 0.1, 100);\n  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });\n  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));\n  renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';\n  host.appendChild(renderer.domElement);\n\n  scene.add(new THREE.AmbientLight(0xffffff, 1.8));\n  const key = new THREE.PointLight(0xe11d2e, 60, 40);\n  key.position.set(0, 2.5, 4);\n  scene.add(key);\n\n  // One screen per viewer on a carousel. The radius grows with the count so\n  // three people are not drawn on top of each other and one is not lost in the\n  // middle of an empty ring.\n  const radius = Math.max(2.2, viewers.length * 0.75);\n  const group = new THREE.Group();\n  const disposables = [];\n\n  viewers.forEach((viewer, index) => {\n    const texture = new THREE.CanvasTexture(drawCard(viewer));\n    texture.colorSpace = THREE.SRGBColorSpace;\n    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();\n\n    const geometry = new THREE.PlaneGeometry(3.2, 1.8);\n    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });\n    const screen = new THREE.Mesh(geometry, material);\n\n    const angle = (index / viewers.length) * Math.PI * 2;\n    screen.position.set(Math.sin(angle) * radius, 0, Math.cos(angle) * radius);\n    screen.rotation.y = angle;\n    screen.userData.phase = index * 1.1;\n    group.add(screen);\n\n    // A thin slab behind the screen, so it reads as an object and not a decal.\n    const backGeometry = new THREE.BoxGeometry(3.3, 1.9, 0.08);\n    const backMaterial = new THREE.MeshStandardMaterial({\n      color: 0x1b1d22,\n      roughness: 0.6,\n      metalness: 0.1,\n    });\n    const back = new THREE.Mesh(backGeometry, backMaterial);\n    back.position.copy(screen.position);\n    back.rotation.y = angle;\n    back.translateZ(-0.06);\n    group.add(back);\n\n    disposables.push(geometry, material, texture, backGeometry, backMaterial);\n  });\n\n  scene.add(group);\n  camera.position.set(0, 1.1, radius + 4.2);\n  camera.lookAt(0, 0, 0);\n\n  const resize = () => {\n    const { clientWidth, clientHeight } = host;\n    if (!clientWidth || !clientHeight) {\n      return;\n    }\n    renderer.setSize(clientWidth, clientHeight, false);\n    camera.aspect = clientWidth / clientHeight;\n    camera.updateProjectionMatrix();\n  };\n  resize();\n  const observer = new ResizeObserver(resize);\n  observer.observe(host);\n\n  let frame = 0;\n  const started = performance.now();\n  const tick = (now) => {\n    const elapsed = (now - started) / 1000;\n    group.rotation.y = elapsed * 0.18;\n    for (const child of group.children) {\n      if (child.userData.phase != null) {\n        child.position.y = Math.sin(elapsed * 0.9 + child.userData.phase) * 0.08;\n      }\n    }\n    renderer.render(scene, camera);\n    frame = requestAnimationFrame(tick);\n  };\n  frame = requestAnimationFrame(tick);\n\n  dispose = () => {\n    cancelAnimationFrame(frame);\n    observer.disconnect();\n    for (const item of disposables) {\n      item.dispose();\n    }\n    renderer.dispose();\n    renderer.domElement.remove();\n  };\n})();\n\nreturn () => {\n  disposed = true;\n  dispose();\n  element.replaceChildren();\n};\n"
+            },
+            "fieldConfig": {
+              "defaults": {},
+              "overrides": []
+            }
+          },
+          {
+            "id": 31,
+            "type": "stat",
+            "title": "Watching now",
+            "gridPos": {
+              "h": 6,
+              "w": 4,
+              "x": 16,
+              "y": 69
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "jellyfin_sessions_watching{instance=\"nas\"}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "legendFormat": "watching"
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "decimals": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 32,
+            "type": "stat",
+            "title": "Transcoding",
+            "description": "Sessions the NAS is running ffmpeg for. Direct play costs it nothing; this is the number that shows up as CPU.",
+            "gridPos": {
+              "h": 6,
+              "w": 4,
+              "x": 20,
+              "y": 69
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "jellyfin_sessions_transcoding{instance=\"nas\"}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "legendFormat": "transcoding"
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "decimals": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 2
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 33,
+            "type": "stat",
+            "title": "Jellyfin API",
+            "description": "0 also means the exporter has no API key: it reports the state rather than failing the scrape.",
+            "gridPos": {
+              "h": 5,
+              "w": 8,
+              "x": 16,
+              "y": 75
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "jellyfin_up{instance=\"nas\"}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "legendFormat": "api"
+              }
+            ],
+            "options": {
+              "graphMode": "none",
+              "colorMode": "background",
+              "textMode": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "fieldConfig": {
+              "defaults": {
+                "mappings": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "unreachable",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "answering",
+                        "color": "green",
+                        "index": 1
+                      }
+                    }
+                  }
+                ],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 34,
+            "type": "timeseries",
+            "title": "Viewers over time",
+            "gridPos": {
+              "h": 7,
+              "w": 24,
+              "x": 0,
+              "y": 80
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "expr": "jellyfin_sessions_watching{instance=\"nas\"}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "legendFormat": "watching"
+              },
+              {
+                "refId": "B",
+                "expr": "jellyfin_sessions_transcoding{instance=\"nas\"}",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "legendFormat": "transcoding"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "decimals": 0,
+                "min": 0,
+                "custom": {
+                  "fillOpacity": 20,
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "drawStyle": "line",
+                  "lineInterpolation": "stepAfter",
+                  "gradientMode": "opacity"
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "displayMode": "list",
+                "placement": "bottom",
+                "calcs": []
               },
               "tooltip": {
                 "mode": "multi",

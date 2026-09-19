@@ -18,8 +18,27 @@ PLACEHOLDERS = {
 }
 
 
+# The three.js panel's code lives as a real .js file, not as one escaped line
+# inside the dashboard, so it can be read and edited. It is substituted into the
+# panel option of the same name before the dashboard is serialised.
+JS_PARTIALS = {
+    "__VIEWERS_3D_JS__": "dashboards/viewers-3d.js",
+}
+
+
+def substitute_js(node):
+    """Replace placeholder strings anywhere in a dashboard with the file's code."""
+    if isinstance(node, dict):
+        return {key: substitute_js(value) for key, value in node.items()}
+    if isinstance(node, list):
+        return [substitute_js(value) for value in node]
+    if isinstance(node, str) and node in JS_PARTIALS:
+        return (HERE / JS_PARTIALS[node]).read_text()
+    return node
+
+
 def inline(path: pathlib.Path) -> str:
-    data = json.loads(path.read_text())
+    data = substitute_js(json.loads(path.read_text()))
     # `$` starts a variable reference in a compose file, and Grafana dashboards
     # are full of them (template variables). Double them so compose emits one.
     text = json.dumps(data, indent=2).replace("$", "$$")

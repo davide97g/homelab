@@ -218,6 +218,10 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in the Dokploy Environment tab}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      # Business Text: the one panel that runs JavaScript, which is what draws
+      # the viewers in 3D. Grafana installs it at container start, so the box
+      # needs to reach grafana.com the first time it comes up.
+      GF_INSTALL_PLUGINS: marcusolsson-dynamictext-panel
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/homelab-overview.json
@@ -338,6 +342,19 @@ configs:
           scrape_timeout: 20s
           static_configs:
             - targets: ["${NAS_TAILNET_IP}:8081"]
+              labels:
+                instance: nas
+
+        # Who is watching what on the NAS's Jellyfin -- the server behind
+        # cinema.davideghiotto.it. Same tailnet path, same slower cadence as the
+        # two jobs above. The exporter answers jellyfin_up 0 rather than failing
+        # the scrape when its API key is missing, so a key that was never
+        # created shows up as a panel saying so, not as a dead target.
+        - job_name: jellyfin-nas
+          scrape_interval: 60s
+          scrape_timeout: 20s
+          static_configs:
+            - targets: ["${NAS_TAILNET_IP}:9101"]
               labels:
                 instance: nas
 

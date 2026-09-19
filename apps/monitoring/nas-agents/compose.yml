@@ -71,6 +71,33 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
 
+  jellyfin-exporter:
+    image: python:3.13-alpine
+    container_name: nas-jellyfin-exporter
+    restart: unless-stopped
+    # Who is watching what, from the same GET /Sessions the Cinema web app
+    # reads. Jellyfin is on this box at :8899 and stays unmodified -- no server
+    # plugin -- so the mapping to Prometheus lives here instead.
+    #
+    # A bare Python image with the script bind-mounted, because there is no
+    # registry to push a built image to and building one on someone else's NAS
+    # for forty lines of stdlib is not a trade worth making.
+    #
+    # Soft default on the key for the same reason as Alloy below: `${VAR:?}` is
+    # interpolated for every service whatever profile is selected. Without a key
+    # the exporter answers `jellyfin_up 0` instead of retrying a 401 forever.
+    command: python -u /app/jellyfin_exporter.py
+    environment:
+      JELLYFIN_URL: ${JELLYFIN_URL:-http://127.0.0.1:8899}
+      JELLYFIN_API_KEY: ${JELLYFIN_API_KEY:-}
+      LISTEN_HOST: 127.0.0.1
+      LISTEN_PORT: "9101"
+    # Host network to reach Jellyfin on loopback, and to be reachable on
+    # loopback by the tailnet proxy -- the same shape as node_exporter above.
+    network_mode: host
+    volumes:
+      - ./jellyfin_exporter.py:/app/jellyfin_exporter.py:ro
+
   alloy:
     image: grafana/alloy:v1.19.2
     container_name: nas-alloy

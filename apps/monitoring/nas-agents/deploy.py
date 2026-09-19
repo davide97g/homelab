@@ -27,7 +27,7 @@ HERE = pathlib.Path(__file__).parent
 SSH_HOST = "nas"
 # Absolute: modern scp speaks SFTP, which does not expand `~` on the remote.
 REMOTE_DIR = "/home/davide/nas-agents"
-FILES = ["compose.yml", "config.alloy"]
+FILES = ["compose.yml", "config.alloy", "jellyfin_exporter.py"]
 
 
 def ssh(command: str, check: bool = True) -> subprocess.CompletedProcess:

@@ -14,7 +14,8 @@ actually saying at the time.
 | `compose.base.yml` | Source of truth. Services, Prometheus config, recording rules, alert rules, Loki config, Alloy config, Grafana provisioning. |
 | `dashboards/homelab-overview.json` | The metrics dashboard, kept as normal JSON so it stays diffable. |
 | `dashboards/homelab-logs.json` | The logs dashboard. Same deal. |
-| `build.py` | Inlines the dashboards into the compose file. |
+| `dashboards/viewers-3d.js` | The three.js code of the "Who is watching" panel, kept as JavaScript. |
+| `build.py` | Inlines the dashboards into the compose file, and the panel JavaScript into the dashboard. |
 | `deploy.py` | Builds, pushes the compose to Dokploy over its API, and deploys. |
 | `nas-agents/` | node_exporter + cAdvisor + Alloy for the NAS. Plain compose over SSH, its own `deploy.py`. |
 | `.dokploy.env` | **Gitignored.** Dokploy URL, API key, compose id used by `deploy.py`. |
@@ -188,6 +189,7 @@ a default ACL on `/home/davide` which makes new files world-readable regardless 
 | json-exporter + NOUS A1T plug | real wall watts, volts, amps, power factor, cumulative kWh |
 | qBittorrent exporter | client-wide up/down rates, all-time totals, peer and DHT counts, and torrent counts by category × status |
 | Alloy | every container's stdout plus the host's systemd journal, into Loki |
+| Jellyfin exporter (NAS) | who is watching what on `cinema.davideghiotto.it`: session count, transcode count, and per-session position, runtime and progress |
 | NAS agents | the same three, on the UGREEN box, over Tailscale |
 | Prometheus | 180 day retention, capped at 30 GB |
 | Loki | 30 day retention, compactor enforces it. No container healthcheck: the image is distroless, so any `test:` exits -1 and marks a healthy Loki unhealthy forever. `up{job="loki"}` and the `LokiDown` alert do that job properly. |
@@ -327,6 +329,18 @@ number we have — while `homelab:power_package_watts` joins `node_hwmon_chip_na
 changing the sysfs root under a working series with 180 days of history to gain a duplicate is a
 bad trade. Revisit if the plug ever goes away.
 
+`jellyfin-exporter` is the fourth agent on that box and the only one we wrote: forty lines of
+stdlib Python in a bare `python:3.13-alpine` with the script bind-mounted, because there is no
+registry to push a built image to. It reads `GET /Sessions` — the same endpoint the Cinema web app
+reads — and maps it onto `jellyfin_*` metrics. The Jellyfin server stays **unmodified**: no
+Prometheus plugin, which is the rule the Cinema repo is built on.
+
+It needs an API key (Jellyfin **Dashboard → Advanced → API Keys**), set as `JELLYFIN_API_KEY` in
+`nas-agents/.env` on the NAS. Without one it answers `jellyfin_up 0` and stops there, rather than
+retrying a 401 forever — so a key that was never created shows as a panel saying so, not as a dead
+scrape target. One series per *active* session, labelled with the user and the title: that
+cardinality is the point of the panel, and it disappears when playback stops.
+
 Deploy the agents separately, and note that the disk picture there is worse than the badge
 suggests: four bays, **one** disk fitted, a ~2007 Seagate ST3320820AS in a single-member `md1`
 raid1. `raid1` with one member is not redundancy. `/volume1` is at 82 %, and `smartctl` is not
@@ -432,6 +446,29 @@ qbittorrent reads as 2.5 GiB when its cgroup is `anon 11 MB` / `file 25 GB` — 
 reclaimable cache. RSS is the memory a container actually owns, so the panel now ranks by
 something worth acting on. The cache is not lost from view; it is the `cache + buffers` line on
 the host panel.
+
+### The Cinema row
+
+`Watching now`, `Transcoding`, `Jellyfin API` and viewers over time, plus **Who is watching** —
+one screen per active session, drawn in 3D.
+
+That panel is a **Business Text** panel (`marcusolsson-dynamictext-panel`), installed by
+`GF_INSTALL_PLUGINS`, because it is the only way to run JavaScript inside Grafana. Two
+consequences, both worth knowing before debugging it:
+
+- **The box needs to reach grafana.com the first time Grafana starts**, or the plugin is missing
+  and the panel renders as "panel plugin not found".
+- **The browser needs to reach jsdelivr**, where three.js is imported from at render time. The
+  plugin's own external-scripts option was removed when Grafana 11 deprecated it, so a dynamic
+  `import()` is what is left. Grafana's CSP is off by default, which is what allows it.
+
+The code is `dashboards/viewers-3d.js`; `build.py` substitutes it into the panel's `afterRender`
+option. Edit the `.js` file, never the string in the dashboard JSON. It returns a cleanup function
+that cancels the animation frame and disposes the renderer — without it every dashboard refresh
+leaks a WebGL context, and the browser kills the oldest one after sixteen.
+
+The two queries are deliberately left without a legend format: that is what keeps `__name__` in
+the field labels, which is how the panel tells position from progress.
 
 The `cost_per_kwh` dashboard variable defaults to **0.27 EUR** — change it at the top of the
 dashboard. See below for where that number comes from.
