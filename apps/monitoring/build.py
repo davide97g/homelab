@@ -41,7 +41,14 @@ def inline(path: pathlib.Path) -> str:
     data = substitute_js(json.loads(path.read_text()))
     # `$` starts a variable reference in a compose file, and Grafana dashboards
     # are full of them (template variables). Double them so compose emits one.
-    text = json.dumps(data, indent=2).replace("$", "$$")
+    # Compact, not indented: Dokploy writes the compose file by passing its whole
+    # content as one shell argument, and the kernel refuses an argument over
+    # 128 KiB with E2BIG -- which fails the deployment at "Initializing
+    # deployment" with nothing in the deployment log to say why. Pretty-printing
+    # two dashboards put the file at 108 KB and over that ceiling once Dokploy's
+    # own escaping was added. The dashboards stay indented in `dashboards/`,
+    # which is where they are read and diffed.
+    text = json.dumps(data, separators=(",", ":")).replace("$", "$$")
     return "\n".join(INDENT + line for line in text.splitlines())
 
 

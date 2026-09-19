@@ -41,6 +41,16 @@ Once the stack exists in Dokploy, deploying is one command:
 ./deploy.py --recreate   # same, but stop the stack first
 ```
 
+**Keep the generated compose under ~100 KB.** Dokploy writes it to the box by passing the whole
+file as one shell argument, and the kernel rejects an argument over 128 KiB with `E2BIG`. The
+deployment then fails at `Initializing deployment` with nothing in the deployment log to say why —
+the reason is only in `docker logs dokploy.1.*`, as `spawn E2BIG`. Worse, `--recreate` stops the
+stack *before* deploying, so a file that has crossed the line takes monitoring down and cannot put
+it back. That is why `build.py` inlines the dashboards as compact JSON: pretty-printed, they put
+the file at 108 KB and every deploy failed. If it ever needs shrinking again, the dashboards are
+the bulk of it. To restart a stack that is down without deploying: `compose.start` on the Dokploy
+API.
+
 Use `--recreate` whenever `compose.base.yml` **configs** or a dashboard changed. `docker compose
 up -d` compares the service spec, not the *content* of an inline `configs:` entry, so a plain
 deploy leaves the previous dashboard JSON mounted and nothing appears to happen. Recreating
@@ -127,7 +137,24 @@ LAN.
 
 ## Remote access
 
-`https://grafana.davideghiotto.it`, gated by Cloudflare Access. No inbound port is open on the
+**Grafana is no longer published.** `grafana.davideghiotto.it` was removed on 2026-09-19 — tunnel
+ingress rule deleted and the proxied CNAME deleted with it, so the name does not resolve. The
+service still runs; the only UI entry point to the homelab is now
+**`monitoring.davideghiotto.it`**, the hub.
+
+Grafana is reachable on the LAN at `http://debian:3001`, and over the tailnet the same way. To
+publish it again: add an ingress rule `grafana.davideghiotto.it` → `http://localhost:3001` before
+the catch-all, and a **proxied** CNAME to the tunnel — the two calls are in the Cloudflare section
+of `../porting-to-homelab.md`. Its Access application was left in place, so it would be gated
+again the moment the hostname came back.
+
+`GRAFANA_ROOT_URL` in the Dokploy Environment tab still points at the dead hostname. It only
+affects redirects and share links, so nothing is broken by it, but it should become
+`http://debian:3001` or be removed the next time that tab is opened.
+
+### How it used to be wired, and how anything else here is
+
+Gated by Cloudflare Access. No inbound port is open on the
 network — the box reaches out through `cloudflared`.
 
 ```
@@ -136,8 +163,8 @@ browser → Cloudflare edge → Access policy → tunnel → localhost:3001
 
 The tunnel is token-managed (`cloudflared tunnel run --token-file /etc/cloudflared/token`), so
 there is no local ingress config. Hostnames live in **Cloudflare Zero Trust → Networks →
-Tunnels → Public Hostname**; this one maps `grafana.davideghiotto.it` to `HTTP localhost:3001`,
-bypassing Traefik. The Access policy is under **Zero Trust → Access → Applications**.
+Tunnels → Public Hostname**; the Grafana one mapped `grafana.davideghiotto.it` to
+`HTTP localhost:3001`, bypassing Traefik. The Access policy is under **Zero Trust → Access → Applications**.
 
 It bypasses Traefik on purpose — one less hop, and Dokploy does not need to know about the
 domain. Route it through `localhost:80` instead if Traefik middlewares are ever wanted.
