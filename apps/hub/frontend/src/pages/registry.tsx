@@ -3,6 +3,7 @@ import { HomePage } from "@/pages/home";
 import { TopologyPage } from "@/pages/topology";
 import { MetricsPage } from "@/pages/metrics-page";
 import { ActionsPage } from "@/pages/actions";
+import { AskPage } from "@/pages/ask";
 import { ContainersPage } from "@/pages/containers";
 import { LogsPage } from "@/pages/logs";
 import { MediaPage } from "@/pages/media";
@@ -71,4 +72,6 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
   { path: "/media", element: (data) => <MediaPage data={data} /> },
   { path: "/nas", element: () => <NasPage /> },
   { path: "/actions", element: () => <ActionsPage /> },
+  // Answers someone kept. The composer that produces them is in the shell.
+  { path: "/ask", element: () => <AskPage /> },
 ];

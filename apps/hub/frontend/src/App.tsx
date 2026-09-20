@@ -1,12 +1,14 @@
+import type { AskStatus } from "@wire";
 import { useCallback, useEffect, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
+import { AskComposer } from "@/components/ask/composer";
 import { LoginCard } from "@/components/shell/login-card";
 import { initialExpanded, rememberSidebar, Sidebar } from "@/components/shell/sidebar";
 import { Booting } from "@/components/shell/trace";
 import { TopBar } from "@/components/shell/top-bar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePoll } from "@/hooks/use-poll";
-import { fetchSession, fetchSummary, logout } from "@/lib/api";
+import { fetchAskStatus, fetchSession, fetchSummary, logout } from "@/lib/api";
 import { PAGES } from "@/pages/registry";
 
 export default function App() {
@@ -35,7 +37,35 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
   const load = useCallback((signal: AbortSignal) => fetchSummary(signal), []);
   const { data, error, loading, expired, refreshedAt } = usePoll(load, 5000);
   const [expanded, setExpanded] = useState(initialExpanded);
+  const [asking, setAsking] = useState(false);
+  const [askStatus, setAskStatus] = useState<AskStatus | null>(null);
   const location = useLocation();
+
+  // Read once. A box with no key still gets the composer -- it opens and says
+  // which variable is missing, rather than a CTA that quietly does nothing.
+  useEffect(() => {
+    fetchAskStatus()
+      .then(setAskStatus)
+      .catch(() => setAskStatus({ ok: false, why: "could not reach the hub" }));
+  }, []);
+
+  // The shortcut lives here rather than in the composer, because the composer
+  // does not exist until it is open and something has to be listening.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setAsking(true);
+      }
+    }
+    const open = () => setAsking(true);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("hub:ask", open);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("hub:ask", open);
+    };
+  }, []);
 
   useEffect(() => {
     if (expired) onSignedOut();
@@ -66,6 +96,7 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
           refreshedAt={refreshedAt}
           loading={loading}
           onSignOut={() => void signOut()}
+          onAsk={() => setAsking(true)}
         />
 
         {/* The bottom padding carries the home-indicator inset on top of its own
@@ -97,6 +128,14 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
           )}
         </main>
       </div>
+
+      {/* Outside <main>, so it is not remounted by the route key and an answer
+          survives navigating underneath it. */}
+      <AskComposer
+        open={asking}
+        onClose={() => setAsking(false)}
+        unavailable={askStatus && !askStatus.ok ? askStatus.why : null}
+      />
     </div>
   );
 }

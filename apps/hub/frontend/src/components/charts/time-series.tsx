@@ -1,4 +1,4 @@
-import type { CatalogEntry, SeriesFrame } from "@wire";
+import type { AskThreshold, CatalogEntry, SeriesFrame } from "@wire";
 import { ArrowUpRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import uPlot from "uplot";
@@ -32,10 +32,15 @@ export function TimeSeries({
   height = 200,
   slow = false,
   startedAt = null,
+  threshold = null,
   className,
 }: {
   frame: SeriesFrame | null;
   height?: number;
+  /** A reference line across the plot. The only thing a panel draws that did not
+   *  come out of the frame, because it did not come from Prometheus — it is what
+   *  someone asked for on /api/ask. See the draw hook below. */
+  threshold?: AskThreshold | null;
   /** Sets the probe's pace on the placeholder. The NAS takes visibly longer and
    *  a placeholder that pretends otherwise reads as a stall. */
   slow?: boolean;
@@ -45,6 +50,9 @@ export function TimeSeries({
 }) {
   const host = useRef<HTMLDivElement | null>(null);
   const chart = useRef<uPlot | null>(null);
+  // Read by the draw hook, which is created once and outlives any given value.
+  const thresholdRef = useRef(threshold);
+  thresholdRef.current = threshold;
   const [theme, setTheme] = useState<ChartTheme | null>(null);
   const [cursor, setCursor] = useState<{ left: number; idx: number } | null>(null);
 
@@ -58,9 +66,16 @@ export function TimeSeries({
 
   // The signature, not the data: rebuild the instance only when the shape
   // changes, and stream everything else through setData.
+  // The threshold is in here as well as in the ref: the ref keeps the hook
+  // reading a current value between rebuilds, and the signature makes a *new*
+  // threshold rebuild the instance, because the y scale has to be recomputed to
+  // bring the line into view.
   const signature = useMemo(
-    () => (frame ? `${frame.id}:${frame.kind}:${frame.lines.map((l) => l.key).join("|")}` : ""),
-    [frame],
+    () =>
+      frame
+        ? `${frame.id}:${frame.kind}:${frame.lines.map((l) => l.key).join("|")}:${threshold?.value ?? ""}`
+        : "",
+    [frame, threshold?.value],
   );
 
   useEffect(() => {
@@ -85,7 +100,12 @@ export function TimeSeries({
             const hi = frame.domain?.[1] ?? null;
             const hasMirror = frame.lines.some((l) => l.mirror);
             const bottom = lo !== null ? lo : hasMirror ? Math.min(min, 0) : Math.min(min, 0);
-            const top = hi !== null ? hi : max * 1.08 || 1;
+            let top = hi !== null ? hi : max * 1.08 || 1;
+            // A threshold above everything plotted is the interesting case --
+            // "warn me over 50" on a box that has never passed 45 -- and a line
+            // drawn off the top of the canvas answers nothing.
+            const mark = threshold?.value;
+            if (mark !== undefined && mark > top) top = mark * 1.08;
             return [bottom, top];
           },
         },
@@ -127,6 +147,38 @@ export function TimeSeries({
         }),
       ],
       hooks: {
+        // Drawn rather than added as a constant series, deliberately: a series
+        // would join the cursor tooltip, take a legend row, and drag the y
+        // autoscale around. This is one line on the canvas and nothing else.
+        draw: [
+          (u: uPlot) => {
+            const mark = thresholdRef.current;
+            if (!mark) return;
+            const y = Math.round(u.valToPos(mark.value, "y", true)) + 0.5;
+            if (!Number.isFinite(y) || y < u.bbox.top || y > u.bbox.top + u.bbox.height) return;
+
+            const { ctx } = u;
+            ctx.save();
+            ctx.strokeStyle = theme.resolve("tone-bad", 0);
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.moveTo(u.bbox.left, y);
+            ctx.lineTo(u.bbox.left + u.bbox.width, y);
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+            ctx.font = "11px Inter, sans-serif";
+            ctx.fillStyle = theme.resolve("tone-bad", 0);
+            ctx.textAlign = "right";
+            // Above the line where there is room, below it when the line is
+            // near the top of the plot.
+            const above = y - u.bbox.top > 16;
+            ctx.textBaseline = above ? "bottom" : "top";
+            ctx.fillText(mark.label, u.bbox.left + u.bbox.width - 4, above ? y - 3 : y + 3);
+            ctx.restore();
+          },
+        ],
         setCursor: [
           (u) => {
             const idx = u.cursor.idx;
@@ -250,9 +302,11 @@ function Side({
   label,
   slow,
   startedAt,
+  threshold = null,
 }: {
   frame: SeriesFrame | null;
   height?: number;
+  threshold?: AskThreshold | null;
   /** Null on a single-machine panel, where the card header already says which
    *  machine this is and repeating it would be noise. */
   label: Instance | null;
@@ -271,7 +325,7 @@ function Side({
         </div>
       )}
 
-      <TimeSeries frame={frame} height={height} slow={slow} startedAt={startedAt} />
+      <TimeSeries frame={frame} height={height} slow={slow} startedAt={startedAt} threshold={threshold} />
 
       {frame && frame.lines.length > 1 && theme && (
         <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
@@ -321,11 +375,15 @@ export function Panel({
   entry,
   sides,
   height,
+  threshold = null,
   className,
 }: {
   entry: CatalogEntry | null;
   sides: PanelSide[];
   height?: number;
+  /** Drawn on every side, so a comparison is read against one line rather than
+   *  two that happen to coincide. */
+  threshold?: AskThreshold | null;
   className?: string;
 }) {
   const first = sides[0];
@@ -362,6 +420,7 @@ export function Panel({
             label={compare ? side.instance : null}
             slow={side.instance === "nas"}
             startedAt={side.startedAt}
+            threshold={threshold}
           />
         ))}
       </div>

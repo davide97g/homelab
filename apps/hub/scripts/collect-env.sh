@@ -143,6 +143,16 @@ echo "  It cannot be read out of the container: Jellyfin is on the NAS, not this
 ask JELLYFIN_API_KEY "Jellyfin API key" secret
 
 echo
+echo "Jev — the model behind /api/ask, which turns a typed question into a chart"
+echo "  Optional. Blank means the Ask button greys itself out and says why; every"
+echo "  other page is unaffected."
+echo "  Note what this one does that nothing else here does: it sends the words"
+echo "  someone types, plus the names of the series this hub collects, to"
+echo "  TypeSafe's API. Metric values never leave the box — the model picks which"
+echo "  series to draw, and Prometheus is queried afterwards, here."
+ask JEV_API_KEY "Jev API key (api.typesafe.ai)" secret
+
+echo
 echo "Dokploy redeploy — optional, and the most dangerous thing here"
 echo "  Dokploy has no scoped tokens: this key can delete every service on the box."
 echo "  DOKPLOY_ALLOW is what keeps it to the apps you name, as label=composeId"

@@ -186,7 +186,7 @@ export type CatalogEntry = {
  *  because this file must stay types-only — a value here would become a real
  *  runtime import in the browser bundle. Both sides declare their own
  *  `Range[]` list, typed against this, so a mismatch fails to compile. */
-export type Range = "15m" | "1h" | "6h" | "24h" | "7d" | "30d";
+export type Range = "15m" | "1h" | "6h" | "24h" | "7d" | "14d" | "30d";
 
 // ——— The NAS page ——————————————————————————————————————————————————————————
 
