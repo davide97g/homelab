@@ -116,7 +116,7 @@ both inherited from mediarr-dash and both easy to be surprised by:
 | `/containers` | **Built.** Both machines, running and stopped, with start/stop/restart on the ones the deny-list allows. |
 | `/logs` | **Built.** Loki behind structured filters, with a 5 s live tail. |
 | `/actions` | **Built.** The dispatcher, the media writes, Dokploy redeploy, and the audit. |
-| `/media` | **Built.** The pipeline as a graph: seven services, live numbers on each card, the lists behind them in a drawer, and edges that animate only where something is moving. This is what mediarr-dash used to be. |
+| `/media` | **Built.** The pipeline as a graph: seven services, live numbers on each card, the lists behind them in a drawer, and edges that animate only where something is moving. This is what mediarr-dash used to be — that app was retired on 2026-09-20. |
 
 Every route is built. A service whose key has never been collected still draws
 its node — it says which key is missing rather than showing an empty panel that
@@ -125,6 +125,11 @@ looks broken.
 ## Decisions worth not undoing
 
 **`/media` is mediarr-dash's page, with its two structural mistakes fixed.**
+That app is gone: container removed, `mediarr.davideghiotto.it` unpublished —
+ingress rule, Access application and DNS record all deleted on 2026-09-20 — and
+the tree kept at `../dashboard` as a read-only reference. Every mention of it
+below is about its *code*, which is still the reference for anything this port
+got wrong, not about something running.
 The shape is that app's and deliberately unchanged: one node per service, left
 to right in the order a request actually travels, live numbers on the cards and
 the lists behind them one click away. React Flow draws it, for the same reason

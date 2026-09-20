@@ -149,7 +149,6 @@ export const config = {
   links: {
     grafana: publicUrl("GRAFANA_PUBLIC_URL", 3001),
     dokploy: publicUrl("DOKPLOY_PUBLIC_URL", 3000),
-    mediarr: publicUrl("MEDIARR_PUBLIC_URL", 3002),
     jellyfin: publicUrl("JELLYFIN_PUBLIC_URL", 8096),
     jellyseerr: publicUrl("JELLYSEERR_PUBLIC_URL", 5055),
     // The rest of the pipeline, for the node links on /media. These are where a

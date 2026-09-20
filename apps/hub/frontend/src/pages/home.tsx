@@ -93,7 +93,6 @@ export function HomePage({ data }: { data: Summary }) {
             {(
               [
                 ["Grafana", data.links.grafana],
-                ["mediarr pipeline", data.links.mediarr],
                 ["Dokploy", data.links.dokploy],
                 ["Jellyfin", data.links.jellyfin],
                 ["Cinema (NAS)", data.links.cinema],
