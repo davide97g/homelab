@@ -17,6 +17,7 @@
 
 const BOX = process.env.HOMELAB_HOST ?? "homelab-host";
 const PUBLIC_BOX = process.env.HOMELAB_PUBLIC_HOST ?? "debian";
+const CINEMA_PUBLIC_URL = process.env.CINEMA_PUBLIC_URL ?? "https://cinema.davideghiotto.it";
 
 function publicUrl(envKey: string, port: number): string {
   return (process.env[envKey] ?? `http://${PUBLIC_BOX}:${port}`).replace(/\/+$/, "");
