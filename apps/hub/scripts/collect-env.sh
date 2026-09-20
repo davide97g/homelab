@@ -115,14 +115,32 @@ else
 fi
 
 echo
-echo "media write actions — keys are read out of the containers, not typed"
+echo "media pipeline — keys are read out of the containers, not typed"
+echo "  These drive /media (read) as well as the Radarr and Sonarr search actions (write)."
 refresh_from_container RADARR_API_KEY radarr sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' /config/config.xml
 refresh_from_container SONARR_API_KEY sonarr sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' /config/config.xml
+refresh_from_container PROWLARR_API_KEY prowlarr sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' /config/config.xml
+# Bazarr's config.yaml holds six `apikey:` lines — its own, one per provider, and
+# one each for Radarr and Sonarr. Only the one inside the `auth:` block is
+# Bazarr's own key, so the block is matched rather than the field.
+refresh_from_container BAZARR_API_KEY bazarr awk '
+  /^auth:/       { inauth = 1; next }
+  /^[a-z_]+:/    { inauth = 0 }
+  inauth && $1 == "apikey:" { gsub(/["\047]/, "", $2); print $2; exit }
+' /config/config/config.yaml
+refresh_from_container JELLYSEERR_API_KEY jellyseerr node -p 'require("/app/config/settings.json").main.apiKey'
 
 echo
 echo "qBittorrent — its Web UI login cannot be read from the container"
 ask QBITTORRENT_USER "qBittorrent username (blank if auth is bypassed for this subnet)"
 ask QBITTORRENT_PASS "qBittorrent password" secret
+
+echo
+echo "Jellyfin — read-only API key"
+echo "  Create one in Jellyfin Dashboard → Advanced → API Keys. It reads active playback"
+echo "  sessions and the library counts; nothing here writes to Jellyfin."
+echo "  It cannot be read out of the container: Jellyfin is on the NAS, not this box."
+ask JELLYFIN_API_KEY "Jellyfin API key" secret
 
 echo
 echo "Dokploy redeploy — optional, and the most dangerous thing here"

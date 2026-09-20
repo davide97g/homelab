@@ -52,6 +52,12 @@ export const config = {
   /** Hard ceiling on assembling /api/summary. Past it the last good payload is
    *  served with stale: true rather than letting one slow source hold the page. */
   summaryBudgetMs: Number(process.env.SUMMARY_BUDGET_MS ?? 3000),
+  /** The same idea for /api/media, and longer on purpose: that payload asks
+   *  seven separate services rather than one Prometheus, and a single one of
+   *  them being unreachable costs a full `timeoutMs` before the rest can be
+   *  assembled. At 3 s every poll through a dead Jellyfin would report itself
+   *  stale while the numbers beside it were in fact fresh. */
+  mediaBudgetMs: Number(process.env.MEDIA_BUDGET_MS ?? 9000),
 
   prometheus: (process.env.PROMETHEUS_URL ?? "http://prometheus:9090").replace(/\/+$/, ""),
   loki: (process.env.LOKI_URL ?? "http://loki:3100").replace(/\/+$/, ""),
@@ -83,15 +89,34 @@ export const config = {
    *  log of the last five minutes. */
   auditPath: process.env.AUDIT_PATH ?? "/data/actions.jsonl",
 
-  /** The *arr and qBittorrent endpoints the media actions write to. Every one of
-   *  these is blank until scripts/collect-env.sh has run on the box; a blank one
-   *  makes its actions `unconfigured` rather than failing at the click. */
+  /** The *arr and qBittorrent endpoints the media pages read and the media
+   *  actions write to. Every one of these is blank until scripts/collect-env.sh
+   *  has run on the box; a blank one makes its actions `unconfigured` rather
+   *  than failing at the click, and its pipeline node say which key is missing
+   *  rather than drawing an empty card.
+   *
+   *  Radarr and Sonarr answer the same v3 API; Prowlarr, Bazarr and Jellyseerr
+   *  each answer their own. All five keep their key in a file inside their own
+   *  container, which is why none of them is ever typed in. */
   radarr: { url: boxUrl("RADARR_URL", 7878), key: process.env.RADARR_API_KEY ?? "" },
   sonarr: { url: boxUrl("SONARR_URL", 8989), key: process.env.SONARR_API_KEY ?? "" },
+  prowlarr: { url: boxUrl("PROWLARR_URL", 9696), key: process.env.PROWLARR_API_KEY ?? "" },
+  bazarr: { url: boxUrl("BAZARR_URL", 6767), key: process.env.BAZARR_API_KEY ?? "" },
+  jellyseerr: { url: boxUrl("JELLYSEERR_URL", 5055), key: process.env.JELLYSEERR_API_KEY ?? "" },
   qbittorrent: {
     url: boxUrl("QBITTORRENT_URL", 8080),
     user: process.env.QBITTORRENT_USER ?? "",
     pass: process.env.QBITTORRENT_PASS ?? "",
+  },
+  /** Jellyfin is read only. The default reaches it through its public
+   * Cloudflare hostname, so a successful sessions query proves the same path a
+   * viewer uses; set JELLYFIN_URL only when a private route is intentional. */
+  jellyfin: {
+    /* Jellyfin is served *under* the Cinema hostname, at /jf -- there is no
+     * jellyfin.davideghiotto.it any more. Without the suffix every call landed
+     * on the Cinema SPA, which answers 200 text/html to anything. */
+    url: (process.env.JELLYFIN_URL ?? `${CINEMA_PUBLIC_URL}/jf`).replace(/\/+$/, ""),
+    key: process.env.JELLYFIN_API_KEY ?? "",
   },
 
   /** All-in marginal tariff. The Grafana dashboard's textbox defaults to the
@@ -127,9 +152,16 @@ export const config = {
     mediarr: publicUrl("MEDIARR_PUBLIC_URL", 3002),
     jellyfin: publicUrl("JELLYFIN_PUBLIC_URL", 8096),
     jellyseerr: publicUrl("JELLYSEERR_PUBLIC_URL", 5055),
+    // The rest of the pipeline, for the node links on /media. These are where a
+    // browser is sent, never where this process fetches -- see boxUrl above.
+    radarr: publicUrl("RADARR_PUBLIC_URL", 7878),
+    sonarr: publicUrl("SONARR_PUBLIC_URL", 8989),
+    prowlarr: publicUrl("PROWLARR_PUBLIC_URL", 9696),
+    bazarr: publicUrl("BAZARR_PUBLIC_URL", 6767),
+    qbittorrent: publicUrl("QBITTORRENT_PUBLIC_URL", 8080),
     // Both of these live on the NAS and are only ever reached by their public
     // hostnames, so there is no port fallback that would work.
-    cinema: process.env.CINEMA_PUBLIC_URL ?? "https://cinema.davideghiotto.it",
+    cinema: CINEMA_PUBLIC_URL,
     immich: process.env.IMMICH_PUBLIC_URL ?? "",
   },
 } as const;

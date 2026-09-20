@@ -110,17 +110,65 @@ both inherited from mediarr-dash and both easy to be surprised by:
 |---|---|
 | `/` Topology | **Built.** The landing page: both flats on a ground plane, every device modelled, and the paths between them animating at their real cadence. WebGL with a flat SVG twin. |
 | `/overview` Overview | **Built.** Hero, power dial, the mini PC's headline metrics, energy and cost, busiest containers, the NAS card, alerts, links out. |
-| `/compute` `/power` `/network` `/storage` | **Built.** The series registry and the uPlot chart layer. |
+| `/compute` `/power` `/network` | **Built.** The series registry and the uPlot chart layer. |
+| `/storage` | **Built.** The same charts, under an occupancy recap: capacity, free space and the weekly fill trend per filesystem, from `/api/storage`. |
 | `/nas` | **Built.** Pool, md arrays stated honestly, the four bays, sensors, its containers, and its own charts. |
 | `/containers` | **Built.** Both machines, running and stopped, with start/stop/restart on the ones the deny-list allows. |
 | `/logs` | **Built.** Loki behind structured filters, with a 5 s live tail. |
 | `/actions` | **Built.** The dispatcher, the media writes, Dokploy redeploy, and the audit. |
-| `/media` | Waiting on the Jellyfin and Jellyseerr keys. Its *write* side already exists on `/actions`. |
+| `/media` | **Built.** The pipeline as a graph: seven services, live numbers on each card, the lists behind them in a drawer, and edges that animate only where something is moving. This is what mediarr-dash used to be. |
 
-Each unbuilt route says what it is waiting on rather than showing an empty panel
-that looks broken.
+Every route is built. A service whose key has never been collected still draws
+its node — it says which key is missing rather than showing an empty panel that
+looks broken.
 
 ## Decisions worth not undoing
+
+**`/media` is mediarr-dash's page, with its two structural mistakes fixed.**
+The shape is that app's and deliberately unchanged: one node per service, left
+to right in the order a request actually travels, live numbers on the cards and
+the lists behind them one click away. React Flow draws it, for the same reason
+it drew the original — hand-rolling pan, zoom and edge routing buys nothing
+here. It is a lazy chunk, so a visit that never opens `/media` never loads it.
+
+What did change is where two decisions live. **The host is not in
+`/api/media`**: the card for the box is filled from `/api/summary`, which the
+shell is already polling, so one machine has exactly one source of numbers
+instead of two endpoints that can disagree about the same CPU. And **an edge
+animates only when the server says it is carrying something**, decided in
+`server/src/media/pipeline.ts` from the raw figures each collector hands up
+alongside its card. mediarr-dash decides that in the browser by finding a stat
+by its English label and parsing the digits back out of its display string,
+which stops working the day a label is reworded — silently, because a still
+arrow looks exactly like an idle pipeline.
+
+**Capacity is an instant question and the storage page answers it with
+numbers, not a chart.** A line at 77% says the ratio and nothing about whether
+that is 300 GB or 3 TB free, which is the thing you opened the page for. So
+`/api/storage` reports sizes, free space and a seven-day `deriv` fit of used
+bytes per filesystem, and the panels stay underneath answering the other half —
+*which day* the fill happened.
+
+Three rules hold that honest. **Every bar is drawn to one absolute scale**, the
+whole estate, so the mini PC's root cannot look like the NAS's pool; two bars
+each normalised to their own 100% would say those are comparable objects and
+they are not. **A filesystem mounted twice is one filesystem** — UGOS
+bind-mounts the pool at `/home`, and summing mountpoints would report the NAS at
+twice its size and half as full — so mounts are grouped by device and the extra
+paths are shown as aliases. And **a slope below 16 MiB/day is reported as
+steady**: a week of scrapes always fits *some* gradient, and extrapolating that
+one to a date invents a deadline.
+
+**A machine that is not answering still has a pool.** When Prometheus has no
+current sample the recap falls back to the last one within a week, dims the
+card, and prints its age — the NAS has been off the tailnet for more than a day
+before, and "8.0 TB, 55% full, as of yesterday" is worth more than an empty
+card. It is left out of the estate total, which counts only machines reporting
+now, and the total says which those are. Note the trap in reading that age:
+`timestamp(last_over_time(...))` looks like it answers it and does not —
+`last_over_time` restamps its sample with the evaluation time, so it cheerfully
+reports "now" for a machine that died yesterday. The real sample time needs the
+subquery in `server/src/collect/storage.ts`.
 
 **Nothing on the topology page moves unless something measures it.** A link with
 no metric behind it carries `rate: null`, and it must never be rendered as a

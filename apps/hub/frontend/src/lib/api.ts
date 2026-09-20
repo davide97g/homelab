@@ -6,10 +6,12 @@ import type {
   ContainersResponse,
   LogOptions,
   LogsResponse,
+  MediaPipeline,
   NasDetail,
   Range,
   SeriesFrame,
   SeriesResponse,
+  StorageSummary,
   Summary,
   Topology,
 } from "@wire";
@@ -44,6 +46,13 @@ export function fetchSummary(signal?: AbortSignal): Promise<Summary> {
  *  server/src/collect/topology.ts. */
 export function fetchTopology(signal?: AbortSignal): Promise<Topology> {
   return fetch("/api/topology", { ...same, signal }).then((r) => json<Topology>(r));
+}
+
+/** The media pipeline: seven services, the edges between them, and which of
+ *  those edges is carrying something right now. Apart from /api/summary because
+ *  a sick *arr must not be able to slow the shell's poll down. */
+export function fetchMedia(signal?: AbortSignal): Promise<MediaPipeline> {
+  return fetch("/api/media", { ...same, signal }).then((r) => json<MediaPipeline>(r));
 }
 
 export function fetchSession(): Promise<{ authenticated: boolean }> {

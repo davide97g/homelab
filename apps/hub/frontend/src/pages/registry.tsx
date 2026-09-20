@@ -5,8 +5,9 @@ import { MetricsPage } from "@/pages/metrics-page";
 import { ActionsPage } from "@/pages/actions";
 import { ContainersPage } from "@/pages/containers";
 import { LogsPage } from "@/pages/logs";
+import { MediaPage } from "@/pages/media";
 import { NasPage } from "@/pages/nas";
-import { Placeholder } from "@/pages/placeholder";
+import { StoragePage } from "@/pages/storage";
 
 /** Route content in one place, so adding a page is one entry here and one in the
  *  sidebar rather than a hunt through a router tree. */
@@ -60,34 +61,14 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
       />
     ),
   },
-  {
-    path: "/storage",
-    element: (data) => (
-      <MetricsPage
-        data={data}
-        panels={[
-          { id: "fs.used", wide: true },
-          { id: "disk.io" },
-          { id: "disk.util" },
-          { id: "container.cpu" },
-          { id: "container.mem" },
-          { id: "qbit.rates", wide: true },
-        ]}
-      />
-    ),
-  },
+  // The only metric page that is not just a panel list: capacity is an instant
+  // question and no time series on it could answer "how much room is left".
+  { path: "/storage", element: (data) => <StoragePage data={data} /> },
   { path: "/containers", element: () => <ContainersPage /> },
   { path: "/logs", element: () => <LogsPage /> },
-  {
-    path: "/media",
-    element: () => (
-      <Placeholder
-        title="Media pipeline"
-        blurb="Queue depth, wanted subtitles, active streams and torrent states. The pipeline graph itself stays where it already works, on mediarr."
-        phase="The write side of this already exists on Actions — searches and torrent control. What is left is the read side, which needs the Jellyfin and Jellyseerr keys collecting on the box."
-      />
-    ),
-  },
+  // The summary is passed in because the host card inside the graph is drawn
+  // from it: the box carries the pipeline, and its numbers have one source.
+  { path: "/media", element: (data) => <MediaPage data={data} /> },
   { path: "/nas", element: () => <NasPage /> },
   { path: "/actions", element: () => <ActionsPage /> },
 ];

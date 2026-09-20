@@ -519,3 +519,103 @@ export type Topology = {
   nodes: TopoNode[];
   links: TopoLink[];
 };
+
+// ——— Media pipeline ————————————————————————————————————————————————————————
+
+/** One number on a pipeline node.
+ *
+ *  Not `Metric`: these are not time series and most of them have no unit at all
+ *  ("clean", "3 errors", "12.4 TiB ↓"). What they share with `Metric` is the
+ *  rule that matters — the string is assembled on the server and the browser
+ *  only prints it, so there is no second formatter to drift. Pushing one of
+ *  these into a collector is the whole change; the node card renders the array
+ *  generically and has no per-stat branch. */
+export type MediaStat = {
+  /** Stable within a node, so React can key on it and the busy rules can find
+   *  a value without parsing a label. */
+  id: string;
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: Tone;
+  /** 0..1, drawn as a bar under the value. Absent when there is no ceiling. */
+  fraction?: number;
+};
+
+/** A row of live work: a download, a request, a playing session. The drawer
+ *  renders these generically too. */
+export type MediaActivity = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  /** 0..1 */
+  fraction?: number;
+  state?: string;
+  tone?: Tone;
+  meta?: string;
+};
+
+/** What a node is. `host` is the box itself: it carries the pipeline rather than
+ *  taking part in it, and the page fills it from /api/summary rather than this
+ *  payload, so the machine's numbers have exactly one source. */
+export type MediaNodeKind = "service" | "host";
+
+export type MediaNode = {
+  id: string;
+  kind: MediaNodeKind;
+  label: string;
+  /** What it does, in one line. */
+  role: string;
+  /** Where to send a browser. Public hostnames, never the address this process
+   *  dials. */
+  link: string;
+  status: Status;
+  /** Why it is not `up`, including which key has never been collected. */
+  error?: string;
+  version?: string;
+  /** Round trip to the service's own status endpoint. Not a ping: nothing in
+   *  this estate runs a blackbox exporter. */
+  latencyMs?: number | null;
+  stats: MediaStat[];
+  /** Named booleans — a SignalR feed, an update waiting, a job running. */
+  flags: { label: string; on: boolean }[];
+  activity: MediaActivity[];
+  activityLabel: string;
+  /** What this service is costing the box right now, from cAdvisor. Null when
+   *  the container is not running or cAdvisor cannot see it. */
+  load: { cpuPercent: number; rssBytes: number | null; rssDisplay: string } | null;
+  /** Laid out on the server, like the topology graph: the shape *is* the
+   *  information — left to right is the path a request actually takes — so it is
+   *  described once and both halves agree. */
+  position: { x: number; y: number };
+};
+
+/** `feedback` is the availability edge, which runs against the pipeline: it is
+ *  Jellyfin telling Jellyseerr the file finally exists. */
+export type MediaEdgeKind = "forward" | "feedback" | "carries";
+
+export type MediaEdge = {
+  id: string;
+  from: string;
+  to: string;
+  label: string;
+  kind: MediaEdgeKind;
+  /** Whether something is moving along this link right now. Decided on the
+   *  server from the collectors' own numbers rather than by parsing the stat
+   *  strings back out of the payload, which is what mediarr-dash does. */
+  active: boolean;
+  /** One sentence: what makes this edge busy, so a still picture can be read. */
+  note: string;
+};
+
+export type MediaPipeline = {
+  at: string;
+  /** True when the last good payload is being served because something missed
+   *  its budget. Same meaning as on `Summary`. */
+  stale: boolean;
+  nodes: MediaNode[];
+  edges: MediaEdge[];
+  counts: { up: number; warn: number; down: number; unconfigured: number };
+  /** Caveats that belong on the page rather than in a commit message. */
+  notes: string[];
+};

@@ -49,8 +49,11 @@ export async function request(url: string, opts: FetchOptions = {}): Promise<Res
       signal: AbortSignal.timeout(opts.timeoutMs ?? config.timeoutMs),
     });
   } catch (err) {
+    // Node phrases an AbortSignal.timeout as "The operation was aborted due to
+    // timeout", which is a sentence to print on a card. Both spellings are
+    // matched: fetch's own DNS/connect failures say "timed out".
     const reason = err instanceof Error ? err.message : String(err);
-    throw new ServiceError(reason.includes("timed out") ? "timed out" : reason);
+    throw new ServiceError(/time(d)? ?out/i.test(reason) ? "timed out" : reason);
   }
   if (!res.ok && !(opts.allowStatus ?? []).includes(res.status)) {
     throw new ServiceError(`HTTP ${res.status}`, res.status);

@@ -10,10 +10,12 @@ import { catalog as actionCatalog } from "./actions/registry.js";
 import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
 import { containers } from "./collect/containers.js";
 import { nasDetail } from "./collect/nas.js";
+import { storageSummary } from "./collect/storage.js";
 import { summary } from "./collect/summary.js";
 import { topology } from "./collect/topology.js";
 import { config } from "./config.js";
 import { logOptions, logs, parseLogRequest } from "./loki/query.js";
+import { pipeline } from "./media/pipeline.js";
 import { catalog, frames, parseRequest, rangeSeconds, series } from "./prom/series.js";
 import { clientIp, forgive, limited } from "./limiter.js";
 
@@ -83,6 +85,19 @@ app.get("/api/summary", async (c) => {
  *  anything actually measures, and which one is only inferred. */
 app.get("/api/topology", async (c) => {
   const data = await topology();
+  c.header("Cache-Control", "no-store");
+  return c.json(data);
+});
+
+/** The media pipeline: one node per service, the edges a request travels, and
+ *  what each of them is doing right now.
+ *
+ *  Apart from /api/summary rather than inside it, because it talks to seven
+ *  services none of the other pages need and a sick one of them must not be able
+ *  to slow the shell's poll down. The host is deliberately not in this payload:
+ *  the page already holds the summary, and one machine gets one source. */
+app.get("/api/media", async (c) => {
+  const data = await pipeline();
   c.header("Cache-Control", "no-store");
   return c.json(data);
 });

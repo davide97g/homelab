@@ -1,9 +1,13 @@
 import { config } from "../config.js";
-import { request, ServiceError } from "../http.js";
+import { getJson, request, ServiceError } from "../http.js";
 
-// The two write targets in the media pipeline. Read-only views of it stay on
-// mediarr-dash, which already does that well; what is here is only what the hub
-// needs to be able to *change*.
+// Everything the hub says to the media pipeline: the two write targets, the
+// Jellyfin sessions read the cinema scene draws from, and the one qBittorrent
+// session both halves share.
+//
+// It used to be only the writes — the read-only views lived on mediarr-dash.
+// They live on /media now, which is why the session below is cached rather than
+// re-minted per call: the pipeline page polls every five seconds.
 
 type Arr = "radarr" | "sonarr";
 
@@ -36,7 +40,13 @@ export async function arrCommand(app: Arr, name: string): Promise<string> {
  *  already: 5.2.3 answers a *successful* login with 204, not 200. An exporter
  *  that insists on 200 logs "authentication failed" forever against correct
  *  credentials -- see the monitoring README. */
-async function qbitSession(): Promise<string> {
+/** The live cookie jar, kept for the life of the process. It outlives a page
+ *  refresh and not a qBittorrent restart, which is what the 403 retry in
+ *  `qbitGet` is for. */
+let jarCache: string | null = null;
+
+async function qbitSession(force = false): Promise<string> {
+  if (jarCache && !force) return jarCache;
   const { url, user, pass } = config.qbittorrent;
   if (!user && !pass) throw new ServiceError("qBittorrent's login has not been collected on the box");
 
@@ -72,11 +82,72 @@ async function qbitSession(): Promise<string> {
     // forever against correct credentials.
     throw new ServiceError("qBittorrent accepted the login but set no session cookie");
   }
+  jarCache = jar;
   return jar;
+}
+
+/** A read through that session, re-minting it once on a 403.
+ *
+ *  403 is what qBittorrent answers to an expired or absent cookie — it is not
+ *  the same as a wrong password, which is 401 on 5.2.3. So exactly one retry:
+ *  a second 403 after a fresh login is a real refusal and must surface. */
+export async function qbitGet<T>(path: string, retry = true): Promise<T> {
+  const cookie = await qbitSession();
+  try {
+    return await getJson<T>(`${config.qbittorrent.url}${path}`, {
+      headers: { referer: config.qbittorrent.url },
+      cookie,
+    });
+  } catch (err) {
+    if (retry && err instanceof ServiceError && err.status === 403) {
+      await qbitSession(true);
+      return qbitGet<T>(path, false);
+    }
+    throw err;
+  }
 }
 
 export function qbitConfigured(): boolean {
   return Boolean(config.qbittorrent.user || config.qbittorrent.pass);
+}
+
+type JellyfinSession = {
+  UserName?: string;
+  NowPlayingItem?: { Name?: string; Type?: string; SeriesName?: string };
+  PlayState?: { IsPaused?: boolean };
+};
+
+export type CinemaViewer = { user: string; watching: string; paused: boolean };
+
+export function jellyfinConfigured(): boolean {
+  return Boolean(config.jellyfin.key);
+}
+
+/** Active playback only. `/Sessions` also includes idle TV apps and background
+ * browser tabs, neither of which is a person watching cinema. The API key stays
+ * server-side; browser receives only names and the title already on screen. */
+export async function jellyfinViewers(): Promise<CinemaViewer[]> {
+  if (!config.jellyfin.key) throw new ServiceError("Jellyfin API key has not been collected on the box");
+
+  const sessions = await getJson<JellyfinSession[]>(`${config.jellyfin.url}/Sessions`, {
+    /* The box runs Jellyfin 12.1: the legacy X-Emby-Token and
+     * X-MediaBrowser-Token headers are gone and answer 401. This is the only
+     * form it still accepts. */
+    headers: { authorization: `MediaBrowser Token="${config.jellyfin.key}"` },
+    timeoutMs: 10_000,
+  });
+  const viewers = new Map<string, CinemaViewer>();
+
+  for (const session of sessions) {
+    const item = session.NowPlayingItem;
+    const user = session.UserName?.trim();
+    if (!item || !user) continue;
+    const episode = item.Type === "Episode" && item.SeriesName ? `${item.SeriesName} · ${item.Name ?? "episode"}` : item.Name;
+    if (!episode) continue;
+    viewers.set(user, { user, watching: episode, paused: Boolean(session.PlayState?.IsPaused) });
+  }
+
+  return [...viewers.values()];
 }
 
 /** Stop or start every torrent.
