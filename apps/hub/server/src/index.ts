@@ -111,6 +111,15 @@ app.get("/api/nas", async (c) => {
   return c.json(data);
 });
 
+/** How full both machines are, right now. The storage page's charts say how the
+ *  fill moved; this says how much room there is, which no time series on that
+ *  page could answer. */
+app.get("/api/storage", async (c) => {
+  const data = await storageSummary();
+  c.header("Cache-Control", "no-store");
+  return c.json(data);
+});
+
 /** Everything a page needs to lay itself out: ids, titles, units and which
  *  machine each applies to. Static, so it is cached hard. */
 app.get("/api/catalog", (c) => {

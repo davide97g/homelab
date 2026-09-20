@@ -84,6 +84,12 @@ export function namedSensors(i: Instance): string {
   return `(${labelled} or ${unlabelled}) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance="${i}"}`;
 }
 
+/** Filesystem types that are not storage: kernel bookkeeping, a squashfs image,
+ *  the desktop session's gvfs mounts. One definition, because the chart and the
+ *  occupancy recap disagreeing about what counts as a disk would be worse than
+ *  either of them being wrong. */
+export const PSEUDO_FS = "tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660|autofs|efivarfs";
+
 export const SERIES: Record<string, SeriesDef> = {
   // ——— Compute ———
   "cpu.total": {
@@ -342,6 +348,7 @@ export const SERIES: Record<string, SeriesDef> = {
   // ——— Storage ———
   "fs.used": {
     title: "Filesystem fill",
+    description: "Real filesystems only. The desktop session's gvfs mounts are the kernel's, not the disk's.",
     unit: "percent",
     kind: "line",
     minStepS: 60,
@@ -350,8 +357,8 @@ export const SERIES: Record<string, SeriesDef> = {
     exprs: [
       {
         expr: (c) =>
-          `100 * (1 - node_filesystem_avail_bytes{instance="${c.instance}",fstype!~"tmpfs|overlay|squashfs|ramfs|devtmpfs"}` +
-          ` / node_filesystem_size_bytes{instance="${c.instance}",fstype!~"tmpfs|overlay|squashfs|ramfs|devtmpfs"})`,
+          `100 * (1 - node_filesystem_avail_bytes{instance="${c.instance}",fstype!~"${PSEUDO_FS}"}` +
+          ` / node_filesystem_size_bytes{instance="${c.instance}",fstype!~"${PSEUDO_FS}"})`,
         legend: "{{mountpoint}}",
       },
     ],

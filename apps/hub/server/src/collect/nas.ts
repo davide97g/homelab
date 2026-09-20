@@ -4,9 +4,10 @@ import { display } from "../format.js";
 import { soft } from "../http.js";
 import { byLabel, instant, scalar } from "../prom/client.js";
 import { namedSensors } from "../prom/registry.js";
-import type { ContainerRow, Filesystem, Health, NasBay, NasDetail, SensorRow } from "../wire.js";
+import type { ContainerRow, Health, NasBay, NasDetail, SensorRow } from "../wire.js";
 import { collectHost } from "./host.js";
 import { collectArrays } from "./raid.js";
+import { collectFilesystems } from "./storage.js";
 
 // The NAS in full. Everything here is already in Prometheus -- the agents in
 // monitoring/nas-agents/ have been shipping it since the logs work -- so this
@@ -36,57 +37,11 @@ const RATE_WINDOW = "5m";
  *  counting any of those as a bay would triple the disk count. */
 const BAY_DEVICE = "sd[a-z]+";
 
-const EXCLUDED_FS = "tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660";
-
 function health(value: number | null, warn: number, bad: number): Health {
   if (value === null) return "unknown";
   if (value >= bad) return "bad";
   if (value >= warn) return "warn";
   return "ok";
-}
-
-function filesystem(
-  mountpoint: string,
-  device: string,
-  fstype: string,
-  size: number | null,
-  avail: number | null,
-): Filesystem {
-  const used = size !== null && avail !== null ? size - avail : null;
-  const percent = size !== null && avail !== null && size > 0 ? 100 * (1 - avail / size) : null;
-  return {
-    mountpoint,
-    device,
-    fstype,
-    sizeBytes: size,
-    usedBytes: used,
-    availBytes: avail,
-    percent,
-    sizeDisplay: display(size, "bytes"),
-    usedDisplay: display(used, "bytes"),
-    availDisplay: display(avail, "bytes"),
-  };
-}
-
-async function collectFilesystems(instance: string): Promise<Filesystem[]> {
-  const [sizes, avails] = await Promise.all([
-    instant(`node_filesystem_size_bytes{instance="${instance}",fstype!~"${EXCLUDED_FS}"}`),
-    instant(`node_filesystem_avail_bytes{instance="${instance}",fstype!~"${EXCLUDED_FS}"}`),
-  ]);
-
-  const availByMount = new Map(avails.map((r) => [r.labels.mountpoint ?? "", r.value]));
-
-  return sizes
-    .map((r) =>
-      filesystem(
-        r.labels.mountpoint ?? "?",
-        r.labels.device ?? "?",
-        r.labels.fstype ?? "?",
-        Number.isFinite(r.value) ? r.value : null,
-        availByMount.get(r.labels.mountpoint ?? "") ?? null,
-      ),
-    )
-    .sort((a, b) => (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0));
 }
 
 /** Four bays whatever is plugged in, because an empty bay is the reason the

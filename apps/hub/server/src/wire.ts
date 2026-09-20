@@ -121,7 +121,7 @@ export type Summary = {
   power: PowerSummary;
   alerts: Alert[];
   containers: ContainerSummary;
-  links: Record<"grafana" | "dokploy" | "mediarr" | "jellyfin" | "jellyseerr" | "cinema" | "immich", string>;
+  links: Record<"grafana" | "dokploy" | "jellyfin" | "jellyseerr" | "cinema" | "immich", string>;
 };
 
 export type SessionResponse = { authenticated: boolean };
@@ -273,6 +273,84 @@ export type NasDetail = {
   links: { cinema: string; immich: string };
   /** Caveats that belong on the page rather than in a commit message. */
   notes: string[];
+};
+
+// ——— Storage ———————————————————————————————————————————————————————————————
+
+/** Where a filesystem is heading, from a linear fit over the last week.
+ *
+ *  `bytesPerDay` is the change in *used* bytes, so a positive number is filling.
+ *  Below the noise floor it is reported as steady rather than as a very small
+ *  slope: a week of scrapes on a live filesystem always fits *some* gradient,
+ *  and extrapolating that one to a date is how a dashboard invents a deadline. */
+export type StorageTrend = {
+  bytesPerDay: number | null;
+  /** "+12 GiB/day", "−400 MiB/day", "steady", "—". */
+  display: string;
+  /** Days until free space reaches zero at that rate. Null unless it is filling. */
+  daysToFull: number | null;
+  /** "full in ~34 days", "not filling", "no history yet". */
+  fullDisplay: string;
+};
+
+export type StorageMount = Filesystem & {
+  instance: "homelab" | "nas";
+  /** The same filesystem seen at another path — UGOS bind-mounts /volume1 onto
+   *  /home, and counting both would double the NAS's capacity. Only the primary
+   *  path is summed; the aliases are listed so the page can say why. */
+  aliases: string[];
+  /** The mount this machine's headline number is about: `/` on the mini PC, the
+   *  pool on the NAS. */
+  headline: boolean;
+  health: Health;
+  trend: StorageTrend;
+};
+
+export type StorageHost = {
+  instance: "homelab" | "nas";
+  name: string;
+  role: string;
+  /** False when Prometheus has no *current* filesystem sample for the machine —
+   *  which is a missing answer, not an empty disk, and must never render as 0%. */
+  reporting: boolean;
+  /** When the numbers below were taken. Set only when they are the last known
+   *  ones rather than fresh: a NAS that dropped off the tailnet an hour ago
+   *  still has a pool, and blanking the card would hide a number that is almost
+   *  certainly still true. Null when the machine is reporting normally, and null
+   *  again once the last sample falls out of the lookback window. */
+  asOf: string | null;
+  sizeBytes: number | null;
+  usedBytes: number | null;
+  availBytes: number | null;
+  percent: number | null;
+  sizeDisplay: string;
+  usedDisplay: string;
+  availDisplay: string;
+  health: Health;
+  /** Every distinct filesystem, largest first. */
+  mounts: StorageMount[];
+  /** The machine's total, summed over distinct devices. */
+  trend: StorageTrend;
+};
+
+/** The occupancy recap: both machines, their filesystems, and where the fill is
+ *  going. Instant values only — the time series behind them are the panels on
+ *  the same page, asked for by id like every other chart. */
+export type StorageSummary = {
+  at: string;
+  hosts: StorageHost[];
+  /** Only machines reporting *now*. A stale host's capacity is shown on its own
+   *  card, where the page can say how old it is, and left out of a total that
+   *  would otherwise read as current free space. */
+  estate: {
+    sizeBytes: number | null;
+    usedBytes: number | null;
+    availBytes: number | null;
+    percent: number | null;
+    sizeDisplay: string;
+    usedDisplay: string;
+    availDisplay: string;
+  };
 };
 
 // ——— Logs ——————————————————————————————————————————————————————————————————
@@ -619,3 +697,68 @@ export type MediaPipeline = {
   /** Caveats that belong on the page rather than in a commit message. */
   notes: string[];
 };
+
+// ——— Ask ———————————————————————————————————————————————————————————————————
+//
+// What /api/ask turns a sentence into. Note what is *not* here: there is no
+// expression, no query and no PromQL. A spec is a set of series ids the registry
+// already knows, plus a range, a machine and a little presentation — exactly
+// what the browser was already allowed to ask for. The model narrows a list; it
+// never writes one.
+
+/** A threshold drawn across a chart. The number comes from the prompt's own
+ *  digits, never from the model: a model that emits no tokens cannot invent a
+ *  limit that was never typed. */
+export type AskThreshold = {
+  value: number;
+  unit: Unit;
+  label: string;
+};
+
+export type ChartSpec = {
+  /** `chart` renders panels; `table` ranks containers from /api/containers. */
+  shape: "chart" | "table";
+  /** Registry ids, already checked against the allow-list, highest confidence
+   *  first. Capped, because four panels is the most an answer can be. */
+  ids: string[];
+  range: Range;
+  /** `both` draws one panel per machine side by side, which is the comparison
+   *  idiom the metrics pages already use. */
+  instance: "homelab" | "nas" | "both";
+  threshold?: AskThreshold;
+  /** Only meaningful when shape is `table`. */
+  rankBy?: "cpu" | "memory";
+  limit?: number;
+};
+
+/** What the model understood, whether or not it was enough to render. Shown on a
+ *  refusal so the answer is "here is what I read and why it was not enough"
+ *  rather than a shrug. */
+export type AskUnderstood = {
+  range: Range;
+  instance: "homelab" | "nas" | "both";
+  shape: string;
+  threshold?: AskThreshold;
+  /** 0..1. How well the request mapped onto the catalogue at all. */
+  fit: number;
+  /** Every candidate the model scored, best first, for the "did you mean" chips.
+   *  Carries the ones that did not clear the floor too — that is the point. */
+  candidates: { id: string; title: string; score: number }[];
+};
+
+export type AskResponse = {
+  at: string;
+  prompt: string;
+  understood: AskUnderstood;
+  /** Absent when nothing cleared the floor. `reason` then says why. */
+  spec?: ChartSpec;
+  reason?: string;
+  /** Grafana Explore, for the question this hub could not answer. */
+  grafana?: string;
+  /** Round trip to Jev, for the composer's footer. */
+  tookMs: number;
+};
+
+/** Advertised on /api/ask/status so the CTA can grey itself out with a sentence
+ *  before anyone types, the same way an action reports itself unavailable. */
+export type AskStatus = { ok: true } | { ok: false; why: string };

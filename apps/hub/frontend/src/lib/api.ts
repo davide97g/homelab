@@ -147,6 +147,12 @@ export function streamSeries(
   return close;
 }
 
+/** Capacity, not rate: sizes, free space and where the fill is heading. The
+ *  storage page pairs it with the same time series every other page asks for. */
+export function fetchStorage(signal?: AbortSignal): Promise<StorageSummary> {
+  return fetch("/api/storage", { ...same, signal }).then((r) => json<StorageSummary>(r));
+}
+
 export function fetchNas(signal?: AbortSignal): Promise<NasDetail> {
   return fetch("/api/nas", { ...same, signal }).then((r) => json<NasDetail>(r));
 }
