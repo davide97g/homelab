@@ -9,7 +9,7 @@ const cache = new Cache(15_000);
 
 /** The server's copy of the accepted ranges. Typed as Range[], so if wire.ts's
  *  union and this list ever disagree the build fails rather than a request. */
-export const RANGES: Range[] = ["15m", "1h", "6h", "24h", "7d", "30d"];
+export const RANGES: Range[] = ["15m", "1h", "6h", "24h", "7d", "14d", "30d"];
 
 /** ~600 points is what a chart that wide can actually show, and the ceiling that
  *  keeps a 30 day range from asking for 172 800 samples per series. */

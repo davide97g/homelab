@@ -46,6 +46,14 @@ type ExprDef = {
 export type SeriesDef = {
   title: string;
   description?: string;
+  /** What question this series answers, in the words someone would use to ask
+   *  it. This is the sentence /api/ask puts to the model, and it is separate
+   *  from `title` and `description` on purpose: those are written for a reader
+   *  who is already looking at the panel -- "Throughput", "Transmit is drawn
+   *  below the axis" -- and reading them back as a claim about what a request
+   *  needs scores a correct match at 0.32, below any usable floor. Phrased as a
+   *  thing that *would answer* a question, the same match scores 0.94. */
+  asks: string;
   unit: Unit;
   kind: SeriesKind;
   /** Floor on the step, so a short range does not ask for sub-scrape resolution. */
@@ -64,6 +72,7 @@ export const RANGE_SECONDS: Record<Range, number> = {
   "6h": 21600,
   "24h": 86400,
   "7d": 604800,
+  "14d": 1209600,
   "30d": 2592000,
 };
 
@@ -94,6 +103,7 @@ export const SERIES: Record<string, SeriesDef> = {
   // ——— Compute ———
   "cpu.total": {
     title: "CPU utilisation",
+    asks: "A chart of how busy the processor is overall",
     unit: "percent",
     kind: "area",
     minStepS: 15,
@@ -110,6 +120,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "cpu.percore": {
     title: "Per-thread CPU",
+    asks: "A chart of how busy each individual CPU core or thread is",
     description: "One row per hardware thread. A single hot thread is a different problem from a busy box.",
     unit: "percent",
     kind: "line",
@@ -125,6 +136,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "cpu.modes": {
     title: "CPU by mode",
+    asks: "A breakdown of what the CPU spends its time on — user work, system work, waiting for disk",
     unit: "percent",
     kind: "stack",
     minStepS: 15,
@@ -140,6 +152,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   load: {
     title: "Load average",
+    asks: "The system load average, meaning how many processes are queued waiting to run",
     unit: "ratio",
     kind: "line",
     minStepS: 15,
@@ -153,6 +166,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "mem.breakdown": {
     title: "Memory",
+    asks: "A chart of how much memory or RAM is used and how much is free",
     description: "Used excludes cache and buffers, which the kernel will hand back under pressure.",
     unit: "bytes",
     kind: "stack",
@@ -184,6 +198,7 @@ export const SERIES: Record<string, SeriesDef> = {
   // ——— Thermals ———
   "temp.sensors": {
     title: "Temperatures",
+    asks: "The temperature of each individual hardware sensor, one line per sensor",
     description:
       "Every sensor by its kernel label. On the mini PC the WiFi chip often reads hottest and its interface is DOWN, so it tracks case temperature rather than load.",
     unit: "celsius",
@@ -194,6 +209,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "temp.band": {
     title: "Min / avg / max, smoothed",
+    asks: "A chart of how hot the machine runs over time — the average, highest and lowest temperature",
     description: "All three rising together means the case is heat-soaking, not that one component is working.",
     unit: "celsius",
     kind: "line",
@@ -221,6 +237,7 @@ export const SERIES: Record<string, SeriesDef> = {
   // ——— Power ———
   "power.wall": {
     title: "Power draw",
+    asks: "A chart of how much electrical power the machine draws, in watts",
     description:
       "Wall power is measured at the plug. The package rail is averaged, not instantaneous — the live reading bursts well above the sustained draw and reads as impossible next to a plug figure.",
     unit: "watts",
@@ -235,6 +252,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "power.plug": {
     title: "Plug detail",
+    asks: "Detailed smart-plug electrical readings — voltage, current and power factor",
     unit: "ratio",
     kind: "line",
     minStepS: 15,
@@ -246,6 +264,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "power.nas": {
     title: "CPU package power",
+    asks: "A chart of how much power the NAS processor draws, in watts",
     description: "RAPL. The NAS is not on a metering plug, so this covers the CPU package and nothing else.",
     unit: "watts",
     kind: "area",
@@ -259,6 +278,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "energy.daily": {
     title: "Energy per day",
+    asks: "How much electricity is used each day in kilowatt-hours, and what it costs",
     description: "From the plug's cumulative counter, differenced per day. Gauge-shaped, so this is not increase().",
     unit: "kwh",
     kind: "bar",
@@ -277,6 +297,7 @@ export const SERIES: Record<string, SeriesDef> = {
   // ——— Network ———
   "net.throughput": {
     title: "Throughput",
+    asks: "A chart of how much network traffic flows in and out of the machine",
     description: "Transmit is drawn below the axis, so a symmetric link looks symmetric.",
     unit: "bitsPerSec",
     kind: "area",
@@ -300,6 +321,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "net.errors": {
     title: "Errors, drops and flaps",
+    asks: "Whether the network connection is dropping packets, erroring or flapping",
     description: "Flat at zero is the expected shape. Anything else is a cable, a port or a driver.",
     unit: "count",
     kind: "line",
@@ -331,6 +353,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "net.containers": {
     title: "Busiest containers",
+    asks: "Which containers are using the most network bandwidth",
     unit: "bitsPerSec",
     kind: "stack",
     minStepS: 30,
@@ -348,6 +371,7 @@ export const SERIES: Record<string, SeriesDef> = {
   // ——— Storage ———
   "fs.used": {
     title: "Filesystem fill",
+    asks: "How full the disks are and how much free space remains",
     description: "Real filesystems only. The desktop session's gvfs mounts are the kernel's, not the disk's.",
     unit: "percent",
     kind: "line",
@@ -365,6 +389,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "disk.io": {
     title: "Disk throughput",
+    asks: "A chart of how much data is read from and written to disk",
     unit: "bytesPerSec",
     kind: "area",
     minStepS: 15,
@@ -387,6 +412,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "disk.util": {
     title: "Device utilisation",
+    asks: "How busy the disk is, as a percentage of the time it spends working",
     description: "Share of wall time the device had at least one request in flight.",
     unit: "percent",
     kind: "line",
@@ -402,6 +428,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "container.cpu": {
     title: "Container CPU",
+    asks: "Which Docker containers or services are using the most CPU",
     unit: "percent",
     kind: "stack",
     minStepS: 30,
@@ -415,6 +442,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "container.mem": {
     title: "Container memory",
+    asks: "Which Docker containers or services are using the most memory",
     description:
       "RSS rather than working set: qBittorrent's page cache makes working set read as multiple gigabytes of 'usage' that is not really used.",
     unit: "bytes",
@@ -430,6 +458,7 @@ export const SERIES: Record<string, SeriesDef> = {
   },
   "qbit.rates": {
     title: "qBittorrent",
+    asks: "How fast qBittorrent is downloading and uploading",
     description: "Client-wide. Per-torrent series are deliberately not collected — see the monitoring README.",
     unit: "bytesPerSec",
     kind: "area",

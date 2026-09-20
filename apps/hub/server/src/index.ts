@@ -4,7 +4,7 @@ import { streamSSE } from "hono/streaming";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { tail, writable } from "./actions/audit.js";
+import { record, tail, writable } from "./actions/audit.js";
 import { dispatch } from "./actions/dispatch.js";
 import { catalog as actionCatalog } from "./actions/registry.js";
 import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
@@ -14,6 +14,8 @@ import { storageSummary } from "./collect/storage.js";
 import { summary } from "./collect/summary.js";
 import { topology } from "./collect/topology.js";
 import { config } from "./config.js";
+import { ask, parsePrompt } from "./jev/ask.js";
+import { jevConfigured } from "./jev/client.js";
 import { logOptions, logs, parseLogRequest } from "./loki/query.js";
 import { pipeline } from "./media/pipeline.js";
 import { catalog, frames, parseRequest, rangeSeconds, series } from "./prom/series.js";
@@ -35,6 +37,11 @@ const app = new Hono();
 
 const LOGIN_WINDOW_MS = 5 * 60_000;
 const LOGIN_MAX = 10;
+
+// Asking is the only route that costs money at a third party, so it gets the
+// throttle the read routes do not need.
+const ASK_WINDOW_MS = 60_000;
+const ASK_MAX = 12;
 
 app.post("/api/login", async (c) => {
   const ip = clientIp((k) => c.req.header(k));
@@ -249,6 +256,59 @@ app.post("/api/actions", async (c) => {
   // the page renders, not a transport failure, and shaping it as a status code
   // would make "denied" and "the tunnel dropped" indistinguishable in the client.
   return c.json(result);
+});
+
+/** Whether the composer can open, and the sentence to show when it cannot. Same
+ *  shape and the same reasoning as an action's `available()`: a CTA that greys
+ *  itself out with a reason beats one that fails at the click. */
+app.get("/api/ask/status", (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(
+    jevConfigured()
+      ? { ok: true }
+      : { ok: false, why: "JEV_API_KEY has not been collected on the box" },
+  );
+});
+
+/** A sentence in, a chart spec out.
+ *
+ *  The only free-form string the hub has ever accepted from a browser, and it
+ *  is worth being precise about what happens to it: it is length-capped, sent
+ *  to TypeSafe as the `state` of a decision request, and never used to build a
+ *  query. What comes back is a set of registry ids, which are checked against
+ *  the allow-list exactly as parseRequest checks the browser's own. No
+ *  expression is generated anywhere in this path -- see server/src/jev/ask.ts.
+ *
+ *  Rate-limited, unlike the other read routes, because this one costs money at
+ *  a third party and a shared password is not a spending control. */
+app.post("/api/ask", async (c) => {
+  if (!jevConfigured()) return c.json({ error: "asking is not configured on this box" }, 503);
+
+  const ip = clientIp((k) => c.req.header(k));
+  if (limited(`ask:${ip}`, ASK_MAX, ASK_WINDOW_MS)) {
+    return c.json({ error: "too many questions, wait a minute" }, 429);
+  }
+
+  const body = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
+  const prompt = parsePrompt(body.prompt);
+  if (typeof prompt !== "string") return c.json({ error: prompt.error }, 400);
+
+  c.header("Cache-Control", "no-store");
+  try {
+    const answer = await ask(prompt);
+    // Audited like a write, because it is the one path that sends anything off
+    // the box. The prompt is the interesting part of the record, not the spec.
+    void record({
+      at: answer.at,
+      action: "chart.generate",
+      outcome: answer.spec ? "ok" : "denied",
+      message: answer.spec ? `${prompt} -> ${answer.spec.ids.join(", ") || answer.spec.shape}` : prompt,
+      from: ip,
+    });
+    return c.json(answer);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
+  }
 });
 
 /** The audit, newest first. Read-only and unfiltered: an audit with a filter in

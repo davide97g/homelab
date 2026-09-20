@@ -1,4 +1,5 @@
 import {
+  Sparkles,
   Boxes,
   Clapperboard,
   Cpu,
@@ -34,6 +35,7 @@ export const ROUTES = [
   { to: "/media", icon: Clapperboard, label: "Media pipeline" },
   { to: "/nas", icon: Server, label: "NAS" },
   { to: "/actions", icon: Wrench, label: "Actions" },
+  { to: "/ask", icon: Sparkles, label: "Pinned answers" },
 ] as const;
 
 const STORAGE_KEY = "hub.sidebar";

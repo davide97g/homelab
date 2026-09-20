@@ -120,6 +120,22 @@ export const config = {
     key: process.env.JELLYFIN_API_KEY ?? "",
   },
 
+  /** TypeSafe's Jev, which turns a typed question into a typed answer and is
+   *  what /api/ask uses to read a sentence. The only address in this file that
+   *  is not on the box or the tailnet, and the only one a prompt leaves through:
+   *  the request carries the user's words and the series catalogue, never a
+   *  metric value. Blank key means /api/ask reports itself unavailable with the
+   *  reason and the composer will not open, which is the intended degraded
+   *  state -- every other page is unaffected. */
+  jev: {
+    url: (process.env.JEV_URL ?? "https://api.typesafe.ai").replace(/\/+$/, ""),
+    key: process.env.JEV_API_KEY ?? "",
+    /** Jev answers in 70-500 ms, but it is off-box and behind a tunnel of its
+     *  own, so this is sized for a bad day rather than a good one. Still well
+     *  under the 6 s default being wrong in the other direction. */
+    timeoutMs: Number(process.env.JEV_TIMEOUT_MS ?? 20_000),
+  },
+
   /** All-in marginal tariff. The Grafana dashboard's textbox defaults to the
    *  same 0.27 EUR; see monitoring/README.md for the derivation. */
   costPerKwh: Number(process.env.COST_PER_KWH ?? 0.27),

@@ -1,6 +1,8 @@
 import type {
   ActionCatalog,
   ActionResult,
+  AskResponse,
+  AskStatus,
   AuditResponse,
   CatalogEntry,
   ContainersResponse,
@@ -214,4 +216,28 @@ export function runAction(body: {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   }).then((r) => json<ActionResult>(r));
+}
+
+/** A sentence in, a chart spec out.
+ *
+ *  The only free-form string this client has ever sent. What comes back is a
+ *  spec made of registry ids the server has already checked against its
+ *  allow-list -- there is no expression in it, and nothing here builds a query.
+ *  A refusal is a normal 200 carrying `reason` instead of `spec`; this rejects
+ *  only when the call itself failed. */
+export function askQuestion(prompt: string, signal?: AbortSignal): Promise<AskResponse> {
+  return fetch("/api/ask", {
+    ...same,
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt }),
+    signal,
+  }).then((r) => json<AskResponse>(r));
+}
+
+/** Whether asking is configured on the box, and the sentence to show when it is
+ *  not. Read once when the shell mounts, so the CTA can grey itself out with a
+ *  reason rather than failing at the click. */
+export function fetchAskStatus(signal?: AbortSignal): Promise<AskStatus> {
+  return fetch("/api/ask/status", { ...same, signal }).then((r) => json<AskStatus>(r));
 }

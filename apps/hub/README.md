@@ -22,6 +22,7 @@ nothing; it is a reader.
 | `server/src/prom/registry.ts` | Every PromQL expression the hub can ask for. |
 | `server/src/loki/query.ts` | Structured log filters → LogQL. Nothing else assembles a query. |
 | `server/src/actions/` | The one write path: registry, dispatcher, audit. |
+| `server/src/jev/` | `/api/ask`: a sentence → a chart spec, decided by Jev. Client, questions, validator. |
 | `deploy.py` | Copy up, build there, bring it up. |
 | `scripts/collect-env.sh` | Runs **on the box**, writes `.env` mode 600. |
 
@@ -116,11 +117,62 @@ both inherited from mediarr-dash and both easy to be surprised by:
 | `/containers` | **Built.** Both machines, running and stopped, with start/stop/restart on the ones the deny-list allows. |
 | `/logs` | **Built.** Loki behind structured filters, with a 5 s live tail. |
 | `/actions` | **Built.** The dispatcher, the media writes, Dokploy redeploy, and the audit. |
+| `/ask` Pinned answers | **Built.** Answers kept from the composer. Specs in `localStorage`, re-queried live on every visit. |
 | `/media` | **Built.** The pipeline as a graph: seven services, live numbers on each card, the lists behind them in a drawer, and edges that animate only where something is moving. This is what mediarr-dash used to be — that app was retired on 2026-09-20. |
 
 Every route is built. A service whose key has never been collected still draws
 its node — it says which key is missing rather than showing an empty panel that
 looks broken.
+
+## Asking for a chart
+
+⌘K, or the sparkle in the top bar, opens a composer at the bottom of the screen:
+one sentence, typed or dictated, and the answer renders above it. "temperatures
+of the mini pc and the NAS compared, last 2 weeks, line at 50°" comes back as a
+two-machine panel over a 14-day window with a dashed line at 50 °C.
+
+**The model does not write the query. It picks from a list.** Jev, TypeSafe's
+System One model, does not generate text at all: you hand it a `state` and a set
+of typed `questions` — `choice`, `score`, `noul` — and it answers all of them in
+parallel with calibrated probabilities. `server/src/jev/questions.ts` builds one
+question per series in `prom/registry.ts` plus seven more for shape, machine,
+range, threshold, ranking and fit; `ask.ts` checks every id it picks against
+`SERIES`, exactly as `parseRequest` checks the browser. **No PromQL exists
+anywhere in this path.** The registry's guarantee is untouched.
+
+**Numbers come from the text, semantics come from the model.** "50", "2 weeks"
+and "10" are pulled out of the prompt by regex *before* Jev is called. Jev is
+asked whether the request wants a threshold, never what the threshold is. A
+model that emits no tokens cannot invent a limit nobody typed.
+
+**Refusing is a normal answer.** The catalogue is finite, so "no" has to be
+useful: the composer says what it read — range, machine, threshold — and offers
+the candidates that did not clear the floor as chips, plus the same Grafana
+Explore link every panel carries. "What is the weather in Rome tomorrow" scores
+0.00 on fit and is turned away with no chips at all, because nothing is near.
+
+**The wording of a question is load-bearing, and it was measured.** Asking "the
+request asks for this metric: X" scores a correct match at **0.24**; asking
+whether X *would answer* the request scores the same match at **0.94** and the
+wrong one at 0.03. And the subject has to be `SeriesDef.asks`, not `title` and
+`description` — those are written for someone already looking at the panel
+("Throughput. Transmit is drawn below the axis"), and feeding them to a
+sufficiency question scored a plainly correct network request at 0.32, below the
+floor, so it refused. Every series carries an `asks` sentence for this reason.
+**Add one when you add a series**, or it will not be findable.
+
+**What leaves the box.** This is the only feature that sends anything off it.
+The prompt and the catalogue's `asks` sentences go to `api.typesafe.ai`; metric
+values never do, because Jev picks ids and Prometheus is queried afterwards,
+here. Every prompt is written to the same audit as the write actions, as
+`chart.generate`. The route is rate-limited at 12/min — a shared password is not
+a spending control — and `JEV_API_KEY` blank means the button greys itself out
+with the reason.
+
+**Dictation is the browser's, not ours.** `webkitSpeechRecognition`, no audio
+leaves the machine for the hub, no second key. It needs a secure context, so the
+mic hides over plain HTTP and appears through the tunnel; Firefox gets the typed
+fallback.
 
 ## Decisions worth not undoing
 

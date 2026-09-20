@@ -1,5 +1,5 @@
 import type { Summary } from "@wire";
-import { LogOut, RefreshCw } from "lucide-react";
+import { LogOut, RefreshCw, Sparkles } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { StatusDot } from "@/components/primitives";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
@@ -16,11 +16,13 @@ export function TopBar({
   refreshedAt,
   loading,
   onSignOut,
+  onAsk,
 }: {
   data: Summary | null;
   refreshedAt: number | null;
   loading: boolean;
   onSignOut: () => void;
+  onAsk: () => void;
 }) {
   const { pathname } = useLocation();
   const route = activeRoute(pathname);
@@ -73,6 +75,23 @@ export function TopBar({
         <span className="text-muted-foreground tnum hidden text-[11px] sm:inline">
           {refreshedAt ? shortTime(new Date(refreshedAt).toISOString()) : "—"}
         </span>
+
+        {/* First of the controls, and the only one that is not grey: it is the
+            one thing here that does something the page cannot already do. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-primary size-11 sm:size-7"
+              aria-label="Ask for a chart"
+              onClick={onAsk}
+            >
+              <Sparkles className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Ask for a chart — ⌘K</TooltipContent>
+        </Tooltip>
 
         <Button
           variant="ghost"
