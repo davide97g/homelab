@@ -110,6 +110,7 @@ both inherited from mediarr-dash and both easy to be surprised by:
 | Route | State |
 |---|---|
 | `/` Topology | **Built.** The landing page: both flats on a ground plane, every device modelled, and the paths between them animating at their real cadence. WebGL with a flat SVG twin. |
+| `/atlas` Atlas | **Built.** The same estate, read as what runs on it: media services and containers orbit the machine they belong to. Topology is unchanged. |
 | `/overview` Overview | **Built.** Hero, power dial, the mini PC's headline metrics, energy and cost, busiest containers, the NAS card, alerts, links out. |
 | `/compute` `/power` `/network` | **Built.** The series registry and the uPlot chart layer. |
 | `/storage` | **Built.** The same charts, under an occupancy recap: capacity, free space and the weekly fill trend per filesystem, from `/api/storage`. |

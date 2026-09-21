@@ -1,5 +1,6 @@
 import type { Summary } from "@wire";
 import { HomePage } from "@/pages/home";
+import { AtlasPage } from "@/pages/atlas";
 import { TopologyPage } from "@/pages/topology";
 import { MetricsPage } from "@/pages/metrics-page";
 import { ActionsPage } from "@/pages/actions";
@@ -16,6 +17,9 @@ export const PAGES: { path: string; element: (data: Summary) => React.ReactNode 
   // The landing page is the estate. The machine view it replaced is still here
   // one route down, which keeps the change reversible and costs one rail entry.
   { path: "/", element: (data) => <TopologyPage data={data} /> },
+  // A second reading of the same estate: services and containers on the machines,
+  // rather than the paths between them. Topology stays the landing page.
+  { path: "/atlas", element: (data) => <AtlasPage data={data} /> },
   { path: "/overview", element: (data) => <HomePage data={data} /> },
   {
     path: "/compute",

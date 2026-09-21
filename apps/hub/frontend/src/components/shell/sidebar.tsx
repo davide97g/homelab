@@ -6,6 +6,7 @@ import {
   HardDrive,
   LayoutDashboard,
   Network,
+  Orbit,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -20,11 +21,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 
 /** One icon per domain, in the order you would actually walk a problem: where
- *  everything is and how it is connected, then what one machine is doing, what
- *  it is drawing, what it is moving, where it is writing, what is running, what
- *  it said, then the two machine-specific pages and the controls. */
+ *  everything is and how it is connected, then what is running on it, then what
+ *  one machine is doing, what it is drawing, what it is moving, where it is
+ *  writing, what is running, what it said, then the two machine-specific pages
+ *  and the controls. */
 export const ROUTES = [
   { to: "/", icon: Waypoints, label: "Topology" },
+  { to: "/atlas", icon: Orbit, label: "Atlas" },
   { to: "/overview", icon: LayoutDashboard, label: "Overview" },
   { to: "/compute", icon: Cpu, label: "Compute & thermals" },
   { to: "/power", icon: Zap, label: "Power & energy" },
@@ -58,7 +61,7 @@ export function initialExpanded(): boolean {
  *  when the charts want the width back, and keeps the tooltips that were
  *  carrying the whole thing before.
  *
- *  Ten destinations is too many pills on a phone, so below `sm` this is a
+ *  The rail is too many pills on a phone, so below `sm` this is a
  *  horizontal scroller instead, where the labels ride along with the icons. */
 /** Which rail entry a path belongs to. Shared with the top bar so the heading
  *  and the highlight can never disagree about where you are. */
