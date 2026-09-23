@@ -1,0 +1,68 @@
+# manga -- download chapters, read them. Only the reader is public:
+#
+#   Suwayomi  ->  MANGA_ROOT/mangas/<source>/<series>/<chapter>.cbz  ->  Kavita  <-  Yomu
+#   (finds and downloads, LAN only)                        (library, LAN only)   (reader, public)
+#
+# manga.davideghiotto.it reaches Yomu through the host's cloudflared. Yomu's
+# nginx forwards only the reader's Kavita routes; Suwayomi (no auth) and Kavita's
+# admin UI are on the LAN ports and nowhere else.
+#
+# Suwayomi writes every chapter as a CBZ with a ComicInfo.xml inside; Kavita
+# mounts the same folder read-only and takes the series name from that file,
+# so the <source> level in the path does not split one series into several.
+#
+# Environment -- see .env.example:
+#   MANGA_ROOT      host folder for the downloads, required
+#   SUWAYOMI_PORT   default 4567
+#   KAVITA_PORT     default 5000 (macOS AirPlay holds 5000; use 5001 on a Mac)
+#   YOMU_PORT       default 4571, the tunnel's upstream
+#   TZ              default Europe/Rome
+
+services:
+  suwayomi:
+    image: ghcr.io/suwayomi/suwayomi-server:stable
+    container_name: suwayomi
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Europe/Rome}
+      DOWNLOAD_AS_CBZ: "true"
+      AUTO_DOWNLOAD_CHAPTERS: "true"
+      # Suwayomi ships with no extension store. Keiyoushi is the one Mihon users add;
+      # v2 renamed the variable from EXTENSION_REPOS, which it now ignores.
+      EXTENSION_STORES: '["https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json"]'
+    # The ISP resolver (Axera, via the router) answers mangadex.org with its own
+    # block page, whose self-signed cert fails Java's PKIX check. Public resolvers
+    # return the real address, and nothing blocks the connection itself.
+    dns:
+      - 1.1.1.1
+      - 9.9.9.9
+    ports:
+      - "${SUWAYOMI_PORT:-4567}:4567"
+    volumes:
+      - suwayomi-data:/home/suwayomi/.local/share/Tachidesk
+      - ${MANGA_ROOT:?set MANGA_ROOT}:/home/suwayomi/.local/share/Tachidesk/downloads
+
+  kavita:
+    image: jvmilazz0/kavita:latest
+    container_name: kavita
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Europe/Rome}
+    ports:
+      - "${KAVITA_PORT:-5000}:5000"
+    volumes:
+      - kavita-config:/kavita/config
+      - ${MANGA_ROOT:?set MANGA_ROOT}/mangas:/manga:ro
+
+  yomu:
+    build: ./web
+    container_name: yomu
+    restart: unless-stopped
+    depends_on:
+      - kavita
+    ports:
+      - "${YOMU_PORT:-4571}:80"
+
+volumes:
+  suwayomi-data:
+  kavita-config:

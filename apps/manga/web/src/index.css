@@ -1,0 +1,195 @@
+@import '@fontsource-variable/fraunces/full.css';
+@import '@fontsource-variable/literata/opsz.css';
+@import '@fontsource-variable/literata/opsz-italic.css';
+@import 'tailwindcss';
+
+/* Kraft paper and chocolate ink. Every colour in the app comes from here. */
+:root {
+  --paper: #f3e6d3;
+  --sheet: #fbf4ea;
+  --kraft: #dcc49b;
+  --ink: #3a1d16;
+  --ink-2: #6f5247;
+  --ink-3: #a2887a;
+  --rule: #e4d2ba;
+  --night: #17110e;
+  --night-2: #2a201b;
+  --tone: rgb(58 29 22 / 0.13);
+  --shadow-cover: 0 1px 0 rgb(58 29 22 / 0.08), 0 18px 32px -18px rgb(58 29 22 / 0.55);
+  --shadow-card: 0 1px 0 rgb(58 29 22 / 0.05), 0 24px 48px -32px rgb(58 29 22 / 0.45);
+  color-scheme: light;
+}
+
+@theme {
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-kraft: var(--kraft);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-rule: var(--rule);
+  --color-night: var(--night);
+  --color-night-2: var(--night-2);
+  --font-display: 'Fraunces Variable', ui-serif, Georgia, serif;
+  --font-body: 'Literata Variable', ui-serif, Georgia, serif;
+  --font-kana: 'Hiragino Maru Gothic ProN', 'Zen Maru Gothic', 'Noto Sans JP', sans-serif;
+  --shadow-cover: var(--shadow-cover);
+  --shadow-card: var(--shadow-card);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--sheet);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+/* Soft, round Fraunces: the voice of titles and the wordmark. */
+.display {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 100, 'WONK' 0;
+  letter-spacing: -0.02em;
+}
+.display-wonk {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  letter-spacing: -0.03em;
+}
+
+/* The app talks in speech bubbles. The tail is two stacked triangles: ink
+   for the outline, sheet for the fill, so it reads as one hand-inked shape. */
+.bubble {
+  position: relative;
+  background: var(--sheet);
+  border: 2px solid var(--ink);
+  border-radius: 26px;
+  box-shadow: 3px 4px 0 var(--ink);
+}
+.bubble::before,
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: var(--tail-x, 34px);
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+.bubble::before {
+  bottom: -15px;
+  border-width: 15px 6px 0 14px;
+  border-color: var(--ink) transparent transparent transparent;
+}
+.bubble::after {
+  bottom: -10px;
+  margin-left: 2.5px;
+  border-width: 11px 4px 0 10px;
+  border-color: var(--sheet) transparent transparent transparent;
+}
+.bubble-up::before {
+  bottom: auto;
+  top: -15px;
+  border-width: 0 6px 15px 14px;
+  border-color: transparent transparent var(--ink) transparent;
+}
+.bubble-up::after {
+  bottom: auto;
+  top: -10px;
+  border-width: 0 4px 11px 10px;
+  border-color: transparent transparent var(--sheet) transparent;
+}
+
+.pop {
+  animation: pop 420ms var(--ease-pop) both;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+}
+
+/* Screentone: the dot grid of a printed manga page. */
+.tone {
+  background-image: radial-gradient(var(--tone) 1.3px, transparent 1.6px);
+  background-size: 9px 9px;
+}
+
+.cover {
+  border-radius: 14px;
+  box-shadow: var(--shadow-cover);
+  background: var(--kraft);
+  object-fit: cover;
+  aspect-ratio: 2 / 3;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+input[type='range'].scrubber {
+  appearance: none;
+  background: transparent;
+  height: 24px;
+}
+input[type='range'].scrubber::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--sheet) var(--fill, 0%), rgb(251 244 234 / 0.25) var(--fill, 0%));
+}
+input[type='range'].scrubber::-moz-range-track {
+  height: 3px;
+  border-radius: 3px;
+  background: rgb(251 244 234 / 0.25);
+}
+input[type='range'].scrubber::-moz-range-progress {
+  height: 3px;
+  border-radius: 3px;
+  background: var(--sheet);
+}
+input[type='range'].scrubber::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: var(--sheet);
+  border: 0;
+}
+input[type='range'].scrubber::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--sheet);
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
