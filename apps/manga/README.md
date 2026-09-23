@@ -1,26 +1,59 @@
 # Manga
 
-Download manga chapters and read them, on the LAN only. It has no tunnel, no public hostname and
-no Cloudflare Access, and it must stay that way: Suwayomi has no login, and most sources are
-unlicensed.
+Download manga chapters and read them. **Only the reader is public**, at
+<https://manga.davideghiotto.it>. Finding and downloading stays on the LAN: Suwayomi has no
+login, and most sources are unlicensed.
 
 ```
-Suwayomi (:4567)                 MANGA_ROOT/mangas/<source>/<series>/<chapter>.cbz        Kavita (:5000)
-finds + downloads   ----------->  CBZ with ComicInfo.xml inside  ----------------------->  reads, multi-user
-Mihon extensions                  (bind mount, rw)                (same folder, :ro)      web reader, OPDS
+Suwayomi (:4567)                 MANGA_ROOT/mangas/<source>/<series>/<chapter>.cbz        Kavita (:5000)          Yomu (:4571)
+finds + downloads   ----------->  CBZ with ComicInfo.xml inside  ----------------------->  library, users  <-----  the reader
+Mihon extensions                  (bind mount, rw)                (same folder, :ro)      progress, covers        /api allowlist
+LAN only                                                                                  LAN only                public, via tunnel
 ```
 
-Two containers, one shared folder, and no API link between them. Suwayomi writes files, Kavita
-scans them. That's the whole integration.
+Suwayomi writes files and Kavita scans them, with no API link between the two. Yomu talks to
+Kavita's REST API and nothing else.
+
+## Where it runs
+
+The mini PC (`debian`), since 2026-09-23, as its own compose project in `~/manga`, a clone of
+this repository ([davide97g/manga](https://github.com/davide97g/manga), private). The box pulls
+it with a read-only deploy key: `Host github-manga` in its `~/.ssh/config`.
+
+| | |
+|---|---|
+| Yomu, public | <https://manga.davideghiotto.it>, tunnel ingress to `http://localhost:4571` |
+| Yomu, LAN | `http://debian:4571` |
+| Suwayomi | `http://debian:4567`, **LAN only** |
+| Kavita admin | `http://debian:5000`, **LAN only** |
+| Downloads | `~/manga/data` (`MANGA_ROOT=./data`) |
+
+From the Mac, `ssh homelab` may time out on the LAN IP; `ssh -o HostName=${BOX_TAILNET_IP} homelab`
+(Tailscale) works.
+
+**Deploy** (no CI):
+
+```sh
+git push
+ssh homelab 'cd ~/manga && git pull --ff-only && docker compose up -d --build'
+```
+
+`up -d` recreates only the services whose config changed, and the named volumes survive it.
+
+**Cloudflare.** One ingress rule on the mini PC's tunnel, `manga.davideghiotto.it` ->
+`http://localhost:4571`, before the catch-all, and a proxied CNAME to the tunnel. It's not behind
+Access: Kavita's sign-in is the gate, and the nginx allowlist below is what keeps everything else
+of Kavita off the internet. The calls are the ones in `../porting-to-homelab.md` § 5.
 
 ## Files
 
 | | |
 |---|---|
-| `compose.yml` | both services, the named volumes, and the shared bind mount |
-| `.env.example` | `MANGA_ROOT`, `SUWAYOMI_PORT`, `KAVITA_PORT`, `TZ` |
-| `.env` | per host, not shared. On the Mac: `MANGA_ROOT=./data`, `KAVITA_PORT=5001` |
-| `data/` | the Mac test downloads (`MANGA_ROOT`) |
+| `compose.yml` | the three services, the named volumes, and the shared bind mount |
+| `web/Dockerfile`, `web/nginx.conf` | Yomu's image: Bun build, nginx serving `dist/` and proxying `/api` |
+| `.env.example` | `MANGA_ROOT`, `SUWAYOMI_PORT`, `KAVITA_PORT`, `YOMU_PORT`, `TZ` |
+| `.env` | per host, gitignored. Mini PC: `MANGA_ROOT=./data`, default ports. Mac: `KAVITA_PORT=5001` |
+| `data/` | the downloads (`MANGA_ROOT`), gitignored |
 
 State outside the folder, in Docker named volumes (compose project `manga`):
 
@@ -59,15 +92,17 @@ q '{"query":"mutation{startDownloader(input:{}){downloadStatus{state}}}"}'
 ## Kavita
 
 - Image `jvmilazz0/kavita:latest` (the official one). The first visit creates the admin account.
-- One library: **`/manga`, type Manga, folder watching on**. It mounts `MANGA_ROOT/mangas`, so the
+- One library: **`/manga`, type Manga, folder watching on**. Folder watching also has a
+  **server-wide** switch (Settings > General, `ServerSetting` key 17), off by default, and the
+  per-library flag does nothing without it. It was off until 2026-09-23. It mounts `MANGA_ROOT/mangas`, so the
   `<source>` folder is the first level. The series name comes from ComicInfo, so the same title
   from two sources ends up as two series only when the names differ (e.g. "One Piece" vs
   "One Piece (Official Colored)").
 - Chapters with no volume number (all of MANGA Plus) are listed under volume `-100000`, which
   Kavita shows as Specials/loose chapters. Nothing is wrong.
-- **Folder watching doesn't fire on Docker Desktop for Mac.** Files written by one container
-  through the shared folder never raise an inotify event in the other, so press *Scan Library*
-  after downloads. It should work on the mini PC's plain Linux, but that hasn't been checked yet.
+- With both switches on, a finished Suwayomi download schedules `ScanFolder` for its source
+  folder within seconds on the mini PC. On the Mac nothing fired, but the server-wide switch was
+  off there too, so Docker Desktop was never actually tested.
 - API: `/api/Plugin/authenticate?apiKey=…` returned no token on this version, so there's no
   working scripted Kavita access yet. Its config lives in `kavita.db` in WAL mode, so a copy for
   inspection needs `kavita.db-wal` too, or it looks empty. The DB holds the user's API key and
@@ -89,6 +124,12 @@ web/
   src/index.css     every colour and font; the speech bubble and screentone utilities
 ```
 
+- **Public API surface.** `web/nginx.conf` forwards only the routes the reader calls
+  (`account/login`, `account/refresh-token`, `series/…`, `reader/…`, `image/…-cover`,
+  `library/scan-all`) and 404s the rest of `/api`. A new Kavita call in `src/lib/kavita/` needs
+  its route added to the `$kavita_route` map, or it works in `bun run dev` and 404s in production.
+  Raw paths with `..` or encoded slashes get a 400, and sign-in is rate-limited to 5 per minute
+  per visitor (`CF-Connecting-IP`).
 - **Run:** `cd web && bun install && bun run dev`, which serves <http://localhost:4571>. Vite proxies
   `/api` to `KAVITA_URL` (default `http://localhost:5001`). Verify with `bun run build` and
   `bun run lint`. There are no tests.
@@ -107,8 +148,6 @@ web/
   axis) for titles, Literata for text. The app speaks in speech bubbles (greeting, scan results,
   end of chapter), and screentone dots appear only behind the hero. The reader is night-dark,
   with right-to-left, left-to-right or scroll chosen per series and remembered on the device.
-- **Not deployed yet:** there's no nginx image or compose service. That's the next step, and it
-  must proxy `/api` to `kavita:5000` the way Vite does.
 
 ### Checking it in a browser
 
