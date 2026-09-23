@@ -101,7 +101,8 @@ q '{"query":"mutation{startDownloader(input:{}){downloadStatus{state}}}"}'
 - Chapters with no volume number (all of MANGA Plus) are listed under volume `-100000`, which
   Kavita shows as Specials/loose chapters. Nothing is wrong.
 - With both switches on, a finished Suwayomi download schedules `ScanFolder` for its source
-  folder within seconds on the mini PC. On the Mac nothing fired, but the server-wide switch was
+  folder within seconds on the mini PC, and Kavita batches it: the chapters appeared about 6
+  minutes later, with no manual scan. On the Mac nothing fired, but the server-wide switch was
   off there too, so Docker Desktop was never actually tested.
 - API: `/api/Plugin/authenticate?apiKey=…` returned no token on this version, so there's no
   working scripted Kavita access yet. Its config lives in `kavita.db` in WAL mode, so a copy for

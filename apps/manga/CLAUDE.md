@@ -19,7 +19,7 @@ Running on the mini PC in `~/manga` (see README § Where it runs), state moved f
 both named volumes restored, `data/` rsynced. Extensions MangaDex 1.6.0 and MANGA Plus 1.6.66.
 
 - Kavita folder watching was turned on server-wide (it was off, and the per-library flag alone
-  does nothing). A download now schedules `ScanFolder` within seconds. The DB from before the
+  does nothing). A download now shows up in Kavita about 6 minutes later, unscanned by hand. The DB from before the
   change is `backups/kavita.db.before-folder-watching` in the `manga_kavita-config` volume.
 - Test downloads on the box: One Piece (Official Colored) ch. 2 and 3, MangaDex.
 - **The Mac copy is still running** (Docker Desktop, Yomu dev on :4571). It's now stale. Stop it
