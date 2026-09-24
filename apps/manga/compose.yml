@@ -16,7 +16,8 @@
 #   SUWAYOMI_PORT   default 4567
 #   KAVITA_PORT     default 5000 (macOS AirPlay holds 5000; use 5001 on a Mac)
 #   YOMU_PORT       default 4571, the tunnel's upstream
-#   KAVITA_API_KEY  an admin auth key; without it `covers` only saves the files
+#   KAVITA_API_KEY  an admin auth key; without it `covers` only saves the files,
+#                   and `scripts` serves chapter scripts but has no search
 #   TZ              default Europe/Rome
 
 services:
@@ -75,6 +76,29 @@ services:
     volumes:
       - ./covers:/app:ro
       - ${MANGA_ROOT:?set MANGA_ROOT}/mangas:/mangas
+
+  # Chapter scripts (who says what, per page) for Yomu's reader and search.
+  # Read-only: `transcribe` writes MANGA_ROOT/scripts, this only serves it.
+  # Every request carries the reader's Kavita token, which it checks with
+  # Kavita; KAVITA_API_KEY is only for mapping files to chapter ids, which
+  # the search index needs. No host port: Yomu reaches it on the compose
+  # network. See transcribe/serve.py.
+  scripts:
+    image: python:3.13-alpine
+    container_name: manga-scripts
+    restart: unless-stopped
+    user: "1000:1000"
+    depends_on:
+      - kavita
+    environment:
+      TZ: ${TZ:-Europe/Rome}
+      KAVITA_API_KEY: ${KAVITA_API_KEY:-}
+      SCRIPTS_DIR: /scripts
+      INDEX_DB: /tmp/scripts-index.db
+    command: ["python", "-u", "/app/serve.py"]
+    volumes:
+      - ./transcribe/serve.py:/app/serve.py:ro
+      - ${MANGA_ROOT:?set MANGA_ROOT}/scripts:/scripts:ro
 
   yomu:
     build: ./web

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
+import { MessageSquareQuote, Search, X } from 'lucide-react'
 import { useAuth } from '@/lib/kavita/auth'
 import { ScanButton } from './ScanButton'
 import { Wordmark } from './ui'
@@ -53,6 +53,15 @@ export function Header({ query, onQuery }: { query?: string; onQuery?: (q: strin
               <Search className="size-5" strokeWidth={2.4} />
             </button>
           ))}
+
+        <Link
+          to="/search"
+          aria-label="Who said it? Search the scripts"
+          title="Who said it?"
+          className={searching ? 'hidden' : 'rounded-full p-2.5 text-ink transition hover:bg-sheet'}
+        >
+          <MessageSquareQuote className="size-5" strokeWidth={2.4} />
+        </Link>
 
         {isAdmin && (
           <div className={searching ? 'hidden sm:block' : undefined}>

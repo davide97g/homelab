@@ -74,15 +74,17 @@ async function refresh(): Promise<boolean> {
   return refreshing
 }
 
+// `base` is `/api` (Kavita) unless it says otherwise: the scripts service
+// lives at `/script` on the same origin and takes the same Bearer token.
 export async function api<T>(
   path: string,
-  init: { method?: string; body?: unknown; query?: Record<string, string | number | boolean> } = {},
+  init: { method?: string; body?: unknown; query?: Record<string, string | number | boolean>; base?: string } = {},
   retried = false,
 ): Promise<T> {
   const qs = init.query
     ? '?' + new URLSearchParams(Object.entries(init.query).map(([k, v]) => [k, String(v)]))
     : ''
-  const res = await fetch(`${BASE}${path}${qs}`, {
+  const res = await fetch(`${init.base ?? BASE}${path}${qs}`, {
     method: init.method ?? (init.body === undefined ? 'GET' : 'POST'),
     headers: {
       ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),

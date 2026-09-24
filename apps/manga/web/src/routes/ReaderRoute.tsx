@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ScrollText, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { adjacentChapter, saveProgress, useChapterInfo, useChapterProgress } from '@/lib/kavita/queries'
 import { pageImage } from '@/lib/kavita/images'
 import { getSession } from '@/lib/kavita/client'
 import type { ChapterInfo, Progress } from '@/lib/kavita/types'
+import { useChapterScript } from '@/lib/script/queries'
+import type { ScriptPage } from '@/lib/script/types'
 import { Bubble, Spinner } from '@/components/ui'
+import { BubbleOutline, ScriptPanel } from '@/components/ScriptPanel'
 
 type Mode = 'rtl' | 'ltr' | 'scroll'
 const MODES: { id: Mode; label: string }[] = [
@@ -39,8 +42,30 @@ function useMode(seriesId: number): [Mode, (m: Mode) => void] {
   return [mode, set]
 }
 
+// Whether the script panel opens with the reader, remembered on this device.
+function useScriptPanel(): [boolean, (open: boolean) => void] {
+  const key = 'yomu.script'
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(key) === '1'
+    } catch {
+      return false
+    }
+  })
+  const set = (o: boolean) => {
+    setOpen(o)
+    try {
+      localStorage.setItem(key, o ? '1' : '0')
+    } catch {
+      // not persisted; fine
+    }
+  }
+  return [open, set]
+}
+
 export function ReaderRoute() {
   const chapterId = Number(useParams().chapterId)
+  const [params] = useSearchParams()
   const info = useChapterInfo(chapterId)
   const progress = useChapterProgress(chapterId)
 
@@ -58,8 +83,11 @@ export function ReaderRoute() {
       </Shell>
     )
   }
+  // ?page=N (1-based, from a search result) wins over saved progress.
+  const asked = Number(params.get('page'))
   const saved = progress.data?.pageNum ?? 0
-  const start = saved >= info.data.pages ? 0 : saved
+  const start =
+    Number.isInteger(asked) && asked >= 1 && asked <= info.data.pages ? asked - 1 : saved >= info.data.pages ? 0 : saved
   return <Reader key={chapterId} chapterId={chapterId} info={info.data} start={start} />
 }
 
@@ -77,6 +105,12 @@ function Reader({ chapterId, info, start }: { chapterId: number; info: ChapterIn
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const pages = info.pages
   const done = page >= pages
+  const script = useChapterScript(chapterId).data
+  const [panelPref, setPanel] = useScriptPanel()
+  const panel = panelPref && !!script && !done
+  const [selected, setSelected] = useState<number | null>(null)
+  const scriptPage = script?.pages.find((p) => p.index === page)
+  useEffect(() => setSelected(null), [page])
   const seriesPath = `/series/${info.seriesId}`
 
   // Progress: Kavita counts pages read as the current page index, and the
@@ -147,6 +181,7 @@ function Reader({ chapterId, info, start }: { chapterId: number; info: ChapterIn
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return
       if (e.key === 'Escape') return navigate(seriesPath)
+      if (e.key === 's' && script) return setPanel(!panelPref)
       if (mode === 'scroll') return
       const rtl = mode === 'rtl'
       if (e.key === 'ArrowLeft') (rtl ? forward : back)()
@@ -158,14 +193,21 @@ function Reader({ chapterId, info, start }: { chapterId: number; info: ChapterIn
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [mode, forward, back, navigate, seriesPath])
+  }, [mode, forward, back, navigate, seriesPath, script, panelPref, setPanel])
 
   const title = info.isSpecial ? info.title : `Chapter ${info.chapterNumber}`
 
   return (
     <div className="fixed inset-0 bg-night text-sheet select-none" onPointerMove={(e) => e.pointerType === 'mouse' && poke()}>
       {mode === 'scroll' ? (
-        <ScrollPages chapterId={chapterId} pages={pages} start={start} onPage={setPage} onTap={() => setChrome((c) => !c)}>
+        <ScrollPages
+          chapterId={chapterId}
+          pages={pages}
+          start={start}
+          onPage={setPage}
+          onTap={() => setChrome((c) => !c)}
+          shrink={panel}
+        >
           <EndCard inline title={title} next={next} seriesPath={seriesPath} />
         </ScrollPages>
       ) : (
@@ -177,6 +219,9 @@ function Reader({ chapterId, info, start }: { chapterId: number; info: ChapterIn
           onForward={forward}
           onBack={back}
           onTap={() => setChrome((c) => !c)}
+          shrink={panel}
+          scriptPage={scriptPage}
+          selected={selected}
         />
       )}
 
@@ -189,6 +234,7 @@ function Reader({ chapterId, info, start }: { chapterId: number; info: ChapterIn
         className={clsx(
           'pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-night/95 via-night/70 to-transparent pb-10 transition-opacity duration-300',
           chrome || done ? 'opacity-100' : 'opacity-0',
+          panel && 'lg:right-96',
         )}
       >
         <div
@@ -204,6 +250,20 @@ function Reader({ chapterId, info, start }: { chapterId: number; info: ChapterIn
             <p className="display truncate text-[1.05rem] font-semibold">{info.seriesName}</p>
             <p className="truncate text-[0.85rem] text-sheet/60">{title}</p>
           </div>
+          {script && (
+            <button
+              onClick={() => setPanel(!panelPref)}
+              aria-pressed={panel}
+              aria-label="Script"
+              title="Script (s)"
+              className={clsx(
+                'rounded-full p-2.5 transition',
+                panel ? 'bg-sheet text-ink' : 'bg-night-2 text-sheet/70 hover:text-sheet',
+              )}
+            >
+              <ScrollText className="size-4" />
+            </button>
+          )}
           <div role="radiogroup" aria-label="Reading direction" className="flex rounded-full bg-night-2 p-1">
             {MODES.map((m) => (
               <button
@@ -229,6 +289,7 @@ function Reader({ chapterId, info, start }: { chapterId: number; info: ChapterIn
         className={clsx(
           'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-night/95 via-night/70 to-transparent pt-12 transition-opacity duration-300',
           chrome && !done ? 'opacity-100' : 'opacity-0',
+          panel && 'bottom-[42dvh] lg:right-96 lg:bottom-0',
         )}
       >
         <div
@@ -257,6 +318,16 @@ function Reader({ chapterId, info, start }: { chapterId: number; info: ChapterIn
           <span className="w-14 text-center text-[0.85rem] text-sheet/70 tabular-nums">{pages}</span>
         </div>
       </div>
+
+      {panel && (
+        <ScriptPanel
+          page={scriptPage}
+          pageNumber={Math.min(page + 1, pages)}
+          selected={mode === 'scroll' ? null : selected}
+          onSelect={setSelected}
+          onClose={() => setPanel(false)}
+        />
+      )}
     </div>
   )
 }
@@ -269,6 +340,9 @@ function PagedView({
   onForward,
   onBack,
   onTap,
+  shrink,
+  scriptPage,
+  selected,
 }: {
   chapterId: number
   page: number
@@ -277,10 +351,22 @@ function PagedView({
   onForward: () => void
   onBack: () => void
   onTap: () => void
+  shrink: boolean
+  scriptPage: ScriptPage | undefined
+  selected: number | null
 }) {
   const [loaded, setLoaded] = useState<number | null>(null)
   const down = useRef<{ x: number; y: number } | null>(null)
   const shown = Math.min(page, pages - 1)
+  const area = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState<{ width: number; height: number } | null>(null)
+  useEffect(() => {
+    const el = area.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setBox({ width: e.contentRect.width, height: e.contentRect.height }))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // One tap target for the whole screen: outer thirds turn the page (which
   // way depends on direction), the middle third shows or hides the controls.
@@ -294,7 +380,8 @@ function PagedView({
       const towardsNext = rtl ? dx > 0 : dx < 0
       return towardsNext ? onForward() : onBack()
     }
-    const x = e.clientX / window.innerWidth
+    const r = e.currentTarget.getBoundingClientRect()
+    const x = (e.clientX - r.left) / r.width
     if (x > 1 / 3 && x < 2 / 3) return onTap()
     const leftSide = x <= 1 / 3
     if (leftSide === rtl) onForward()
@@ -303,7 +390,11 @@ function PagedView({
 
   return (
     <div
-      className="absolute inset-0 grid touch-pan-y place-items-center"
+      ref={area}
+      className={clsx(
+        'absolute inset-0 grid touch-pan-y place-items-center overflow-hidden',
+        shrink && 'bottom-[42dvh] lg:right-96 lg:bottom-0',
+      )}
       onPointerDown={(e) => (down.current = { x: e.clientX, y: e.clientY })}
       onPointerUp={onPointerUp}
     >
@@ -315,10 +406,11 @@ function PagedView({
         draggable={false}
         onLoad={() => setLoaded(shown)}
         className={clsx(
-          'max-h-dvh max-w-full object-contain transition-opacity duration-150',
+          'absolute inset-0 h-full w-full object-contain transition-opacity duration-150',
           loaded === shown ? 'opacity-100' : 'opacity-0',
         )}
       />
+      {loaded === shown && <BubbleOutline page={scriptPage} order={selected} box={box} />}
     </div>
   )
 }
@@ -329,6 +421,7 @@ function ScrollPages({
   start,
   onPage,
   onTap,
+  shrink,
   children,
 }: {
   chapterId: number
@@ -336,6 +429,7 @@ function ScrollPages({
   start: number
   onPage: (p: number) => void
   onTap: () => void
+  shrink: boolean
   children: ReactNode
 }) {
   const root = useRef<HTMLDivElement>(null)
@@ -353,7 +447,11 @@ function ScrollPages({
   }, [start, onPage])
 
   return (
-    <div ref={root} className="absolute inset-0 overflow-y-auto" onClick={onTap}>
+    <div
+      ref={root}
+      className={clsx('absolute inset-0 overflow-y-auto', shrink && 'bottom-[42dvh] lg:right-96 lg:bottom-0')}
+      onClick={onTap}
+    >
       <div className="mx-auto max-w-3xl">
         {Array.from({ length: pages }, (_, i) => (
           <img

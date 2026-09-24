@@ -8,6 +8,7 @@ import { LoginRoute } from '@/routes/LoginRoute'
 import { HomeRoute } from '@/routes/HomeRoute'
 import { SeriesRoute } from '@/routes/SeriesRoute'
 import { ReaderRoute } from '@/routes/ReaderRoute'
+import { SearchRoute } from '@/routes/SearchRoute'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/" element={<HomeRoute />} />
               <Route path="/series/:id" element={<SeriesRoute />} />
               <Route path="/read/:chapterId" element={<ReaderRoute />} />
+              <Route path="/search" element={<SearchRoute />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

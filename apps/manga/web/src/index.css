@@ -15,6 +15,7 @@
   --night: #17110e;
   --night-2: #2a201b;
   --tone: rgb(58 29 22 / 0.13);
+  --scrim: rgb(23 17 14 / 0.35); /* night, dimming the page around a highlighted bubble */
   --shadow-cover: 0 1px 0 rgb(58 29 22 / 0.08), 0 18px 32px -18px rgb(58 29 22 / 0.55);
   --shadow-card: 0 1px 0 rgb(58 29 22 / 0.05), 0 24px 48px -32px rgb(58 29 22 / 0.45);
   color-scheme: light;
