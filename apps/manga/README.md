@@ -31,6 +31,11 @@ it with a read-only deploy key: `Host github-manga` in its `~/.ssh/config`.
 From the Mac, `ssh homelab` may time out on the LAN IP; `ssh -o HostName=${BOX_TAILNET_IP} homelab`
 (Tailscale) works.
 
+**Monitoring.** The hub (`monitoring.davideghiotto.it`, repo `../hub`) draws the stack as the
+bottom row of `/media`: Suwayomi → Kavita → Yomu, with queue, chapters, folder watching and
+container load, and the three appear in Atlas too. Its Kavita key is the admin's `opds` auth
+key, read out of `kavita.db` by the hub's `scripts/collect-env.sh`.
+
 **Deploy** (no CI):
 
 ```sh
@@ -52,7 +57,7 @@ of Kavita off the internet. The calls are the ones in `../porting-to-homelab.md`
 | `compose.yml` | the three services, the named volumes, and the shared bind mount |
 | `web/Dockerfile`, `web/nginx.conf` | Yomu's image: Bun build, nginx serving `dist/` and proxying `/api` |
 | `.env.example` | `MANGA_ROOT`, `SUWAYOMI_PORT`, `KAVITA_PORT`, `YOMU_PORT`, `TZ` |
-| `.env` | per host, gitignored. Mini PC: `MANGA_ROOT=./data`, default ports. Mac: `KAVITA_PORT=5001` |
+| `.env` | per host, gitignored. Mini PC: `MANGA_ROOT=./data`, default ports. On a Mac, `KAVITA_PORT=5001` (AirPlay holds 5000) |
 | `data/` | the downloads (`MANGA_ROOT`), gitignored |
 
 State outside the folder, in Docker named volumes (compose project `manga`):

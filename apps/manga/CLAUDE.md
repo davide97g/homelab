@@ -21,10 +21,11 @@ both named volumes restored, `data/` rsynced. Extensions MangaDex 1.6.0 and MANG
 - Kavita folder watching was turned on server-wide (it was off, and the per-library flag alone
   does nothing). A download now shows up in Kavita about 6 minutes later, unscanned by hand. The DB from before the
   change is `backups/kavita.db.before-folder-watching` in the `manga_kavita-config` volume.
-- Test downloads on the box: One Piece (Official Colored) ch. 2 and 3, MangaDex.
-- **The Mac copy is still running** (Docker Desktop, Yomu dev on :4571). It's now stale. Stop it
-  only when the user says so, and ask before deleting its volumes (`manga_suwayomi-data`,
-  `manga_kavita-config` on the Mac).
+- The Mac test copy kept downloading after the first move, so on 2026-09-24 its Suwayomi volume
+  replaced the box's (a superset) and `data/` was rsynced again: 89 chapters, One Piece (Official
+  Colored) and One Piece in the Suwayomi Library. Then the Mac containers, volumes and images
+  were deleted at the user's request. The Mac still has `data/` (a 1.8 GB copy of the downloads).
+- The hub's `/media` shows the stack (README § Where it runs, Monitoring).
 - The ISP (Axera) DNS-blocks mangadex.org, which is why `suwayomi` has `dns:` 1.1.1.1/9.9.9.9 in
   `compose.yml`. MangaDex downloads work on the mini PC with it (same router).
 
