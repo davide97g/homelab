@@ -54,12 +54,14 @@ of Kavita off the internet. The calls are the ones in `../porting-to-homelab.md`
 
 | | |
 |---|---|
-| `compose.yml` | the three services, the named volumes, and the shared bind mount |
+| `compose.yml` | the services, the named volumes, and the shared bind mount |
 | `covers/covers.py` | the `covers` service: real series covers into Kavita, see § Series covers |
-| `web/Dockerfile`, `web/nginx.conf` | Yomu's image: Bun build, nginx serving `dist/` and proxying `/api` |
+| `transcribe/` | chapter scripts: the `transcribe` pipeline (Mac) and `serve.py`, the `scripts` service; see § Scripts |
+| `web/Dockerfile`, `web/nginx.conf` | Yomu's image: Bun build, nginx serving `dist/` and proxying `/api` and `/script` |
 | `.env.example` | `MANGA_ROOT`, `SUWAYOMI_PORT`, `KAVITA_PORT`, `YOMU_PORT`, `TZ` |
 | `.env` | per host, gitignored. Mini PC: `MANGA_ROOT=./data`, default ports. On a Mac, `KAVITA_PORT=5001` (AirPlay holds 5000) |
-| `data/` | the downloads (`MANGA_ROOT`), gitignored |
+| `data/` | the downloads (`MANGA_ROOT`), gitignored. `data/scripts/` holds the chapter scripts |
+| `work/` | gitignored scratch on the Mac: test CBZs and their scripts while trying the pipeline |
 
 State outside the folder, in Docker named volumes (compose project `manga`):
 
@@ -148,13 +150,15 @@ web/
   src/lib/kavita/   client.ts (fetch + JWT refresh + image key), auth.tsx, queries.ts, images.ts, types.ts
   src/lib/format.ts chapter names, genre filtering, summary cleanup
   src/components/   ui.tsx (Wordmark, Bubble, Button, Pill, Cover, ProgressLine), Header, ScanButton
-  src/routes/       Login, Home, Series, Reader
+  src/lib/script/   the scripts service: types.ts, queries.ts (useChapterScript, useScriptSearch)
+  src/routes/       Login, Home, Series, Reader, Search
   src/index.css     every colour and font; the speech bubble and screentone utilities
 ```
 
 - **Public API surface.** `web/nginx.conf` forwards only the routes the reader calls
   (`account/login`, `account/refresh-token`, `series/…`, `reader/…`, `image/…-cover`,
-  `library/scan-all`) and 404s the rest of `/api`. A new Kavita call in `src/lib/kavita/` needs
+  `library/scan-all`) and 404s the rest of `/api`. `/script/` goes to our `scripts` service, not
+  Kavita, so that allowlist stays exactly Kavita's reader routes. A new Kavita call in `src/lib/kavita/` needs
   its route added to the `$kavita_route` map, or it works in `bun run dev` and 404s in production.
   Raw paths with `..` or encoded slashes get a 400, and sign-in is rate-limited to 5 per minute
   per visitor (`CF-Connecting-IP`).
@@ -183,6 +187,96 @@ web/
 profile has no `localStorage`, so every page redirects to `/login`. That's the test browser,
 not the app. Sign in again before each shot. Getting a session without typing a password means
 reading an auth key out of `kavita.db`. Ask the user before doing that, and never print the key.
+
+## Scripts (`transcribe/`): who says what, on every page
+
+Each chapter can get a **script**: every line of text on every page, in reading order, with its
+speaker by name and what kind of text it is. Yomu shows it next to the page (the scroll button in
+the reader, or `s`) and searches across every chapter at `/search`. Everything runs locally, and
+nothing costs money.
+
+```
+CBZ ──> Magi v2 ──> magi.json ──> Qwen3-VL (Ollama) ──> refined.<vlm>.json ──> script.json + script.md
+        panels, texts, reading       OCR fixes, speaker names,
+        order, OCR, speaker links,   line types, per page, with
+        characters named by the bank the previous page as context
+```
+
+- **Magi v2** ([ragavsachdeva/magiv2](https://huggingface.co/ragavsachdeva/magiv2), pinned
+  revision, remote code) is a manga model: it reads right to left, links each bubble to its speaker
+  through the tail, and names characters by matching them against a bank of reference crops.
+  Licence: personal and non-commercial use. magiv3 was tried: similar OCR, three times slower, and
+  no name bank.
+- **Qwen3-VL 8B** through Ollama sees the colour page and Magi's lines and returns, per line, the
+  corrected text (or nothing if the OCR was right), the speaker, and the type (`dialogue`,
+  `thought`, `narration`, `caption`, `sfx`, `sign`). It may not reorder or invent lines. Qwen2.5-VL
+  7B was tried: it dropped 96 of 562 lines in One Piece ch. 1 and named Zoro and Garp, who are not
+  in it.
+- A page the VLM can't answer for (it loops, or the JSON won't parse twice) keeps Magi's lines,
+  marked `source: magi`. Laughter like "HA HA HA" x60 is collapsed before the VLM sees it, which
+  is what made it loop.
+
+**Speed** on the M1 Max: Magi about 5 s a page on MPS, the VLM about 20 s, so about 10 minutes
+for a 25-page chapter.
+
+**Run it (Mac).** `brew install uv ollama`, `ollama serve`, `ollama pull qwen3-vl:8b`, then from
+`transcribe/`:
+
+```sh
+uv run transcribe --mangas ../data/mangas chapter "../data/mangas/<source>/<series>/<chapter>.cbz"
+uv run transcribe --mangas ../data/mangas series "../data/mangas/<source>/<series>"
+```
+
+Outputs go to `<mangas>/../scripts/<source>/<series>/<cbz name>/`, the library's layout, outside
+the folder Kavita watches. Each stage is cached there; `--force detect|refine` redoes one,
+`--vlm <ollama model>` picks another model (cached per model), `--no-refine` stops at Magi.
+To try it on a few chapters, copy them under `work/mangas/<source>/<series>/` and use
+`--mangas ../work/mangas`.
+
+### The character bank
+
+Magi names a character only if the bank has them, and the bank is per series
+(`scripts/<source>/<series>/bank/`). It comes from chapters already transcribed:
+
+1. `uv run transcribe --mangas … bank "<series folder>"` writes `bank/review.yaml` and
+   `bank/review.html`. Every line the VLM gave a confident name votes that name onto the character
+   box Magi says spoke it, and per name the crops nearest that name's mean Magi embedding are kept.
+   Frequent characters nobody named come after as `?` clusters. No model calls, a second or two.
+2. Open `review.html`, and in `review.yaml` set `status: confirmed` (fixing `name` if needed), delete
+   wrong crops from `crops`, or `status: ignore`. Same name, same character. Crops can be moved
+   between entries.
+3. `… bank "<series folder>" --apply` copies up to 5 crops per name into `bank/images/` and
+   `bank.json`. The next `chapter`/`series` run sees the bank changed and redoes detect and refine.
+
+Clustering first and asking the VLM to name each cluster was tried first: the clusters mixed
+characters, and it called 34 of 40 "Luffy". The VLM names people well on a page, where it sees who
+talks to whom, and badly from a grid of crops.
+
+### Serving them (`scripts` service)
+
+`transcribe/serve.py`, standard library only, like `covers`. It mounts `MANGA_ROOT/scripts`
+read-only and has no host port: Yomu's nginx forwards `/script/` to it on the compose network.
+
+| Route | |
+|---|---|
+| `GET /script/chapter/<kavita chapter id>` | that chapter's `script.json`, 404 if it has none |
+| `GET /script/search?q=` | lines matching every word (the last as a prefix), text or speaker, 50 at most |
+| `GET /script/health` | scripts and indexed lines |
+
+- **No auth of its own.** Each request's `Authorization` (the reader's Kavita JWT) goes to Kavita:
+  `GET /api/series/chapter` answers the chapter's file path, or 401. Search is filtered to the
+  series `series/all-v2` shows that token. Kavita's `series/chapter` does not check library access
+  on 0.9.1.4, so a signed-in user can read the script of any chapter id; everyone here sees the one
+  library, so it does not matter yet.
+- **Index:** SQLite FTS5 in `/tmp`, rebuilt when any `script.json` changes (checked every 10
+  minutes). Mapping a file to its chapter id needs the admin `KAVITA_API_KEY` from `.env`; without
+  it, chapter scripts work and search is off.
+- **Dev:** `KAVITA_URL=http://debian:5000 SCRIPTS_DIR=work/scripts PORT=4572 python3 transcribe/serve.py`,
+  and Vite proxies `/script` to `SCRIPTS_URL` (default `http://localhost:4572`).
+- **Deploy:** transcribe on the Mac, then
+  `rsync -a data/scripts/ homelab:~/manga/data/scripts/` (or from `work/scripts/`), and
+  `mkdir -p ~/manga/data/scripts` on the box before the first `docker compose up -d`, or Docker
+  creates it as root.
 
 ## Sources: what works
 
