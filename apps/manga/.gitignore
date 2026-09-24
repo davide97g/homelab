@@ -5,3 +5,6 @@ data/
 web/node_modules/
 web/dist/
 .DS_Store
+work/
+transcribe/.venv/
+__pycache__/
