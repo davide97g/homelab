@@ -36,12 +36,12 @@ both named volumes restored, `data/` rsynced. Extensions MangaDex 1.6.0 and MANG
 
 ## Scripts (2026-09-24)
 
-`transcribe/` built and tried on the Mac only, nothing deployed yet: One Piece (Official
+`transcribe/` runs on the Mac only: One Piece (Official
 Colored) ch. 1-3 (PowerManga) in `work/`, which is gitignored. Qwen3-VL 8B picked over Qwen2.5-VL
 7B and magiv3 (README § Scripts). The first character bank (10 characters, 44 crops) was
 pre-filled from the crops and confirmed by the user. The Yomu script panel, `/search`, the
-`scripts` service and its nginx route are written and build; `serve.py` was tested against a stub
-Kavita, not the real one (that needs a user token).
+`scripts` service and its nginx route are deployed (2026-09-24): `work/scripts/` rsynced to
+`~/manga/data/scripts`, and the index holds 902 lines from the 3 chapters, search on.
 
 ## Open
 
