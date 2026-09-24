@@ -55,6 +55,7 @@ of Kavita off the internet. The calls are the ones in `../porting-to-homelab.md`
 | | |
 |---|---|
 | `compose.yml` | the three services, the named volumes, and the shared bind mount |
+| `covers/covers.py` | the `covers` service: real series covers into Kavita, see § Series covers |
 | `web/Dockerfile`, `web/nginx.conf` | Yomu's image: Bun build, nginx serving `dist/` and proxying `/api` |
 | `.env.example` | `MANGA_ROOT`, `SUWAYOMI_PORT`, `KAVITA_PORT`, `YOMU_PORT`, `TZ` |
 | `.env` | per host, gitignored. Mini PC: `MANGA_ROOT=./data`, default ports. On a Mac, `KAVITA_PORT=5001` (AirPlay holds 5000) |
@@ -113,6 +114,27 @@ q '{"query":"mutation{startDownloader(input:{}){downloadStatus{state}}}"}'
   working scripted Kavita access yet. Its config lives in `kavita.db` in WAL mode, so a copy for
   inspection needs `kavita.db-wal` too, or it looks empty. The DB holds the user's API key and
   password hash, so delete any copy afterwards.
+
+### Series covers (`covers/`)
+
+Kavita makes a series cover from the first page of the first chapter it has: a MANGA Plus
+opening spread, or a scanlator's credits page. The `covers` service (`manga-covers`) swaps in
+the source's real cover art from Suwayomi. Every 10 minutes it:
+
+1. saves Suwayomi's thumbnail as `cover.jpg` in each downloaded series' folder, if one isn't
+   there yet;
+2. uploads it through `POST /api/upload/series` for every Kavita series whose cover isn't
+   locked, and locks it.
+
+- **Why not just `cover.jpg`:** Kavita does read one, but only from the series' `folderPath`,
+  which with Suwayomi's `<source>/<title>` layout is the source folder shared by every series in
+  it. `refresh-metadata` and forced scans ignore a `cover.jpg` in the series folder.
+- **Overrides:** a cover set by hand in Kavita is locked, and `covers` never touches a locked
+  one. To redo one from Suwayomi, delete its `cover.jpg` and unlock the cover in Kavita.
+- **Key:** it needs `KAVITA_API_KEY` in `.env` (admin auth key; the upload is admin-only).
+  Without it, it only saves the files.
+- **Caching:** Yomu's nginx sends `Cache-Control: no-cache` on cover routes, so browsers
+  revalidate and a new cover shows at once. An unchanged cover costs a 304.
 
 ## Yomu (`web/`): the reading front end
 
