@@ -23,8 +23,8 @@ both named volumes restored, `data/` rsynced. Extensions MangaDex 1.6.0 and MANG
   change is `backups/kavita.db.before-folder-watching` in the `manga_kavita-config` volume.
 - The Mac test copy kept downloading after the first move, so on 2026-09-24 its Suwayomi volume
   replaced the box's (a superset) and `data/` was rsynced again: 89 chapters, One Piece (Official
-  Colored) and One Piece in the Suwayomi Library. Then the Mac containers, volumes and images
-  were deleted at the user's request. The Mac still has `data/` (a 1.8 GB copy of the downloads).
+  Colored) and One Piece in the Suwayomi Library. Then the Mac containers, volumes, images and
+  `data/` were deleted at the user's request. The Mac holds only this source tree now.
 - The hub's `/media` shows the stack (README § Where it runs, Monitoring).
 - The ISP (Axera) DNS-blocks mangadex.org, which is why `suwayomi` has `dns:` 1.1.1.1/9.9.9.9 in
   `compose.yml`. MangaDex downloads work on the mini PC with it (same router).
