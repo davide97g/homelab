@@ -128,18 +128,22 @@ export default function PipelineGraph({
     });
 
     // The box does not take part in the pipeline; it carries it. One faint
-    // dashed link says so without implying a request ever flows through it.
-    const carries: FlowEdge = {
-      id: "host-carries",
-      source: "host",
-      target: "jellyseerr",
-      type: "default",
-      animated: false,
-      style: { stroke: DIM, strokeWidth: 1, strokeDasharray: "2 6", opacity: 0.4 },
-    };
+    // dashed link per lane says so without implying a request ever flows
+    // through it: the film lane starts at Jellyseerr, the manga one at Suwayomi.
+    const present = new Set(data.nodes.map((n) => n.id));
+    const carries: FlowEdge[] = ["jellyseerr", "suwayomi"]
+      .filter((id) => present.has(id))
+      .map((target) => ({
+        id: `host-carries-${target}`,
+        source: "host",
+        target,
+        type: "default",
+        animated: false,
+        style: { stroke: DIM, strokeWidth: 1, strokeDasharray: "2 6", opacity: 0.4 },
+      }));
 
-    return [carries, ...pipeline];
-  }, [data.edges]);
+    return [...carries, ...pipeline];
+  }, [data.edges, data.nodes]);
 
   return (
     <ReactFlow

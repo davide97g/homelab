@@ -2,11 +2,13 @@ import type { MediaNode } from "@wire";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import {
   ArrowUpRight,
+  BookOpen,
   Captions,
   Cpu,
   Download,
   Film,
   Inbox,
+  Library,
   MemoryStick,
   MonitorPlay,
   Radar,
@@ -26,6 +28,9 @@ const ICONS: Record<string, LucideIcon> = {
   qbittorrent: Download,
   bazarr: Captions,
   jellyfin: MonitorPlay,
+  suwayomi: Download,
+  kavita: Library,
+  yomu: BookOpen,
 };
 
 export type ServiceNodeData = {

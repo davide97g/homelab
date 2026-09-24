@@ -131,6 +131,28 @@ refresh_from_container BAZARR_API_KEY bazarr awk '
 refresh_from_container JELLYSEERR_API_KEY jellyseerr node -p 'require("/app/config/settings.json").main.apiKey'
 
 echo
+echo "manga — Kavita's key is read out of its database, not typed"
+echo "  Suwayomi has no auth and needs nothing. Kavita keeps its auth keys in kavita.db,"
+echo "  and its image has no sqlite3, so a throwaway alpine reads a copy of the volume."
+echo "  The key is the admin's own 'opds' key: server stats and settings are admin-only."
+# A copy, with the WAL beside it, because Kavita holds the live file open and a
+# copy without kavita.db-wal can read as empty.
+KAVITA_KEY_NOW="$(docker run --rm -v manga_kavita-config:/c:ro alpine sh -c '
+  apk add -q sqlite >/dev/null 2>&1 && mkdir /t && cp /c/kavita.db* /t/ &&
+  sqlite3 /t/kavita.db "select k.Key from AppUserAuthKey k
+    join AspNetUserRoles ur on ur.UserId = k.AppUserId
+    join AspNetRoles r on r.Id = ur.RoleId
+    where r.Name = '"'"'Admin'"'"' and k.Name = '"'"'opds'"'"' order by k.Id limit 1"' 2>/dev/null || true)"
+if [[ -n "$KAVITA_KEY_NOW" ]]; then
+  ENV[KAVITA_API_KEY]="$KAVITA_KEY_NOW"
+  echo "  KAVITA_API_KEY: read from manga_kavita-config  $(mask "$KAVITA_KEY_NOW")"
+elif [[ -n "${ENV[KAVITA_API_KEY]:-}" ]]; then
+  echo "  KAVITA_API_KEY: could not read kavita.db — keeping what is already set"
+else
+  echo "  KAVITA_API_KEY: could not read kavita.db and nothing is set — the Kavita node stays unconfigured"
+fi
+
+echo
 echo "qBittorrent — its Web UI login cannot be read from the container"
 ask QBITTORRENT_USER "qBittorrent username (blank if auth is bypassed for this subnet)"
 ask QBITTORRENT_PASS "qBittorrent password" secret

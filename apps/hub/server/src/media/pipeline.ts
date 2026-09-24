@@ -8,6 +8,7 @@ import { collectArr, collectProwlarr, radarrLibrary, sonarrLibrary } from "./col
 import { collectBazarr } from "./collect/bazarr.js";
 import { collectJellyfin } from "./collect/jellyfin.js";
 import { collectJellyseerr } from "./collect/jellyseerr.js";
+import { collectKavita, collectSuwayomi, collectYomu } from "./collect/manga.js";
 import { collectQbittorrent } from "./collect/qbittorrent.js";
 import type { Collected, Flow } from "./collect/shape.js";
 
@@ -36,6 +37,12 @@ export const POSITIONS: Record<string, { x: number; y: number }> = {
   qbittorrent: { x: 1140, y: 85 },
   bazarr: { x: 1520, y: -150 },
   jellyfin: { x: 1520, y: 320 },
+  // The manga lane, its own row under the film one: a separate stack with
+  // nothing in common except the box, so no edge joins the two. Low enough to
+  // clear the availability edge, which loops under the row above.
+  suwayomi: { x: 0, y: 700 },
+  kavita: { x: 760, y: 700 },
+  yomu: { x: 1520, y: 700 },
 };
 
 type EdgeSpec = {
@@ -127,6 +134,24 @@ const EDGES: EdgeSpec[] = [
     note: "Runs backwards on purpose: the library telling the front door the file exists. Animated while something is playing.",
     busy: (f) => n(f, "jellyfin", "playing") > 0,
   },
+  {
+    id: "suwayomi-kavita",
+    from: "suwayomi",
+    to: "kavita",
+    label: "CBZ files",
+    kind: "forward",
+    note: "A shared folder, not an API: Suwayomi writes CBZs and Kavita's folder watcher indexes them a few minutes later. Busy while chapters are downloading.",
+    busy: (f) => n(f, "suwayomi", "running") > 0 && n(f, "suwayomi", "queue") > 0,
+  },
+  {
+    id: "kavita-yomu",
+    from: "kavita",
+    to: "yomu",
+    label: "reads",
+    kind: "forward",
+    note: "Yomu proxies only the reader's routes to Kavita. Kavita has no live-reader count to animate this by, so it stays still.",
+    busy: () => false,
+  },
 ];
 
 /** Cached apart from everything else and for far longer: the *arr library
@@ -164,6 +189,9 @@ const CONTAINER_BY_NODE: Record<string, string> = {
   prowlarr: "prowlarr",
   qbittorrent: "qbittorrent",
   bazarr: "bazarr",
+  suwayomi: "suwayomi",
+  kavita: "kavita",
+  yomu: "yomu",
 };
 
 async function assemble(): Promise<MediaPipeline> {
@@ -176,6 +204,9 @@ async function assemble(): Promise<MediaPipeline> {
       collectQbittorrent(),
       collectBazarr(),
       collectJellyfin(),
+      collectSuwayomi(),
+      collectKavita(),
+      collectYomu(),
     ]),
     soft(containerLoad()),
   ]);
@@ -218,6 +249,7 @@ async function assemble(): Promise<MediaPipeline> {
 
   const notes = [
     "Everything except Jellyfin runs on the mini PC. Jellyfin is on the NAS, which is why its card has no CPU or memory line — cAdvisor there is a different scrape and the pipeline does not need it twice.",
+    "The bottom row is the manga stack (~/manga): Suwayomi and Kavita are LAN only, and Yomu is the one public door, at manga.davideghiotto.it.",
     "A request is Processing from the moment it imports until the nightly copy lands on the NAS, not Available. The library is copied, not mounted: the NAS is on a different physical network.",
   ];
   if (counts.unconfigured > 0) {
@@ -229,7 +261,7 @@ async function assemble(): Promise<MediaPipeline> {
   return { at: new Date().toISOString(), stale: false, nodes, edges, counts, notes };
 }
 
-/** Seven services, each with its own timeout, run against a budget the way
+/** Ten services, each with its own timeout, run against a budget the way
  *  /api/summary is: past it the last good payload is served with `stale: true`
  *  rather than letting one sick service hold the page. */
 export async function pipeline(): Promise<MediaPipeline> {

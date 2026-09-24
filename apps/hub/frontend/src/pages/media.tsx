@@ -39,7 +39,7 @@ export function MediaPage({ data }: { data: Summary }) {
   if (!media) {
     return (
       <div className="flex h-72 items-center justify-center">
-        <Booting label="asking seven services what they are doing" />
+        <Booting label="asking ten services what they are doing" />
       </div>
     );
   }

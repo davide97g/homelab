@@ -119,7 +119,7 @@ both inherited from mediarr-dash and both easy to be surprised by:
 | `/logs` | **Built.** Loki behind structured filters, with a 5 s live tail. |
 | `/actions` | **Built.** The dispatcher, the media writes, Dokploy redeploy, and the audit. |
 | `/ask` Pinned answers | **Built.** Answers kept from the composer. Specs in `localStorage`, re-queried live on every visit. |
-| `/media` | **Built.** The pipeline as a graph: seven services, live numbers on each card, the lists behind them in a drawer, and edges that animate only where something is moving. This is what mediarr-dash used to be — that app was retired on 2026-09-20. |
+| `/media` | **Built.** The pipeline as a graph: seven services, live numbers on each card, the lists behind them in a drawer, and edges that animate only where something is moving. This is what mediarr-dash used to be — that app was retired on 2026-09-20. Since 2026-09-24 a second row carries the manga stack (`~/manga`): Suwayomi → Kavita → Yomu, collected in `server/src/media/collect/manga.ts`. Suwayomi needs no key; Kavita's is read out of `kavita.db` by `collect-env.sh`; Yomu is asked through `manga.davideghiotto.it`. |
 
 Every route is built. A service whose key has never been collected still draws
 its node — it says which key is missing rather than showing an empty panel that
