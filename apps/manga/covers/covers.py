@@ -1,21 +1,29 @@
-"""Put each series' real cover beside its chapters, for Kavita.
+"""Give every Kavita series its real cover, not the first page of its first chapter.
 
-Kavita takes a series cover from the first page of the first chapter it has,
-which for MANGA Plus is a title card and for MangaDex scanlations is often a
-credits page. A `cover.*` image in the series folder wins over that, so this
-writes one: the thumbnail Suwayomi already knows for the series, which is the
-source's own cover art.
+Kavita builds a series cover from the first page of the first chapter it has,
+which for MANGA Plus is a chapter's opening spread and for MangaDex scanlations
+is often a credits page. Suwayomi already holds the source's own cover art for
+every series, so this takes it from there.
 
-Runs in its own container next to Suwayomi, every COVERS_INTERVAL seconds:
+Kavita would also read a `cover.jpg`, but only from the series' *folderPath*,
+and with Suwayomi's `<source>/<title>` layout that is the source folder, shared
+by every series in it. So the cover goes in through Kavita's upload API
+instead, which also locks it against later scans.
+
+Every COVERS_INTERVAL seconds:
 
   1. ask Suwayomi which manga have at least one downloaded chapter
   2. find each one's folder under MANGA_ROOT/mangas/<source>/<title>
-  3. if the folder has no cover.* yet, fetch the thumbnail and write it
-  4. ask Kavita to refresh that series' covers, when a key is set
+  3. if that folder has no cover.* yet, save Suwayomi's thumbnail there
+  4. for each Kavita series in one of those folders whose cover is not locked,
+     upload that cover.* and lock it
 
-A cover already in a folder is never replaced, so dropping your own cover.jpg
-into one is how to override this. Standard library only.
+A cover set by hand in Kavita is locked too, so it is never replaced. The
+cover.* files are the cache and a record; to redo one, delete it and unlock the
+series' cover in Kavita. Standard library only.
 """
+
+import base64
 
 import json
 import os
@@ -107,19 +115,31 @@ def kavita(path: str, body: dict | None = None):
     return json.loads(text) if text else None
 
 
-def refresh_kavita(folders: list[pathlib.Path]) -> None:
-    """A normal scan keeps the cover Kavita already generated, so a new cover.jpg
-    needs a forced cover refresh for its series. Kavita addresses series by id,
-    found here by the folder it lives in."""
+def cover_file(folder: pathlib.Path) -> pathlib.Path | None:
+    for p in folder.iterdir():
+        if p.is_file() and p.stem.lower() == "cover" and p.suffix.lower() in EXT.values():
+            return p
+    return None
+
+
+def upload_to_kavita(folders: list[pathlib.Path]) -> None:
+    """Kavita knows a series by id; it is matched here by lowestFolderPath, the
+    series' own folder as Kavita's container sees it (/manga is MANGA_ROOT/mangas).
+    The upload takes raw base64, not a data: URL."""
     if not KAVITA_KEY or not folders:
         return
-    wanted = {"/manga/" + str(f.relative_to(ROOT)) for f in folders}
+    by_path = {"/manga/" + str(f.relative_to(ROOT)): f for f in folders}
     every = kavita("/api/series/all-v2?PageNumber=1&PageSize=0", {"statements": [], "combination": 1, "limitTo": 0})
     for s in every or []:
-        if s.get("lowestFolderPath") not in wanted:
+        folder = by_path.get(s.get("lowestFolderPath", ""))
+        if folder is None or s.get("coverImageLocked"):
             continue
-        kavita("/api/series/refresh-metadata", {"libraryId": s["libraryId"], "seriesId": s["id"], "forceUpdate": True})
-        log(f"kavita: refreshing covers for {s.get('name')}")
+        cover = cover_file(folder)
+        if cover is None:
+            continue
+        encoded = base64.b64encode(cover.read_bytes()).decode()
+        kavita("/api/upload/series", {"id": s["id"], "url": encoded, "lockCover": True})
+        log(f"kavita: cover set for {s.get('name')}")
 
 
 def once() -> None:
@@ -132,30 +152,30 @@ def once() -> None:
         % ",".join(map(str, ids))
     )["mangas"]["nodes"]
 
-    written: list[pathlib.Path] = []
+    folders: list[pathlib.Path] = []
     for m in mangas:
         source = (m.get("source") or {}).get("displayName") or ""
         folder = folder_for(source, m["title"])
         if folder is None:
             log(f"skip {m['title']!r}: no folder under {source!r}")
             continue
+        folders.append(folder)
         if has_cover(folder):
             continue
         try:
             name = write_cover(m["id"], folder)
-            written.append(folder)
             log(f"wrote {folder.relative_to(ROOT)}/{name}")
         except (urllib.error.URLError, RuntimeError, OSError) as err:
             log(f"cover for {m['title']!r} failed: {err}")
 
     try:
-        refresh_kavita(written)
+        upload_to_kavita(folders)
     except (urllib.error.URLError, OSError, ValueError) as err:
-        log(f"kavita refresh failed, it will show on the next forced scan: {err}")
+        log(f"kavita upload failed, next pass retries: {err}")
 
 
 def main() -> int:
-    log(f"covers: every {INTERVAL}s, Kavita refresh {'on' if KAVITA_KEY else 'off (no KAVITA_API_KEY)'}")
+    log(f"covers: every {INTERVAL}s, Kavita upload {'on' if KAVITA_KEY else 'off (no KAVITA_API_KEY: files only)'}")
     while True:
         try:
             once()

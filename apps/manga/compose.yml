@@ -16,7 +16,7 @@
 #   SUWAYOMI_PORT   default 4567
 #   KAVITA_PORT     default 5000 (macOS AirPlay holds 5000; use 5001 on a Mac)
 #   YOMU_PORT       default 4571, the tunnel's upstream
-#   KAVITA_API_KEY  optional, an admin auth key; lets `covers` refresh Kavita
+#   KAVITA_API_KEY  an admin auth key; without it `covers` only saves the files
 #   TZ              default Europe/Rome
 
 services:
@@ -55,9 +55,10 @@ services:
       - kavita-config:/kavita/config
       - ${MANGA_ROOT:?set MANGA_ROOT}/mangas:/manga:ro
 
-  # Writes each series' real cover (Suwayomi's thumbnail) into its folder as
-  # cover.jpg, which Kavita prefers to the first page of the first chapter.
-  # See covers/covers.py.
+  # Gives each Kavita series its real cover (Suwayomi's thumbnail, cached as
+  # cover.jpg in the series folder) instead of its first chapter's first page,
+  # through Kavita's upload API. Needs KAVITA_API_KEY for the upload. See
+  # covers/covers.py.
   covers:
     image: python:3.13-alpine
     container_name: manga-covers
