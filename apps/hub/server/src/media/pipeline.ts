@@ -40,9 +40,9 @@ export const POSITIONS: Record<string, { x: number; y: number }> = {
   // The manga lane, its own row under the film one: a separate stack with
   // nothing in common except the box, so no edge joins the two. Low enough to
   // clear the availability edge, which loops under the row above.
-  suwayomi: { x: 0, y: 700 },
-  kavita: { x: 760, y: 700 },
-  yomu: { x: 1520, y: 700 },
+  suwayomi: { x: 0, y: 820 },
+  kavita: { x: 760, y: 820 },
+  yomu: { x: 1520, y: 820 },
 };
 
 type EdgeSpec = {
