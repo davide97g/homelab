@@ -91,7 +91,7 @@ function Hero({ series, resuming }: { series: Series; resuming: boolean }) {
       <div aria-hidden className="tone absolute inset-y-0 right-0 w-2/3 [mask-image:linear-gradient(to_left,black,transparent)]" />
       <div className="relative grid gap-6 p-5 sm:grid-cols-[minmax(0,15rem)_1fr] sm:gap-10 sm:p-9">
         <Link to={`/series/${series.id}`} className="mx-auto w-44 sm:w-full">
-          <Cover src={seriesCover(series.id)} alt="" className="rotate-[-1.5deg] transition hover:rotate-0" />
+          <Cover src={seriesCover(series)} alt="" className="rotate-[-1.5deg] transition hover:rotate-0" />
         </Link>
 
         <div className="flex min-w-0 flex-col justify-center">
@@ -145,7 +145,7 @@ function SeriesCard({ series, className }: { series: Series; className?: string 
   return (
     <Link to={`/series/${series.id}`} className={`group block ${className ?? ''}`}>
       <div className="relative transition duration-300 group-hover:-translate-y-1">
-        <Cover src={seriesCover(series.id)} alt="" />
+        <Cover src={seriesCover(series)} alt="" />
         {p === 100 && (
           <span className="absolute right-2 top-2 rounded-full bg-ink px-2 py-0.5 text-[0.7rem] text-sheet">Read</span>
         )}

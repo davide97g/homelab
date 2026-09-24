@@ -48,7 +48,7 @@ export function SeriesRoute() {
 
         <div className="grid gap-8 md:grid-cols-[minmax(0,17rem)_1fr] md:gap-12">
           <div className="mx-auto w-48 md:sticky md:top-8 md:w-full md:self-start">
-            <Cover src={seriesCover(id)} alt="" />
+            {series.data ? <Cover src={seriesCover(series.data)} alt="" /> : <div className="cover aspect-[2/3] w-full" />}
           </div>
 
           <div className="min-w-0">

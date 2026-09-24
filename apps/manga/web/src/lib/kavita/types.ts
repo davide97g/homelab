@@ -29,6 +29,7 @@ export interface Series {
   lastChapterAddedUtc: string
   latestReadDate: string
   primaryColor: string | null
+  coverImage: string | null
 }
 
 export interface Chapter {
