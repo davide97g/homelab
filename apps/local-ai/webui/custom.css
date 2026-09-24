@@ -1,0 +1,18 @@
+/* Open WebUI loads /static/custom.css on every page. Mounted from compose.yaml. */
+
+/* Tool call rows, tagged .owui-tool by loader.js: small grey "Tool: web search". */
+.owui-tool {
+	font-size: 0.8125rem;
+	color: #9ca3af;
+}
+html.dark .owui-tool {
+	color: #6b7280;
+}
+.owui-tool > div > span[class~='@md:hidden'],
+.owui-tool > div > span[class~='@md:inline'] {
+	display: none !important;
+}
+/* Success check gone. The spinner while it runs and the red cross on failure stay. */
+.owui-tool .text-emerald-500 {
+	display: none;
+}

@@ -1,0 +1,17 @@
+# SearXNG for Open WebUI. Only Open WebUI talks to it, over the compose network.
+# Everything not set here comes from SearXNG's own defaults.
+use_default_settings: true
+
+server:
+  # secret_key comes from SEARXNG_SECRET in searxng.env
+  limiter: false # one known client, no bots to rate-limit
+  image_proxy: false
+  public_instance: false
+
+search:
+  safe_search: 0
+  # Open WebUI asks for format=json, which SearXNG refuses unless it is listed here.
+  formats: [html, json]
+
+ui:
+  static_use_hash: true
