@@ -141,6 +141,32 @@ services:
       NO_REDOC: "True"
     mem_limit: 2g # one worker sits at ~0.7 GB idle
 
+  # Sits between the tunnel and LiteLLM for the streaming API paths only (a path rule on
+  # $LLM_HOST's ingress). Cloudflare cuts a request that is silent for 100 s, and LiteLLM
+  # sends nothing until the first token, so a coding agent's big first prompt got a 524.
+  # This answers 200 and writes SSE comments until LiteLLM's stream starts. See
+  # keepalive/server.mjs. Localhost only: cloudflared runs on the host.
+  llm-keepalive:
+    image: node:24.21.0-alpine
+    container_name: llm-keepalive
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      - litellm
+    ports:
+      - "127.0.0.1:4001:8080"
+    volumes:
+      - ./keepalive/server.mjs:/app/server.mjs:ro
+    command: ["node", "/app/server.mjs"]
+    environment:
+      UPSTREAM: http://litellm:4000
+    mem_limit: 128m
+
   litellm-db:
     image: postgres:17.6-alpine
     container_name: litellm-db

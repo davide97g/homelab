@@ -38,6 +38,8 @@ jobs:
           TAILNET_HOST: ci
           WEBUI_SECRET_KEY: ci
         run: docker compose -f apps/local-ai/compose.yaml config --quiet
+      - name: Keepalive proxy parses
+        run: node --check apps/local-ai/keepalive/server.mjs
 
   deploy:
     needs: check

@@ -211,6 +211,22 @@ LiteLLM's switch does not cover it; it lists endpoints and holds no data. In a b
 a test user signed in at `/ui`, created a key under Virtual Keys, and that key worked for
 `/v1/chat/completions` and streaming `/v1/messages` over the public URL.
 
+**Cloudflare's 100 s cutoff, and the keepalive proxy** (2026-09-25). Cloudflare ends a
+proxied request with a 524 when the origin sends nothing for 100 s, and only Enterprise
+can raise that, for any path. LiteLLM sends no headers until the model's first token
+(`_buffer_first_chunk_honoring_disconnect` in `proxy/common_request_processing.py`), and
+an OpenCode turn is 1–3 min of prefill here, more when queued. So agents on the public URL
+died at the first big prompt while the LAN was fine. `llm-keepalive`
+([`keepalive/server.mjs`](keepalive/server.mjs), Node, no dependencies, `127.0.0.1:4001`)
+now takes the streaming paths: a second ingress rule on `$LLM_HOST`, path
+`^/(v1/)?(chat/completions|messages|responses)$` -> `http://localhost:4001`, placed before
+the `:4000` rule. For a `"stream": true` request it waits 2 s. Auth and rate-limit errors
+come back inside that with their own status. Past it, it answers 200 `text/event-stream`
+itself and writes `: keepalive` comment lines every 15 s until LiteLLM starts streaming.
+SSE clients skip comments. A later LiteLLM error becomes an SSE error event in that API's
+shape. Non-streaming requests pass through unchanged and can still hit the 100 s limit.
+Every agent in [`CONNECT.md`](CONNECT.md) streams. The LAN `:4000` does not go through it.
+
 After a new hostname, the Mac's resolver can hold a cached NXDOMAIN for a few minutes
 (`curl` exit 6 while `dig @1.1.1.1` answers). `curl --doh-url https://1.1.1.1/dns-query`
 gets around it. Flushing the cache needs sudo.
