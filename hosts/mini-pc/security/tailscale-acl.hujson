@@ -1,0 +1,30 @@
+// Tailscale ACL policy for tailnet tail740ca3.ts.net — the DURABLE layer that scopes
+// the mini PC (debian) to its owner.
+//
+// The tailnet currently has NO acls block, which means default allow-all: every node
+// reaches every node. That is why ilai5800@gmail.com's devices (the NAS + an iPhone)
+// can reach every no-auth port on debian. Adding this `acls` list switches the tailnet
+// to default-deny, so ONLY the flows listed below are allowed.
+//
+// Only two users exist and the only homelab flows are owner-initiated (debian -> NAS
+// for xfer/Jellyfin/ssh, and the Mac -> everything), so this policy preserves every
+// real flow while denying ilai5800 -> the owner's devices (i.e. -> debian).
+//
+// APPLY VIA THE TAILSCALE ADMIN CONSOLE (Access Controls). The editor validates and
+// previews before saving, and you keep console access even if a rule is wrong — so a
+// mistake here does not lock you out of the tailnet, only of node-to-node traffic.
+{
+  "acls": [
+    // The owner's own devices (Mac, debian) may reach the entire tailnet.
+    { "action": "accept", "src": ["ghiotto.davidenko@gmail.com"], "dst": ["*:*"] },
+
+    // The other user's devices may talk amongst themselves...
+    { "action": "accept", "src": ["ilai5800@gmail.com"], "dst": ["ilai5800@gmail.com:*"] },
+
+    // ...but nothing grants ilai5800@gmail.com -> ghiotto.davidenko@gmail.com, so the
+    // NAS and iPhone can no longer reach debian's ports. This is the whole point.
+  ],
+
+  // Keep node ownership pinned so tags/owners are unambiguous if you extend this later.
+  "tagOwners": {},
+}

@@ -1,0 +1,17 @@
+[Unit]
+# Re-applies the DOCKER-USER filter after every Docker start. Docker recreates the
+# DOCKER-USER chain (and drops any rules in it) whenever the daemon restarts, so the
+# rules must be reinstalled after docker.service comes up — not just at boot.
+Description=Reapply DOCKER-USER hardening for the mini PC
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/docker-user-hardening.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=docker.service
