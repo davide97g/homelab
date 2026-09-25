@@ -38,8 +38,8 @@ key, read out of `kavita.db` by the hub's `scripts/collect-env.sh`.
 
 **Deploy** (no CI):
 
-**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `manga` app (app name `manga`, so the project, containers and the
-`manga_kavita-config` / `manga_suwayomi-data` volumes are unchanged) builds Yomu and brings the
+**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `manga` app (`manga-jwxcm5`; the `manga_kavita-config` and `manga_suwayomi-data`
+volumes are pinned by name, so Kavita's accounts and progress carried over) builds Yomu and brings the
 stack up from its checkout. `MANGA_ROOT` in its Environment tab is the absolute
 `/home/davide/manga/data`: the library, downloads and scripts stay in `~/manga/data` on the box,
 outside anything a deploy replaces. **Never delete `~/manga/data`.** `up -d` recreates only the services whose config changed, and the named volumes survive it.

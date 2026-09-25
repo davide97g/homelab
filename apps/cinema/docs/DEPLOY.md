@@ -116,8 +116,7 @@ to be `chown`ed to `1000:1000` for the container's non-root user, which otherwis
 with `SQLite Error 8: attempt to write a readonly database`.
 
 This copy deploys itself: a push to `main` that touches `apps/cinema` (outside the iOS and Android
-forks) runs `.github/workflows/cinema.yml`, and Dokploy's app `web` on the mini PC — the same
-compose project name, and so the same `cinema-web` container, as before — builds it from the
+forks) runs `.github/workflows/cinema.yml`, and Dokploy's app `web-1pwofz` on the mini PC builds it from the
 repo. The NAS copy above is still the tar by hand: Dokploy cannot reach the NAS. The mini PC's
 two per-host values live in that app's Dokploy Environment tab:
 

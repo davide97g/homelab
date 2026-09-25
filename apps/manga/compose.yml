@@ -109,6 +109,11 @@ services:
     ports:
       - "${YOMU_PORT:-4571}:80"
 
+# Pinned to the names these volumes got under plain `docker compose` (project
+# `manga`). Dokploy runs this under its own app name, which would otherwise
+# prefix every volume differently and start the stack on empty ones.
 volumes:
   suwayomi-data:
+    name: manga_suwayomi-data
   kavita-config:
+    name: manga_kavita-config

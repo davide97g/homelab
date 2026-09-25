@@ -46,17 +46,19 @@ history; rolling back is reverting the commit.
 
 | App | Dokploy app name | Compose path | Workflow |
 |---|---|---|---|
-| hub | `hub` | `apps/hub/docker-compose.yml` | `hub.yml` |
+| hub | `hub-nppqob` | `apps/hub/docker-compose.yml` | `hub.yml` |
 | monitoring | `monitoring-frontend-fnhjyi` | `apps/monitoring/docker-compose.yml` | `monitoring.yml` |
-| manga | `manga` | `apps/manga/compose.yml` | `manga.yml` |
-| local-ai | `local-ai` | `apps/local-ai/compose.yaml` | `local-ai.yml` |
-| cinema, mini PC copy | `web` | `apps/cinema/services/web/compose.yaml` | `cinema.yml` |
-| jarvis-server | `jarvis-server` | `apps/tv/jarvis-server/docker-compose.yml` | `jarvis-server.yml` |
-| mediarr | `mediarr` | `stacks/mediarr/compose.yml` | `mediarr.yml` |
-| swarm | `swarm` | `stacks/swarm/compose.yml` | `swarm.yml` |
+| manga | `manga-jwxcm5` | `apps/manga/compose.yml` | `manga.yml` |
+| local-ai | `local-ai-uurnqn` | `apps/local-ai/compose.yaml` | `local-ai.yml` |
+| cinema, mini PC copy | `web-1pwofz` | `apps/cinema/services/web/compose.yaml` | `cinema.yml` |
+| jarvis-server | `jarvis-server-b7bwor` | `apps/tv/jarvis-server/docker-compose.yml` | `jarvis-server.yml` |
+| mediarr | `mediarr-uvnh8c` | `stacks/mediarr/compose.yml` | `mediarr.yml` |
+| swarm | `swarm-xxmn65` | `stacks/swarm/compose.yml` | `swarm.yml` |
 
-The app names are the compose project names these stacks already had, so moving them into
-Dokploy kept their containers, volumes and networks. Secrets live in each app's Environment tab,
+The app name is the compose project name, and Dokploy picks it with a random suffix that cannot
+be changed afterwards. So every named volume that predates Dokploy is pinned with `name:` to the
+name it had under plain compose (`manga_kavita-config`, `mediarr_radarr-config`, `hub_hub-data`, …);
+networks are per-stack and were simply recreated. Secrets live in each app's Environment tab,
 which Dokploy writes to a `.env` beside the compose file. Repository secrets: `DOKPLOY_URL`,
 `DOKPLOY_API_KEY`, and one `DOKPLOY_COMPOSE_ID_<APP>` per app.
 

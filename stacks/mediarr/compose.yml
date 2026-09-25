@@ -254,14 +254,25 @@ configs:
         }
       }
 
+# Pinned to the names these volumes got under plain `docker compose` (project
+# `mediarr`). Dokploy runs this under its own app name, which would otherwise
+# prefix every volume differently and start the stack on empty ones.
 volumes:
   jellyseerr-config:
+    name: mediarr_jellyseerr-config
   # The local Jellyfin's config and cache, written before it was retired and
   # read again now that it is back.
   jellyfin-config:
+    name: mediarr_jellyfin-config
   jellyfin-cache:
+    name: mediarr_jellyfin-cache
   prowlarr-config:
+    name: mediarr_prowlarr-config
   radarr-config:
+    name: mediarr_radarr-config
   sonarr-config:
+    name: mediarr_sonarr-config
   bazarr-config:
+    name: mediarr_bazarr-config
   qbittorrent-config:
+    name: mediarr_qbittorrent-config

@@ -136,7 +136,7 @@ An empty `-e server_host ""` does **not** clear a stored value; use `pm clear`.
 ## The server
 
 **Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `jarvis-server` app
-(same project and container name as before) builds it from `apps/tv/jarvis-server`, with its
+(`jarvis-server-b7bwor`) builds it from `apps/tv/jarvis-server`, with its
 `.env` from the Dokploy Environment tab. The launcher APK is not deployed that way: it installs
 over ADB on the LAN with `scripts/deploy-tv.sh`.
 

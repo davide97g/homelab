@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Operate the stack on the box. Deploying is a push to main: Dokploy's `mediarr`
+# Operate the stack on the box. Deploying is a push to main: Dokploy's `mediarr-uvnh8c`
 # app clones davide97g/homelab and runs compose from its checkout, with the
 # secrets from its Environment tab. This script works on that same checkout, so
 # nothing it does can bring back an older compose file.
@@ -13,8 +13,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 HOST=${DEPLOY_HOST:-homelab}
-DIR=/etc/dokploy/compose/mediarr/code/stacks/mediarr
-COMPOSE="docker compose -p mediarr --env-file .env -f compose.yml"
+DIR=/etc/dokploy/compose/mediarr-uvnh8c/code/stacks/mediarr
+COMPOSE="docker compose -p mediarr-uvnh8c --env-file .env -f compose.yml"
 ACTION=${1:-up}
 
 log() { printf '\033[38;5;154m▸\033[0m %s\n' "$*"; }

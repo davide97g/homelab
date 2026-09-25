@@ -63,10 +63,9 @@ Nothing is installed on the box beyond a folder of two files — `~/mediarr/comp
 
 ## Deploy
 
-**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `mediarr` app (app
-name `mediarr`, so the project, containers, `mediarr_*` volumes and the `mediarr_mediarr` network
-are the ones that were already there) runs compose from its checkout in
-`/etc/dokploy/compose/mediarr/code/stacks/mediarr`, with `MEDIA_ROOT`, `PUID`/`PGID`, `TZ`,
+**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `mediarr` app
+(`mediarr-uvnh8c`; every `mediarr_*` volume is pinned by name, so all config carried over) runs
+compose from its checkout in `/etc/dokploy/compose/mediarr-uvnh8c/code/stacks/mediarr`, with `MEDIA_ROOT`, `PUID`/`PGID`, `TZ`,
 `RENDER_GID` and `NAS_TAILNET_IP` from its Environment tab. The local `.env` only tells the helper
 scripts which host to ssh to.
 

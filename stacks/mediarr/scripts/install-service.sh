@@ -6,8 +6,8 @@
 #   mediarr.service     brings the stack up at boot, from Dokploy's checkout
 #   mediarr-heal.timer  runs heal.sh every minute
 #
-# Dokploy deploys the stack (app name `mediarr`), so both units use its checkout
-# in /etc/dokploy/compose/mediarr/code/stacks/mediarr and never a copy of their
+# Dokploy deploys the stack (app name `mediarr-uvnh8c`), so both units use its checkout
+# in /etc/dokploy/compose/mediarr-uvnh8c/code/stacks/mediarr and never a copy of their
 # own. heal.sh itself still lives in $DEPLOY_PATH.
 #
 # Needs sudo on the box, so run it from a terminal where you can type the
@@ -22,7 +22,7 @@ set -a; . ./.env; set +a
 
 HOST=${DEPLOY_HOST:?}
 DIR=${DEPLOY_PATH:?}
-COMPOSE_DIR=/etc/dokploy/compose/mediarr/code/stacks/mediarr
+COMPOSE_DIR=/etc/dokploy/compose/mediarr-uvnh8c/code/stacks/mediarr
 # The unit runs as the box user that owns $DIR, not as root.
 USER_ON_BOX=$(ssh "$HOST" id -un)
 
@@ -45,8 +45,8 @@ Type=oneshot
 RemainAfterExit=yes
 User=$USER_ON_BOX
 WorkingDirectory=$COMPOSE_DIR
-ExecStart=/usr/bin/docker compose -p mediarr --env-file .env -f compose.yml up -d
-ExecStop=/usr/bin/docker compose -p mediarr --env-file .env -f compose.yml stop
+ExecStart=/usr/bin/docker compose -p mediarr-uvnh8c --env-file .env -f compose.yml up -d
+ExecStop=/usr/bin/docker compose -p mediarr-uvnh8c --env-file .env -f compose.yml stop
 TimeoutStartSec=0
 
 [Install]

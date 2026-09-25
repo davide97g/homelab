@@ -50,8 +50,8 @@ two can only disagree about the handful of values the browser derives itself.
 
 ## Deploy
 
-**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `hub` app (app name `hub`, so the compose project,
-container and `hub_hub-data` volume are the ones that were already there) clones the repo and runs
+**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `hub` app (`hub-nppqob`; the `hub_hub-data` volume is pinned by name, so the audit log
+carried over) clones the repo and runs
 `up -d --build` in `apps/hub`: the image is built on the box, there is no registry. Secrets live
 in its Environment tab.
 

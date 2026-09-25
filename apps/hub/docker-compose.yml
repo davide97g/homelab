@@ -105,8 +105,12 @@ services:
     # Whether the proxy is working is visible where it matters: /api/containers
     # reports source "cadvisor" instead of "docker" the moment it is not.
 
+# Pinned to the names these volumes got under plain `docker compose` (project
+# `hub`). Dokploy runs this under its own app name, which would otherwise
+# prefix every volume differently and start the stack on empty ones.
 volumes:
   hub-data:
+    name: hub_hub-data
 
 networks:
   # Created by the monitoring stack, and the name carries Dokploy's app slug, so
