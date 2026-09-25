@@ -1,0 +1,748 @@
+# Homelab monitoring stack — Prometheus + Grafana + node_exporter + cAdvisor.
+#
+# GENERATED FILE — do not edit. Edit compose.base.yml and dashboards/*.json,
+# then run ./build.py.
+#
+# Everything is inlined as compose `configs`, so docker-compose.yml is fully
+# self-contained: paste it into Dokploy as a Raw compose app, no side files.
+#
+# Environment (set in the Dokploy Environment tab):
+#   GRAFANA_ADMIN_PASSWORD  required
+#   QBITTORRENT_USER        required, the qBittorrent WebUI login
+#   QBITTORRENT_PASS        required, its password
+#   GRAFANA_ROOT_URL        optional, e.g. https://grafana.davideghiotto.it
+#   GRAFANA_COOKIE_SECURE   optional, set true once served over HTTPS
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: homelab-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=180d
+      - --storage.tsdb.retention.size=30GB
+      - --web.enable-lifecycle
+    extra_hosts:
+      # node_exporter runs on the host network, so reach it via the bridge gateway.
+      - host.docker.internal:host-gateway
+    volumes:
+      - prometheus-data:/prometheus
+    configs:
+      - source: prometheus_yml
+        target: /etc/prometheus/prometheus.yml
+      - source: prometheus_rules_yml
+        target: /etc/prometheus/rules/homelab.rules.yml
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.12.1
+    container_name: homelab-node-exporter
+    restart: unless-stopped
+    # Host network + host PID so interface, process and sensor metrics are the
+    # host's own, not the container's. Root is required to read the hwmon and
+    # powercap sensor files.
+    network_mode: host
+    pid: host
+    user: root
+    command:
+      - --path.rootfs=/host
+      - --collector.hwmon
+      - --collector.rapl
+      # No --collector.systemd. It talks to systemd over the private dbus socket
+      # at /run/systemd/private, and --path.rootfs does not redirect that any
+      # more than it redirects procfs -- so from inside a container the
+      # collector fails on every single scrape and emits nothing:
+      # `count({__name__=~"node_systemd.*"})` is empty while
+      # node_scrape_collector_success{collector="systemd"} is 0.
+      #
+      # Failing would be free if it were quiet. It is not: an explicitly enabled
+      # collector logs its failure at ERROR, so this wrote 240 lines an hour --
+      # every one of node-exporter's own error lines -- saying `couldn't get
+      # dbus connection`. That is 3% of the mini PC's log volume, which is
+      # survivable, and 100% of what a "show me errors" filter returns for this
+      # container, which is not: it buries the errors worth reading.
+      #
+      # Fixing it properly means mounting /run/systemd/private, which hands the
+      # container a control channel to systemd -- it could start and stop units.
+      # That is a real privilege increase for metrics no panel plots. The NAS's
+      # node_exporter already leaves this off for the same reason.
+      #
+      # No --collector.processes either. It walks every host PID, the docker-default
+      # AppArmor profile denies it ptrace read, and the kernel logged the denial
+      # ~2370 times an hour -- 23% of the whole journal, and now 23% of what
+      # ships to Loki. Nothing plots node_processes_*, and the process counts
+      # that are actually wanted (node_procs_running, node_procs_blocked) come
+      # from the always-on stat collector. Re-enable it only alongside
+      # `security_opt: [apparmor=unconfined]`, which is a real privilege
+      # increase for a metric no panel uses.
+      - --collector.netdev.device-exclude=^(veth|docker|br-|lo).*$$
+    volumes:
+      - /:/host:ro,rslave
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    container_name: homelab-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    command:
+      - --housekeeping_interval=15s
+      - --docker_only=true
+      - --store_container_labels=false
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - monitoring
+
+  json-exporter:
+    image: prometheuscommunity/json-exporter:v0.8.0
+    container_name: homelab-json-exporter
+    restart: unless-stopped
+    # Bridges the Tasmota smart plug into Prometheus. The plug speaks JSON over
+    # HTTP (/cm?cmnd=Status 10) and has no /metrics of its own, so this maps its
+    # ENERGY object onto metrics. Prometheus scrapes this, not the plug.
+    command:
+      - --config.file=/config.yml
+    configs:
+      - source: json_exporter_yml
+        target: /config.yml
+    networks:
+      - monitoring
+
+  qbittorrent-exporter:
+    image: esanchezm/prometheus-qbittorrent-exporter:sha-5f776a7
+    container_name: homelab-qbittorrent-exporter
+    restart: unless-stopped
+    # Client-wide rates and torrent counts broken down by category and status, so
+    # "was qBittorrent seeding at 07:20" is answerable from history. The WebUI is
+    # on the host, not in this network, so it is reached through the bridge
+    # gateway like node_exporter. The image publishes no semver tags, only latest
+    # and sha-*, hence the sha pin.
+    #
+    # Deliberately NOT per-torrent. The exporters that expose a `name` label put
+    # one churning series per torrent into the TSDB, and the obvious candidate
+    # (ghcr.io/martabal/qbittorrent-exporter) is also broken against qBittorrent
+    # 5.2.3, which answers a successful /auth/login with 204 where the exporter
+    # insists on 200. Live per-torrent numbers come from the WebUI API directly,
+    # where they belong.
+    environment:
+      QBITTORRENT_HOST: host.docker.internal
+      QBITTORRENT_PORT: "8080"
+      QBITTORRENT_USER: ${QBITTORRENT_USER:?set QBITTORRENT_USER in the Dokploy Environment tab}
+      QBITTORRENT_PASS: ${QBITTORRENT_PASS:?set QBITTORRENT_PASS in the Dokploy Environment tab}
+      EXPORTER_PORT: "8000"
+      METRICS_PREFIX: qbittorrent
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:3.7.8
+    container_name: homelab-loki
+    restart: unless-stopped
+    # Root because a fresh named volume comes up owned by root and Loki's
+    # default uid (10001) cannot create /loki/chunks inside it.
+    user: root
+    command:
+      - --config.file=/etc/loki/loki.yml
+    ports:
+      # Loopback only. This exists for one reason: cloudflared runs as a host
+      # systemd service, not a container, and the NAS can only reach Loki
+      # through the tunnel (its tailscaled is userspace-mode, so the NAS has no
+      # tailnet egress at all). Nothing on the LAN can see this.
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - loki-data:/loki
+    configs:
+      - source: loki_yml
+        target: /etc/loki/loki.yml
+    networks:
+      - monitoring
+    # No healthcheck. The image is distroless -- no shell, no wget, no curl, not
+    # even busybox -- so a `test:` of any shape exits -1 and marks a perfectly
+    # healthy Loki unhealthy forever. Prometheus scrapes its /metrics instead,
+    # which is better monitoring than a container flag anyway: `up{job="loki"}`
+    # and the LokiDown alert say the same thing and are visible from the
+    # dashboard.
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: homelab-alloy
+    restart: unless-stopped
+    depends_on:
+      - loki
+    # Root for two reasons: the journal files are root:systemd-journal, and the
+    # Docker socket is root:docker. Promtail would have done this job but went
+    # end-of-life on 2 March 2026.
+    user: root
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - alloy-data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    configs:
+      - source: alloy_config
+        target: /etc/alloy/config.alloy
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    container_name: homelab-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in the Dokploy Environment tab}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Business Text: the one panel that runs JavaScript, which is what draws
+      # the viewers in 3D. Grafana installs it at container start, so the box
+      # needs to reach grafana.com the first time it comes up.
+      GF_INSTALL_PLUGINS: marcusolsson-dynamictext-panel
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/homelab-overview.json
+      # Set GRAFANA_ROOT_URL once a domain fronts this, otherwise redirects,
+      # share links and alert links all point at localhost:3001.
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+      GF_SERVER_ENFORCE_DOMAIN: "false"
+      # Cloudflare and Traefik both sit in front, so trust the forwarded headers.
+      GF_SERVER_ROUTER_LOGGING: "false"
+      GF_SECURITY_COOKIE_SECURE: ${GRAFANA_COOKIE_SECURE:-false}
+      GF_SECURITY_COOKIE_SAMESITE: lax
+    volumes:
+      - grafana-data:/var/lib/grafana
+    configs:
+      - source: grafana_datasource_yml
+        target: /etc/grafana/provisioning/datasources/prometheus.yml
+      - source: grafana_dashboard_provider_yml
+        target: /etc/grafana/provisioning/dashboards/homelab.yml
+      - source: grafana_dashboard_overview_json
+        target: /var/lib/grafana/dashboards/homelab-overview.json
+      - source: grafana_dashboard_logs_json
+        target: /var/lib/grafana/dashboards/homelab-logs.json
+    networks:
+      - monitoring
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  alloy-data:
+
+networks:
+  monitoring:
+    driver: bridge
+
+configs:
+  prometheus_yml:
+    content: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+        external_labels:
+          host: debian
+
+      rule_files:
+        - /etc/prometheus/rules/*.yml
+
+      scrape_configs:
+        - job_name: prometheus
+          static_configs:
+            - targets: ["localhost:9090"]
+
+        - job_name: node
+          static_configs:
+            - targets: ["host.docker.internal:9100"]
+              labels:
+                instance: homelab
+
+        - job_name: cadvisor
+          static_configs:
+            - targets: ["cadvisor:8080"]
+              labels:
+                instance: homelab
+
+        # NOUS A1T smart plug (Tasmota) feeding the box, via json-exporter.
+        # The plug is DHCP-reserved at 192.168.15.132 on the Fritz!Box.
+        - job_name: smartplug
+          metrics_path: /probe
+          scrape_interval: 15s
+          scrape_timeout: 10s
+          params:
+            module: [tasmota]
+          static_configs:
+            - targets: ["http://192.168.15.132/cm?cmnd=Status%2010"]
+          relabel_configs:
+            - source_labels: [__address__]
+              target_label: __param_target
+            - target_label: instance
+              replacement: homelab
+            - target_label: __address__
+              replacement: json-exporter:7979
+
+        - job_name: qbittorrent
+          static_configs:
+            - targets: ["qbittorrent-exporter:8000"]
+              labels:
+                instance: homelab
+
+        - job_name: alloy
+          static_configs:
+            - targets: ["alloy:12345"]
+              labels:
+                instance: homelab
+
+        - job_name: loki
+          static_configs:
+            - targets: ["loki:3100"]
+              labels:
+                instance: homelab
+
+        # The NAS (UGREEN DXP4800 Pro) is on someone else's network and is only
+        # reachable over Tailscale — its LAN address does not answer from here,
+        # and the path is DERP-relayed at 35-80ms with no direct connection, so
+        # these two jobs scrape four times slower than the local ones and allow
+        # a much longer timeout. ${NAS_TAILNET_IP} is a tailnet address, which is
+        # stable, so this is the one place the no-hard-coded-IP rule does not
+        # apply.
+        - job_name: node-nas
+          scrape_interval: 60s
+          scrape_timeout: 20s
+          static_configs:
+            - targets: ["${NAS_TAILNET_IP}:9100"]
+              labels:
+                instance: nas
+
+        - job_name: cadvisor-nas
+          scrape_interval: 60s
+          scrape_timeout: 20s
+          static_configs:
+            - targets: ["${NAS_TAILNET_IP}:8081"]
+              labels:
+                instance: nas
+
+        # Who is watching what on the NAS's Jellyfin -- the server behind
+        # cinema.davideghiotto.it. Same tailnet path, same slower cadence as the
+        # two jobs above. The exporter answers jellyfin_up 0 rather than failing
+        # the scrape when its API key is missing, so a key that was never
+        # created shows up as a panel saying so, not as a dead target.
+        - job_name: jellyfin-nas
+          scrape_interval: 60s
+          scrape_timeout: 20s
+          static_configs:
+            - targets: ["${NAS_TAILNET_IP}:9101"]
+              labels:
+                instance: nas
+
+  prometheus_rules_yml:
+    content: |
+      # Power for the GMKtec M6 Ultra (Ryzen 5 7640HS).
+      #
+      # Real wall watts now come from a NOUS A1T metering plug (Tasmota) that the
+      # box is plugged into, scraped through json-exporter. The old model is kept
+      # as :model and used as a fallback whenever the plug is unreachable, so the
+      # dashboard never goes blank.
+      #
+      # The model exists because the only power sensor this board exposes is the
+      # amdgpu PPT rail — CPU cores and iGPU only. It does NOT see the NVMe
+      # drive, the DIMMs, the 2.5G NIC, the fan, the board, or the loss in the
+      # external power brick, so it reads well below actual wall draw.
+      #   PLATFORM_OFFSET  10 W  — NVMe idle ~1.5, 2x DDR5 SODIMM ~3,
+      #                            RTL8125B at 2.5G ~1.5, fan ~1, board ~3
+      #   PSU_EFFICIENCY   0.89  — typical external 19V brick under light load
+      groups:
+        - name: homelab-power
+          interval: 15s
+          rules:
+            - record: homelab:power_package_watts
+              expr: |
+                node_hwmon_power_watt
+                  * on(instance, chip) group_left(chip_name)
+                node_hwmon_chip_names{chip_name="amdgpu"}
+
+            - record: homelab:power_package_watts:avg
+              expr: |
+                node_hwmon_power_average_watt
+                  * on(instance, chip) group_left(chip_name)
+                node_hwmon_chip_names{chip_name="amdgpu"}
+
+            - record: homelab:power_wall_watts:model
+              expr: (homelab:power_package_watts + 10) / 0.89
+
+            # Measured first, model second. `or` only evaluates the right side
+            # when the left has no series, i.e. when the plug scrape is failing.
+            # Both sides are reduced to a bare instance="homelab" label set so
+            # the recorded series does not change shape when it switches source.
+            - record: homelab:power_wall_watts:estimate
+              expr: |
+                max by (instance) (tasmota_active_power_watts{job="smartplug"})
+                  or
+                max by (instance) (homelab:power_wall_watts:model)
+
+            - record: homelab:energy_total_kwh
+              expr: max by (instance) (tasmota_energy_total_kilowatt_hours{job="smartplug"})
+
+        - name: homelab-alerts
+          interval: 30s
+          rules:
+            - alert: HostDown
+              expr: up{job="node"} == 0
+              for: 2m
+              labels:
+                severity: critical
+              annotations:
+                summary: node_exporter unreachable — the box may be down or asleep again
+
+            - alert: EthernetLinkFlapping
+              expr: changes(node_network_up{device="enp3s0"}[15m]) > 2
+              for: 1m
+              labels:
+                severity: warning
+              annotations:
+                summary: enp3s0 link flapped more than twice in 15 minutes
+
+            - alert: EthernetErrors
+              expr: rate(node_network_receive_errs_total{device="enp3s0"}[10m]) > 0
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: enp3s0 is logging receive errors
+
+            # instance is pinned on these two from here on: node metrics now
+            # arrive from the NAS as well, and an unscoped expression would fire
+            # this rule for the wrong machine with the wrong summary.
+            - alert: MemoryPressure
+              expr: |
+                (1 - node_memory_MemAvailable_bytes{instance="homelab"}
+                   / node_memory_MemTotal_bytes{instance="homelab"}) > 0.90
+              for: 15m
+              labels:
+                severity: warning
+              annotations:
+                summary: less than 10% of RAM available for 15 minutes
+
+            - alert: DiskFillingUp
+              expr: |
+                node_filesystem_avail_bytes{instance="homelab",mountpoint="/"}
+                  / node_filesystem_size_bytes{instance="homelab",mountpoint="/"} < 0.10
+              for: 30m
+              labels:
+                severity: warning
+              annotations:
+                summary: root filesystem is over 90% full
+
+            - alert: LokiDown
+              expr: up{job="loki"} == 0
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: Loki is not answering — logs are not being stored
+
+            - alert: SmartPlugDown
+              expr: up{job="smartplug"} == 0
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: smart plug unreachable — wall power has fallen back to the model
+
+            - alert: CPUHot
+              expr: |
+                node_hwmon_temp_celsius
+                  * on(chip) group_left(chip_name)
+                node_hwmon_chip_names{chip_name="k10temp"} > 90
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: CPU die sustained above 90C
+
+        # The NAS is not on a metering plug, so Intel RAPL is the only power
+        # signal it has -- CPU package and cores, nothing for the disk or the
+        # board. A 5m window because that job scrapes every 60s.
+        - name: nas-power
+          interval: 60s
+          rules:
+            - record: nas:power_package_watts
+              expr: rate(node_rapl_package_joules_total{instance="nas"}[5m])
+            - record: nas:power_core_watts
+              expr: rate(node_rapl_core_joules_total{instance="nas"}[5m])
+
+        # Every one of these arrives over a DERP-relayed tailnet hop, so NasDown
+        # waits 10 minutes: a relay hiccup is not an outage.
+        - name: nas-alerts
+          interval: 30s
+          rules:
+            - alert: NasDown
+              expr: up{job="node-nas"} == 0
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: NAS node_exporter unreachable over the tailnet for 10 minutes
+
+            - alert: NasPoolFillingUp
+              expr: |
+                node_filesystem_avail_bytes{instance="nas",mountpoint="/volume1"}
+                  / node_filesystem_size_bytes{instance="nas",mountpoint="/volume1"} < 0.10
+              for: 30m
+              labels:
+                severity: warning
+              annotations:
+                summary: NAS /volume1 is over 90% full
+
+            - alert: NasRaidDegraded
+              expr: node_md_disks{instance="nas",state="active"} < node_md_disks_required
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: NAS md array has fewer active disks than it requires
+
+            - alert: NasDiskHot
+              expr: max(node_hwmon_temp_celsius{instance="nas"}) > 60
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: NAS sensor sustained above 60C
+
+  json_exporter_yml:
+    content: |
+      # Maps the Tasmota ENERGY object onto Prometheus metrics.
+      # Sample payload: {"StatusSNS":{"ENERGY":{"Power":21,"Voltage":230,...}}}
+      modules:
+        tasmota:
+          metrics:
+            - name: tasmota
+              help: Tasmota ENERGY sensor reading from the smart plug
+              type: object
+              path: '{ .StatusSNS.ENERGY }'
+              values:
+                active_power_watts: '{.Power}'
+                apparent_power_voltamperes: '{.ApparentPower}'
+                power_factor_ratio: '{.Factor}'
+                voltage_volts: '{.Voltage}'
+                current_amperes: '{.Current}'
+                energy_today_kilowatt_hours: '{.Today}'
+                energy_total_kilowatt_hours: '{.Total}'
+
+  grafana_datasource_yml:
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          uid: prometheus
+          type: prometheus
+          access: proxy
+          url: http://prometheus:9090
+          isDefault: true
+          jsonData:
+            timeInterval: 15s
+            httpMethod: POST
+        - name: Loki
+          uid: loki
+          type: loki
+          access: proxy
+          url: http://loki:3100
+          jsonData:
+            # Alloy writes `level` as a stream label, so Grafana can colour rows
+            # without having to derive the level from the line itself.
+            derivedFields: []
+
+  grafana_dashboard_provider_yml:
+    content: |
+      apiVersion: 1
+      providers:
+        - name: homelab
+          orgId: 1
+          type: file
+          disableDeletion: false
+          updateIntervalSeconds: 30
+          allowUiUpdates: true
+          options:
+            path: /var/lib/grafana/dashboards
+            foldersFromFilesStructure: false
+
+  loki_yml:
+    content: |
+      # Single-binary Loki on local disk. No object store, no ring beyond one
+      # member: this is one box with 297G free, not a cluster.
+      auth_enabled: false
+
+      server:
+        http_listen_port: 3100
+        grpc_listen_port: 9096
+        # Loki is chatty at info and its own logs would end up in itself.
+        log_level: warn
+
+      common:
+        instance_addr: 127.0.0.1
+        path_prefix: /loki
+        storage:
+          filesystem:
+            chunks_directory: /loki/chunks
+            rules_directory: /loki/rules
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+
+      schema_config:
+        configs:
+          - from: 2026-01-01
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+
+      limits_config:
+        # 30 days, against Prometheus's 180. Logs are an order of magnitude
+        # bulkier per day and are read while the question is still fresh.
+        retention_period: 720h
+        ingestion_rate_mb: 16
+        ingestion_burst_size_mb: 32
+        # Forty containers plus the journal is a lot of streams for the default
+        # per-tenant caps, and there is only one tenant.
+        max_streams_per_user: 0
+        max_global_streams_per_user: 0
+        allow_structured_metadata: true
+        volume_enabled: true
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+
+      compactor:
+        working_directory: /loki/compactor
+        # Without this, retention_period above is inert and the disk just grows.
+        retention_enabled: true
+        delete_request_store: filesystem
+        compaction_interval: 10m
+
+      ruler:
+        storage:
+          type: local
+          local:
+            directory: /loki/rules
+
+      analytics:
+        reporting_enabled: false
+
+  alloy_config:
+    content: |
+      // Log collection for the mini PC: every Docker container plus the host's
+      // systemd journal, shipped to Loki next door. Promtail's replacement --
+      // Promtail reached end-of-life on 2 March 2026.
+      logging {
+        level  = "warn"
+        format = "logfmt"
+      }
+
+      discovery.docker "containers" {
+        host             = "unix:///var/run/docker.sock"
+        refresh_interval = "15s"
+      }
+
+      discovery.relabel "containers" {
+        targets = discovery.docker.containers.targets
+
+        // Docker reports names with a leading slash.
+        rule {
+          source_labels = ["__meta_docker_container_name"]
+          regex         = "/(.*)"
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+          target_label  = "compose_project"
+        }
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+          target_label  = "compose_service"
+        }
+        rule {
+          target_label = "job"
+          replacement  = "docker"
+        }
+      }
+
+      loki.source.docker "containers" {
+        host       = "unix:///var/run/docker.sock"
+        targets    = discovery.relabel.containers.output
+        labels     = { host = "homelab" }
+        forward_to = [loki.write.local.receiver]
+      }
+
+      loki.relabel "journal" {
+        forward_to = []
+
+        rule {
+          source_labels = ["__journal__systemd_unit"]
+          target_label  = "unit"
+        }
+        rule {
+          source_labels = ["__journal_priority_keyword"]
+          target_label  = "level"
+        }
+        rule {
+          source_labels = ["__journal_syslog_identifier"]
+          target_label  = "identifier"
+        }
+        // loki.source.journal defaults job to its own component path
+        // ("loki.source.journal.host") and that default beats the `labels`
+        // argument. Relabelling runs afterwards, so this is where job is won.
+        rule {
+          target_label = "job"
+          replacement  = "journal"
+        }
+      }
+
+      loki.source.journal "host" {
+        path          = "/var/log/journal"
+        // A restart should backfill half a day, not the whole persistent journal.
+        max_age       = "12h"
+        relabel_rules = loki.relabel.journal.rules
+        labels        = { host = "homelab" }
+        forward_to    = [loki.write.local.receiver]
+      }
+
+      loki.write "local" {
+        endpoint {
+          url = "http://loki:3100/loki/api/v1/push"
+        }
+      }
+
+  grafana_dashboard_overview_json:
+    content: |
+      {"uid":"homelab-overview","title":"Homelab Overview","tags":["homelab"],"timezone":"browser","schemaVersion":39,"version":6,"refresh":"30s","time":{"from":"now-6h","to":"now"},"editable":true,"graphTooltip":1,"templating":{"list":[{"name":"cost_per_kwh","label":"Cost per kWh (EUR, all-in marginal)","type":"textbox","query":"0.27","current":{"text":"0.27","value":"0.27"},"options":[],"hide":0},{"name":"smooth","label":"Smoothing","type":"interval","query":"1m,2m,5m,10m,30m,1h","current":{"text":"5m","value":"5m"},"options":[{"text":"1m","value":"1m","selected":false},{"text":"2m","value":"2m","selected":false},{"text":"5m","value":"5m","selected":true},{"text":"10m","value":"10m","selected":false},{"text":"30m","value":"30m","selected":false},{"text":"1h","value":"1h","selected":false}],"auto":false,"hide":0}]},"panels":[{"id":20,"type":"stat","title":"CPU","description":"Busy percentage across all threads. Big number is the latest sample, the sparkline is the selected range. Legend under it: mean / max over the range.","gridPos":{"h":6,"w":4,"x":0,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"100 - (avg(rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m])) * 100)","legendFormat":"busy","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"area","colorMode":"value","textMode":"value","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"percent","decimals":1,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":50},{"color":"red","value":85}]}},"overrides":[]}},{"id":21,"type":"stat","title":"Memory","description":"RAM in use (total minus available) as a percentage.","gridPos":{"h":6,"w":4,"x":4,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"100 * (1 - node_memory_MemAvailable_bytes{instance=\"homelab\"} / node_memory_MemTotal_bytes{instance=\"homelab\"})","legendFormat":"used","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"area","colorMode":"value","textMode":"value","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"percent","decimals":1,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":75},{"color":"red","value":90}]}},"overrides":[]}},{"id":22,"type":"stat","title":"Temperature","description":"The hottest sensor on the box right now, named. Sensors the kernel gives no label fall back to their raw hwmon name.","gridPos":{"h":6,"w":4,"x":8,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"topk(1, (label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"})","legendFormat":"{{chip_name}} {{display}}","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"area","colorMode":"value","textMode":"value","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"celsius","decimals":1,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":70},{"color":"red","value":85}]}},"overrides":[]}},{"id":23,"type":"stat","title":"Power","description":"Estimated wall power: APU package scaled for PSU loss plus the fixed platform offset.","gridPos":{"h":6,"w":4,"x":12,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"homelab:power_wall_watts:estimate","legendFormat":"wall","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"area","colorMode":"value","textMode":"value","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"watt","decimals":1,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":35},{"color":"red","value":60}]}},"overrides":[]}},{"id":24,"type":"stat","title":"Network","description":"enp3s0 receive plus transmit, in bits per second.","gridPos":{"h":6,"w":4,"x":16,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"(rate(node_network_receive_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) + rate(node_network_transmit_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m])) * 8","legendFormat":"rx + tx","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"area","colorMode":"value","textMode":"value","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"bps","decimals":0,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":500000000},{"color":"red","value":900000000}]}},"overrides":[]}},{"id":25,"type":"stat","title":"Disk","description":"Root filesystem usage.","gridPos":{"h":6,"w":4,"x":20,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"max(100 * (1 - node_filesystem_avail_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"}))","legendFormat":"root used","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"area","colorMode":"value","textMode":"value","justifyMode":"auto","orientation":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"percent","decimals":1,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":75},{"color":"red","value":90}]}},"overrides":[]}},{"id":100,"type":"row","title":"Power & energy","collapsed":false,"gridPos":{"h":1,"w":24,"x":0,"y":6},"panels":[]},{"id":1,"type":"stat","title":"Wall power (estimated)","description":"APU package power scaled for PSU loss plus a fixed platform offset (NVMe, RAM, NIC, fan). See the recording rule in prometheus for the constants.","gridPos":{"h":4,"w":6,"x":0,"y":7},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"homelab:power_wall_watts:estimate","legendFormat":"wall","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"area","colorMode":"value","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"watt","decimals":1,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":35},{"color":"red","value":60}]}},"overrides":[]}},{"id":2,"type":"stat","title":"APU package power","description":"Measured directly from the amdgpu PPT sensor. CPU + integrated GPU only.","gridPos":{"h":4,"w":6,"x":6,"y":7},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"homelab:power_package_watts","legendFormat":"package","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"area","colorMode":"value","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"watt","decimals":1,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":25},{"color":"red","value":45}]}},"overrides":[]}},{"id":3,"type":"stat","title":"Energy per day","description":"24h average wall power projected over a full day.","gridPos":{"h":4,"w":6,"x":12,"y":7},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"avg_over_time(homelab:power_wall_watts:estimate[24h]) * 24 / 1000","legendFormat":"kWh/day","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"none","colorMode":"value","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"kwatth","decimals":2,"color":{"mode":"fixed","fixedColor":"blue"}},"overrides":[]}},{"id":4,"type":"stat","title":"Cost per month","description":"30d projection at the cost_per_kwh dashboard variable.","gridPos":{"h":4,"w":6,"x":18,"y":7},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"avg_over_time(homelab:power_wall_watts:estimate[24h]) * 720 / 1000 * $$cost_per_kwh","legendFormat":"EUR/month","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"none","colorMode":"value","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"currencyEUR","decimals":2,"color":{"mode":"fixed","fixedColor":"purple"}},"overrides":[]}},{"id":5,"type":"timeseries","title":"Power draw","gridPos":{"h":8,"w":24,"x":0,"y":11},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"homelab:power_wall_watts:estimate","legendFormat":"wall (estimated)","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"homelab:power_package_watts","legendFormat":"APU package (instant)","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"C","expr":"homelab:power_package_watts:avg","legendFormat":"APU package (rolling avg)","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"watt","decimals":1,"custom":{"fillOpacity":10,"lineWidth":2,"showPoints":"never","gradientMode":"opacity"}},"overrides":[]},"options":{"legend":{"displayMode":"table","placement":"bottom","calcs":["min","mean","max","lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":101,"type":"row","title":"Compute & thermals","collapsed":false,"gridPos":{"h":1,"w":24,"x":0,"y":19},"panels":[]},{"id":6,"type":"timeseries","title":"CPU utilisation","gridPos":{"h":8,"w":12,"x":0,"y":20},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"100 - (avg(rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m])) * 100)","legendFormat":"TOTAL","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"100 - (rate(node_cpu_seconds_total{instance=\"homelab\",mode=\"idle\"}[5m]) * 100)","legendFormat":"cpu{{cpu}}","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"percent","min":0,"max":100,"decimals":1,"custom":{"fillOpacity":0,"lineWidth":1,"showPoints":"never"}},"overrides":[{"matcher":{"id":"byName","options":"TOTAL"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"text"}},{"id":"custom.lineWidth","value":3},{"id":"custom.fillOpacity","value":8}]}]},"options":{"legend":{"displayMode":"list","placement":"bottom","calcs":[],"sortBy":"Max","sortDesc":true},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":7,"type":"timeseries","title":"Memory","description":"`used` is total minus MemAvailable, so it excludes reclaimable page cache \u2014 this is the number to watch. `cache + buffers` is free RAM the kernel is borrowing for file cache and will hand back under pressure. `swap used` climbing while `used` stays low means vm.swappiness is evicting cold pages for no reason.","gridPos":{"h":8,"w":12,"x":12,"y":20},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"node_memory_MemTotal_bytes{instance=\"homelab\"} - node_memory_MemAvailable_bytes{instance=\"homelab\"}","legendFormat":"used","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"node_memory_Cached_bytes{instance=\"homelab\"} + node_memory_Buffers_bytes{instance=\"homelab\"}","legendFormat":"cache + buffers","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"D","expr":"node_memory_SwapTotal_bytes{instance=\"homelab\"} - node_memory_SwapFree_bytes{instance=\"homelab\"}","legendFormat":"swap used","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"C","expr":"node_memory_MemTotal_bytes{instance=\"homelab\"}","legendFormat":"total","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"bytes","min":0,"custom":{"fillOpacity":10,"lineWidth":2,"showPoints":"never"}},"overrides":[{"matcher":{"id":"byName","options":"total"},"properties":[{"id":"custom.fillOpacity","value":0},{"id":"custom.lineStyle","value":{"fill":"dash","dash":[10,10]}},{"id":"color","value":{"mode":"fixed","fixedColor":"text"}}]}]},"options":{"legend":{"displayMode":"table","placement":"bottom","calcs":["mean","max","lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":9,"type":"timeseries","title":"Temperatures","gridPos":{"h":8,"w":16,"x":0,"y":28},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"max((label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"})","legendFormat":"MAX (all sensors)","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"(label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} * on(instance,chip,sensor) group_left(label) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"label\", \"(.*)\") or label_replace(node_hwmon_temp_celsius{instance=\"homelab\"} unless on(instance,chip,sensor) node_hwmon_sensor_label{instance=\"homelab\"}, \"display\", \"$$1\", \"chip\", \"(.*)\")) * on(instance,chip) group_left(chip_name) node_hwmon_chip_names{instance=\"homelab\"}","legendFormat":"{{chip_name}} {{display}}","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"celsius","decimals":1,"custom":{"fillOpacity":0,"lineWidth":1,"showPoints":"never"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":70},{"color":"red","value":85}]}},"overrides":[{"matcher":{"id":"byName","options":"MAX (all sensors)"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"text"}},{"id":"custom.lineWidth","value":3},{"id":"custom.fillOpacity","value":8}]}]},"options":{"legend":{"displayMode":"table","placement":"bottom","calcs":["mean","max","lastNotNull"],"sortBy":"Max","sortDesc":true},"tooltip":{"mode":"multi","sort":"desc"}},"description":"Every hwmon sensor by its kernel label: Tctl is the CPU die, Composite / Sensor 1 / Sensor 2 are the NVMe, edge is the iGPU, spd5118 are the DIMMs. mt7921_phy0 is the WiFi chip on an interface that is DOWN, so it tracks case temperature rather than load. Sensors the kernel gives no label are named by their chip instead."},{"id":14,"type":"stat","title":"Host","gridPos":{"h":8,"w":8,"x":16,"y":28},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"time() - node_boot_time_seconds{instance=\"homelab\"}","legendFormat":"uptime","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"node_load1{instance=\"homelab\"}","legendFormat":"load 1m","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"C","expr":"count(count by (cpu) (node_cpu_seconds_total{instance=\"homelab\"}))","legendFormat":"threads","datasource":{"type":"prometheus","uid":"prometheus"}}],"options":{"graphMode":"none","colorMode":"none","textMode":"auto","orientation":"horizontal","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"short","decimals":2},"overrides":[{"matcher":{"id":"byName","options":"uptime"},"properties":[{"id":"unit","value":"s"},{"id":"decimals","value":0}]}]}},{"id":15,"type":"timeseries","title":"Temperature min / avg / max (smoothed)","gridPos":{"h":8,"w":24,"x":0,"y":36},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"max(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})","legendFormat":"max","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"avg(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})","legendFormat":"avg","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"C","expr":"min(avg_over_time(node_hwmon_temp_celsius{instance=\"homelab\"}[$$smooth]) * on(chip) group_left() node_hwmon_chip_names{instance=\"homelab\"})","legendFormat":"min","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"celsius","decimals":1,"custom":{"fillOpacity":0,"lineWidth":2,"showPoints":"never"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":70},{"color":"red","value":85}]}},"overrides":[{"matcher":{"id":"byName","options":"max"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"red"}},{"id":"custom.lineWidth","value":2}]},{"matcher":{"id":"byName","options":"avg"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"yellow"}},{"id":"custom.lineWidth","value":2}]},{"matcher":{"id":"byName","options":"min"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"blue"}},{"id":"custom.lineWidth","value":2}]}]},"options":{"legend":{"displayMode":"table","placement":"bottom","calcs":["min","mean","max","lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},"description":"Min, average and max across every sensor, smoothed over $$smooth. The max line usually belongs to the WiFi chip or the NVMe rather than the CPU, and the WiFi interface is DOWN, so all three rising together means the case is heat-soaking, not that one component is working. The Temperatures panel above says which sensor is which."},{"id":102,"type":"row","title":"Network & storage","collapsed":false,"gridPos":{"h":1,"w":24,"x":0,"y":44},"panels":[]},{"id":8,"type":"timeseries","title":"Ethernet enp3s0 throughput","gridPos":{"h":8,"w":12,"x":0,"y":45},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"rate(node_network_receive_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) * 8","legendFormat":"receive","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"rate(node_network_transmit_bytes_total{instance=\"homelab\",device=\"enp3s0\"}[5m]) * 8","legendFormat":"transmit","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"bps","custom":{"fillOpacity":10,"lineWidth":2,"showPoints":"never","gradientMode":"opacity"}},"overrides":[{"matcher":{"id":"byName","options":"transmit"},"properties":[{"id":"custom.transform","value":"negative-Y"}]}]},"options":{"legend":{"displayMode":"table","placement":"bottom","calcs":["mean","max","lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":13,"type":"timeseries","title":"Disk","gridPos":{"h":8,"w":12,"x":12,"y":45},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"node_filesystem_size_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"} - node_filesystem_avail_bytes{instance=\"homelab\",mountpoint=\"/\",fstype!=\"tmpfs\"}","legendFormat":"used","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"rate(node_disk_read_bytes_total{instance=\"homelab\",device=\"nvme0n1\"}[5m])","legendFormat":"read","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"C","expr":"rate(node_disk_written_bytes_total{instance=\"homelab\",device=\"nvme0n1\"}[5m])","legendFormat":"write","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"bytes","min":0,"custom":{"fillOpacity":0,"lineWidth":2,"showPoints":"never"}},"overrides":[{"matcher":{"id":"byName","options":"used"},"properties":[{"id":"custom.axisPlacement","value":"right"}]}]},"options":{"legend":{"displayMode":"table","placement":"bottom","calcs":["mean","max","lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":12,"type":"timeseries","title":"enp3s0 errors and drops","description":"Should stay flat at zero. A rising line means the NIC or the link is unhealthy.","gridPos":{"h":6,"w":24,"x":0,"y":53},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"rate(node_network_receive_errs_total{instance=\"homelab\",device=\"enp3s0\"}[5m])","legendFormat":"rx errors","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"B","expr":"rate(node_network_transmit_errs_total{instance=\"homelab\",device=\"enp3s0\"}[5m])","legendFormat":"tx errors","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"C","expr":"rate(node_network_receive_drop_total{instance=\"homelab\",device=\"enp3s0\"}[5m])","legendFormat":"rx drops","datasource":{"type":"prometheus","uid":"prometheus"}},{"refId":"D","expr":"changes(node_network_up{instance=\"homelab\",device=\"enp3s0\"}[5m])","legendFormat":"link flaps","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"short","min":0,"custom":{"fillOpacity":0,"lineWidth":2,"showPoints":"never"}},"overrides":[]},"options":{"legend":{"displayMode":"list","placement":"bottom","calcs":[]},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":103,"type":"row","title":"Containers","collapsed":false,"gridPos":{"h":1,"w":24,"x":0,"y":59},"panels":[]},{"id":10,"type":"timeseries","title":"Container CPU","gridPos":{"h":8,"w":12,"x":0,"y":60},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"topk(10, sum by (name) (rate(container_cpu_usage_seconds_total{instance=\"homelab\",name!=\"\"}[5m])) * 100)","legendFormat":"{{name}}","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"percent","decimals":2,"custom":{"fillOpacity":20,"lineWidth":1,"showPoints":"never","stacking":{"mode":"normal","group":"A"}}},"overrides":[]},"options":{"legend":{"displayMode":"table","placement":"bottom","calcs":["mean","max"],"sortBy":"Max","sortDesc":true},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":11,"type":"timeseries","title":"Container memory (RSS)","description":"Anonymous memory the container actually owns. Page cache is deliberately excluded: container_memory_working_set_bytes counts the kernel's file cache against the container, so an I/O-heavy container like qbittorrent reads as multiple GiB when its real footprint is a few MiB. That cache is reclaimable and is already shown on the host Memory panel.","gridPos":{"h":8,"w":12,"x":12,"y":60},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"topk(10, sum by (name) (container_memory_rss{instance=\"homelab\",name!=\"\"}))","legendFormat":"{{name}}","datasource":{"type":"prometheus","uid":"prometheus"}}],"fieldConfig":{"defaults":{"unit":"bytes","custom":{"fillOpacity":20,"lineWidth":1,"showPoints":"never","stacking":{"mode":"normal","group":"A"}}},"overrides":[]},"options":{"legend":{"displayMode":"table","placement":"bottom","calcs":["mean","max"],"sortBy":"Max","sortDesc":true},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":104,"type":"row","title":"Cinema","collapsed":false,"gridPos":{"h":1,"w":24,"x":0,"y":68},"panels":[]},{"id":30,"type":"marcusolsson-dynamictext-panel","title":"Who is watching","description":"One screen per active Jellyfin session on the NAS, drawn with three.js. The library is imported from a CDN at render time, so this panel needs the browser to reach jsdelivr.","gridPos":{"h":11,"w":16,"x":0,"y":69},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"jellyfin_session_progress_ratio{instance=\"nas\"}","datasource":{"type":"prometheus","uid":"prometheus"},"instant":true,"range":false},{"refId":"B","expr":"jellyfin_session_position_seconds{instance=\"nas\"}","datasource":{"type":"prometheus","uid":"prometheus"},"instant":true,"range":false}],"options":{"renderMode":"data","content":"","defaultContent":"","editors":["afterRender"],"helpers":"","styles":"","externalStyles":[],"contentPartials":[],"wrap":false,"status":"","afterRender":"/*\n * The \"Who is watching\" panel, in three dimensions.\n *\n * This is the `afterRender` code of a Business Text panel\n * (marcusolsson-dynamictext-panel). build.py inlines it into\n * homelab-overview.json, so it can be read and edited as JavaScript instead of\n * as one escaped line inside a dashboard.\n *\n * The contract, from the plugin's source: the code is a function body called\n * with one argument, `context`, holding `element` (the panel's div),\n * `panelData`, `data` and `grafana`. Whatever it returns is called on unmount,\n * which is where the renderer, the geometries and the animation frame go --\n * without that, every dashboard refresh leaks a WebGL context and Chrome kills\n * the oldest one after sixteen.\n *\n * Data comes from two queries on the same labels, instant, no legend format so\n * that `__name__` survives in the field labels:\n *   A  jellyfin_session_progress_ratio{instance=\"nas\"}\n *   B  jellyfin_session_position_seconds{instance=\"nas\"}\n */\n\nconst element = context.element;\nconst theme = context.grafana.theme;\n\n/** One row per person watching, merged across the two metrics. */\nconst byViewer = new Map();\nfor (const frame of context.panelData?.series ?? []) {\n  const field = frame.fields?.find((candidate) => candidate.type === 'number');\n  const labels = field?.labels ?? {};\n  if (!field || !labels.user) {\n    continue;\n  }\n\n  const values = typeof field.values?.toArray === 'function' ? field.values.toArray() : field.values;\n  let value = null;\n  for (let index = values.length - 1; index >= 0; index -= 1) {\n    if (values[index] != null && Number.isFinite(values[index])) {\n      value = values[index];\n      break;\n    }\n  }\n  if (value == null) {\n    continue;\n  }\n\n  const key = `$${labels.user}|$${labels.item}|$${labels.device}`;\n  const viewer = byViewer.get(key) ?? {\n    user: labels.user,\n    item: labels.item || 'Something',\n    kind: labels.kind || '',\n    client: labels.client || '',\n    method: labels.method || '',\n    paused: labels.paused === 'true',\n    progress: 0,\n    position: 0,\n  };\n  if ((labels.__name__ || '').endsWith('progress_ratio')) {\n    viewer.progress = Math.max(0, Math.min(1, value));\n  }\n  if ((labels.__name__ || '').endsWith('position_seconds')) {\n    viewer.position = value;\n  }\n  byViewer.set(key, viewer);\n}\n\nconst viewers = [...byViewer.values()].sort((a, b) => a.user.localeCompare(b.user));\n\nconst host = document.createElement('div');\nhost.style.cssText = 'position:relative;width:100%;height:100%;min-height:220px;';\nelement.replaceChildren(host);\n\nconst caption = document.createElement('div');\ncaption.style.cssText = [\n  'position:absolute',\n  'left:12px',\n  'top:10px',\n  'font:600 12px/1.2 Inter,system-ui,sans-serif',\n  'letter-spacing:0.14em',\n  'text-transform:uppercase',\n  `color:$${theme.colors.text.secondary}`,\n  'pointer-events:none',\n].join(';');\ncaption.textContent = viewers.length\n  ? `$${viewers.length} watching`\n  : 'nobody watching';\nhost.appendChild(caption);\n\nif (!viewers.length) {\n  // An empty house is the normal state of a home server. A WebGL context for\n  // nothing is not worth the memory, so the empty state is plain DOM.\n  const empty = document.createElement('div');\n  empty.style.cssText = [\n    'display:grid',\n    'place-items:center',\n    'width:100%',\n    'height:100%',\n    'font:400 13px/1.4 Inter,system-ui,sans-serif',\n    `color:$${theme.colors.text.disabled}`,\n  ].join(';');\n  empty.textContent = 'The screens are dark.';\n  host.appendChild(empty);\n  return () => element.replaceChildren();\n}\n\nlet disposed = false;\nlet dispose = () => {};\n\n/** A viewer's card, drawn on a 2D canvas and used as the screen's texture. */\nconst drawCard = (viewer) => {\n  const canvas = document.createElement('canvas');\n  canvas.width = 640;\n  canvas.height = 360;\n  const ctx = canvas.getContext('2d');\n\n  ctx.fillStyle = '#101216';\n  ctx.fillRect(0, 0, canvas.width, canvas.height);\n\n  // The red hairline is the only accent, same as the Cinema cards.\n  ctx.fillStyle = viewer.paused ? '#6b7280' : '#e11d2e';\n  ctx.fillRect(0, 0, 8, canvas.height);\n\n  ctx.fillStyle = '#f5f5f5';\n  ctx.font = '600 44px Inter, system-ui, sans-serif';\n  ctx.fillText(viewer.user, 44, 96);\n\n  ctx.fillStyle = '#c7c9cd';\n  ctx.font = '400 34px Inter, system-ui, sans-serif';\n  const title = viewer.item.length > 26 ? `$${viewer.item.slice(0, 25)}\u2026` : viewer.item;\n  ctx.fillText(title, 44, 154);\n\n  const hours = Math.floor(viewer.position / 3600);\n  const minutes = Math.floor((viewer.position % 3600) / 60);\n  const seconds = Math.floor(viewer.position % 60);\n  const timecode = hours\n    ? `$${hours}:$${String(minutes).padStart(2, '0')}:$${String(seconds).padStart(2, '0')}`\n    : `$${minutes}:$${String(seconds).padStart(2, '0')}`;\n\n  ctx.fillStyle = '#8b8e95';\n  ctx.font = '400 26px Inter, system-ui, sans-serif';\n  ctx.fillText(\n    [timecode, viewer.client, viewer.method, viewer.paused ? 'paused' : null]\n      .filter(Boolean)\n      .join('  \u00b7  '),\n    44,\n    214,\n  );\n\n  ctx.fillStyle = '#26282e';\n  ctx.fillRect(44, 268, canvas.width - 88, 10);\n  ctx.fillStyle = viewer.paused ? '#6b7280' : '#e11d2e';\n  ctx.fillRect(44, 268, (canvas.width - 88) * viewer.progress, 10);\n\n  return canvas;\n};\n\n(async () => {\n  // Three is not bundled with Grafana and the plugin's external-scripts option\n  // was removed in Grafana 11, so the module comes from a CDN at render time.\n  // The box needs outbound HTTPS for this panel and only this panel.\n  const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js');\n  if (disposed) {\n    return;\n  }\n\n  const scene = new THREE.Scene();\n  const camera = new THREE.PerspectiveCamera(42, 2, 0.1, 100);\n  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });\n  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));\n  renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';\n  host.appendChild(renderer.domElement);\n\n  scene.add(new THREE.AmbientLight(0xffffff, 1.8));\n  const key = new THREE.PointLight(0xe11d2e, 60, 40);\n  key.position.set(0, 2.5, 4);\n  scene.add(key);\n\n  // One screen per viewer on a carousel. The radius grows with the count so\n  // three people are not drawn on top of each other and one is not lost in the\n  // middle of an empty ring.\n  const radius = Math.max(2.2, viewers.length * 0.75);\n  const group = new THREE.Group();\n  const disposables = [];\n\n  viewers.forEach((viewer, index) => {\n    const texture = new THREE.CanvasTexture(drawCard(viewer));\n    texture.colorSpace = THREE.SRGBColorSpace;\n    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();\n\n    const geometry = new THREE.PlaneGeometry(3.2, 1.8);\n    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });\n    const screen = new THREE.Mesh(geometry, material);\n\n    const angle = (index / viewers.length) * Math.PI * 2;\n    screen.position.set(Math.sin(angle) * radius, 0, Math.cos(angle) * radius);\n    screen.rotation.y = angle;\n    screen.userData.phase = index * 1.1;\n    group.add(screen);\n\n    // A thin slab behind the screen, so it reads as an object and not a decal.\n    const backGeometry = new THREE.BoxGeometry(3.3, 1.9, 0.08);\n    const backMaterial = new THREE.MeshStandardMaterial({\n      color: 0x1b1d22,\n      roughness: 0.6,\n      metalness: 0.1,\n    });\n    const back = new THREE.Mesh(backGeometry, backMaterial);\n    back.position.copy(screen.position);\n    back.rotation.y = angle;\n    back.translateZ(-0.06);\n    group.add(back);\n\n    disposables.push(geometry, material, texture, backGeometry, backMaterial);\n  });\n\n  scene.add(group);\n  camera.position.set(0, 1.1, radius + 4.2);\n  camera.lookAt(0, 0, 0);\n\n  const resize = () => {\n    const { clientWidth, clientHeight } = host;\n    if (!clientWidth || !clientHeight) {\n      return;\n    }\n    renderer.setSize(clientWidth, clientHeight, false);\n    camera.aspect = clientWidth / clientHeight;\n    camera.updateProjectionMatrix();\n  };\n  resize();\n  const observer = new ResizeObserver(resize);\n  observer.observe(host);\n\n  let frame = 0;\n  const started = performance.now();\n  const tick = (now) => {\n    const elapsed = (now - started) / 1000;\n    group.rotation.y = elapsed * 0.18;\n    for (const child of group.children) {\n      if (child.userData.phase != null) {\n        child.position.y = Math.sin(elapsed * 0.9 + child.userData.phase) * 0.08;\n      }\n    }\n    renderer.render(scene, camera);\n    frame = requestAnimationFrame(tick);\n  };\n  frame = requestAnimationFrame(tick);\n\n  dispose = () => {\n    cancelAnimationFrame(frame);\n    observer.disconnect();\n    for (const item of disposables) {\n      item.dispose();\n    }\n    renderer.dispose();\n    renderer.domElement.remove();\n  };\n})();\n\nreturn () => {\n  disposed = true;\n  dispose();\n  element.replaceChildren();\n};\n"},"fieldConfig":{"defaults":{},"overrides":[]}},{"id":31,"type":"stat","title":"Watching now","gridPos":{"h":6,"w":4,"x":16,"y":69},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"jellyfin_sessions_watching{instance=\"nas\"}","datasource":{"type":"prometheus","uid":"prometheus"},"legendFormat":"watching"}],"options":{"graphMode":"area","colorMode":"value","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"short","decimals":0,"thresholds":{"mode":"absolute","steps":[{"color":"text","value":null},{"color":"red","value":1}]}},"overrides":[]}},{"id":32,"type":"stat","title":"Transcoding","description":"Sessions the NAS is running ffmpeg for. Direct play costs it nothing; this is the number that shows up as CPU.","gridPos":{"h":6,"w":4,"x":20,"y":69},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"jellyfin_sessions_transcoding{instance=\"nas\"}","datasource":{"type":"prometheus","uid":"prometheus"},"legendFormat":"transcoding"}],"options":{"graphMode":"area","colorMode":"value","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"unit":"short","decimals":0,"thresholds":{"mode":"absolute","steps":[{"color":"text","value":null},{"color":"yellow","value":1},{"color":"red","value":2}]}},"overrides":[]}},{"id":33,"type":"stat","title":"Jellyfin API","description":"0 also means the exporter has no API key: it reports the state rather than failing the scrape.","gridPos":{"h":5,"w":8,"x":16,"y":75},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"jellyfin_up{instance=\"nas\"}","datasource":{"type":"prometheus","uid":"prometheus"},"legendFormat":"api"}],"options":{"graphMode":"none","colorMode":"background","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"unreachable","color":"red","index":0},"1":{"text":"answering","color":"green","index":1}}}],"thresholds":{"mode":"absolute","steps":[{"color":"text","value":null}]}},"overrides":[]}},{"id":34,"type":"timeseries","title":"Viewers over time","gridPos":{"h":7,"w":24,"x":0,"y":80},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"refId":"A","expr":"jellyfin_sessions_watching{instance=\"nas\"}","datasource":{"type":"prometheus","uid":"prometheus"},"legendFormat":"watching"},{"refId":"B","expr":"jellyfin_sessions_transcoding{instance=\"nas\"}","datasource":{"type":"prometheus","uid":"prometheus"},"legendFormat":"transcoding"}],"fieldConfig":{"defaults":{"unit":"short","decimals":0,"min":0,"custom":{"fillOpacity":20,"lineWidth":2,"showPoints":"never","drawStyle":"line","lineInterpolation":"stepAfter","gradientMode":"opacity"}},"overrides":[]},"options":{"legend":{"displayMode":"list","placement":"bottom","calcs":[]},"tooltip":{"mode":"multi","sort":"desc"}}}]}
+
+  grafana_dashboard_logs_json:
+    content: |
+      {"uid":"homelab-logs","title":"Homelab Logs","tags":["homelab","logs"],"timezone":"browser","schemaVersion":39,"version":1,"refresh":"30s","editable":true,"graphTooltip":1,"time":{"from":"now-6h","to":"now"},"templating":{"list":[{"name":"host","label":"Host","type":"custom","query":"homelab,nas","current":{"selected":true,"text":"homelab","value":"homelab"},"options":[{"selected":true,"text":"homelab","value":"homelab"},{"selected":false,"text":"nas","value":"nas"}],"includeAll":false,"multi":false,"hide":0},{"name":"container","label":"Container (regex)","description":"Matched with =~, so .+ means every container and qbit.* narrows it.","type":"textbox","query":".+","current":{"selected":false,"text":".+","value":".+"},"options":[],"hide":0},{"name":"search","label":"Line contains (regex)","description":"Empty matches everything. Case-insensitive patterns need (?i).","type":"textbox","query":"","current":{"selected":false,"text":"","value":""},"options":[],"hide":0}]},"panels":[{"id":1,"type":"timeseries","title":"Container log volume","description":"Lines per interval, by container. A step change here is usually the first sign of a service that started retrying something.","datasource":{"type":"loki","uid":"loki"},"gridPos":{"h":8,"w":16,"x":0,"y":0},"targets":[{"refId":"A","datasource":{"type":"loki","uid":"loki"},"expr":"sum by (container) (count_over_time({host=\"$$host\", job=\"docker\", container=~\"$$container\"} [$$__auto]))","legendFormat":"{{container}}","queryType":"range"}],"fieldConfig":{"defaults":{"unit":"logs","custom":{"drawStyle":"bars","fillOpacity":60,"lineWidth":0,"stacking":{"mode":"normal","group":"A"}}},"overrides":[]},"options":{"legend":{"displayMode":"table","placement":"right","showLegend":true,"calcs":["sum"]},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":2,"type":"timeseries","title":"Error-level lines","description":"Anything matching error, fatal, panic or critical, case-insensitive, across containers and the journal.","datasource":{"type":"loki","uid":"loki"},"gridPos":{"h":8,"w":8,"x":16,"y":0},"targets":[{"refId":"A","datasource":{"type":"loki","uid":"loki"},"expr":"sum by (container) (count_over_time({host=\"$$host\", job=\"docker\", container=~\"$$container\"} |~ \"(?i)(error|fatal|panic|critical)\" [$$__auto]))","legendFormat":"{{container}}","queryType":"range"},{"refId":"B","datasource":{"type":"loki","uid":"loki"},"expr":"sum by (unit) (count_over_time({host=\"$$host\", job=\"journal\", level=~\"err|crit|alert|emerg\"} [$$__auto]))","legendFormat":"journal {{unit}}","queryType":"range"}],"fieldConfig":{"defaults":{"unit":"logs","custom":{"drawStyle":"bars","fillOpacity":70,"lineWidth":0},"color":{"mode":"continuous-reds"}},"overrides":[]},"options":{"legend":{"displayMode":"list","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":3,"type":"timeseries","title":"Journal volume by unit","description":"The host side: kernel, docker.service, cloudflared, tailscaled, sshd. This is what was invisible before Alloy.","datasource":{"type":"loki","uid":"loki"},"gridPos":{"h":7,"w":24,"x":0,"y":8},"targets":[{"refId":"A","datasource":{"type":"loki","uid":"loki"},"expr":"topk(10, sum by (unit) (count_over_time({host=\"$$host\", job=\"journal\"} [$$__auto])))","legendFormat":"{{unit}}","queryType":"range"}],"fieldConfig":{"defaults":{"unit":"logs","custom":{"drawStyle":"bars","fillOpacity":60,"lineWidth":0,"stacking":{"mode":"normal","group":"A"}}},"overrides":[]},"options":{"legend":{"displayMode":"table","placement":"right","showLegend":true,"calcs":["sum"]},"tooltip":{"mode":"multi","sort":"desc"}}},{"id":4,"type":"logs","title":"Container logs","datasource":{"type":"loki","uid":"loki"},"gridPos":{"h":14,"w":24,"x":0,"y":15},"targets":[{"refId":"A","datasource":{"type":"loki","uid":"loki"},"expr":"{host=\"$$host\", job=\"docker\", container=~\"$$container\"} |~ \"$$search\"","queryType":"range","maxLines":500}],"options":{"showTime":true,"showLabels":false,"showCommonLabels":false,"wrapLogMessage":true,"prettifyLogMessage":false,"enableLogDetails":true,"dedupStrategy":"none","sortOrder":"Descending"}},{"id":5,"type":"logs","title":"Journal","datasource":{"type":"loki","uid":"loki"},"gridPos":{"h":14,"w":24,"x":0,"y":29},"targets":[{"refId":"A","datasource":{"type":"loki","uid":"loki"},"expr":"{host=\"$$host\", job=\"journal\"} |~ \"$$search\"","queryType":"range","maxLines":500}],"options":{"showTime":true,"showLabels":false,"showCommonLabels":false,"wrapLogMessage":true,"prettifyLogMessage":false,"enableLogDetails":true,"dedupStrategy":"none","sortOrder":"Descending"}}]}

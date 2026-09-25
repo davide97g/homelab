@@ -1,0 +1,95 @@
+// Log collection for the NAS. Same two sources as the mini PC -- every Docker
+// container plus the host journal -- but shipped out over the internet, because
+// this box has no route to the mini PC at all: its tailscaled is userspace-mode
+// (no tailnet egress) and it is not on our LAN.
+//
+// Cloudflare Access sits in front of the push endpoint with a service-token-only
+// policy, so the two headers below are what make the request succeed; without
+// them the tunnel never sees it.
+logging {
+  level  = "warn"
+  format = "logfmt"
+}
+
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "30s"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  // Docker reports names with a leading slash.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "docker"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  labels     = { host = "nas" }
+  forward_to = [loki.write.tunnel.receiver]
+}
+
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+  rule {
+    source_labels = ["__journal_syslog_identifier"]
+    target_label  = "identifier"
+  }
+  // loki.source.journal defaults job to its own component path and that default
+  // beats the `labels` argument; relabelling runs afterwards, so job is won here.
+  rule {
+    target_label = "job"
+    replacement  = "journal"
+  }
+}
+
+loki.source.journal "host" {
+  path          = "/var/log/journal"
+  max_age       = "12h"
+  relabel_rules = loki.relabel.journal.rules
+  labels        = { host = "nas" }
+  forward_to    = [loki.write.tunnel.receiver]
+}
+
+loki.write "tunnel" {
+  endpoint {
+    url = sys.env("LOKI_PUSH_URL")
+
+    headers = {
+      "CF-Access-Client-Id"     = sys.env("CF_ACCESS_CLIENT_ID"),
+      "CF-Access-Client-Secret" = sys.env("CF_ACCESS_CLIENT_SECRET"),
+    }
+  }
+
+  // The link is a public internet hop, not a LAN one: batch harder and retry
+  // for longer than the default so a blip does not drop lines.
+  wal {
+    enabled = true
+  }
+}
