@@ -32,8 +32,13 @@ services:
       - |
         rm -rf /tmp/swarm && cp -r /src /tmp/swarm && cd /tmp/swarm
         rm -rf node_modules frontend/node_modules frontend/dist .env
-        corepack pnpm install --frozen-lockfile
-        corepack pnpm build
+        # A pnpm on PATH, not just `corepack pnpm`: the root build script calls
+        # pnpm itself. Pinned to 10, the version CI checks with.
+        mkdir -p /tmp/bin && corepack enable --install-directory /tmp/bin pnpm
+        export PATH=/tmp/bin:$$PATH
+        corepack prepare pnpm@10 --activate
+        pnpm install --frozen-lockfile
+        pnpm build
         rm -rf /out/public.new /out/public.old
         cp -r frontend/dist /out/public.new
         if [ -d /out/public ]; then mv /out/public /out/public.old; fi
