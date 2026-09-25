@@ -39,11 +39,14 @@ services:
     image: ghcr.io/open-webui/open-webui:v0.11.4
     container_name: open-webui
     restart: unless-stopped
-    # Non-root. The data volume was chowned to 1000:1000 to match. Drop all caps
-    # (port 8080 is unprivileged) and block privilege escalation. If a future image
-    # bump reintroduces a boot-time write outside the volume, this is the first
-    # thing to check.
-    user: "1000:1000"
+    # Stays root, deliberately: on boot Open WebUI copies build/static (including the
+    # custom.css and loader.js mounted below) into /app/backend/open_webui/static,
+    # which is root-owned in the image. As a non-root uid that copy fails with
+    # "Permission denied" and the custom UI silently stops loading -- verified on the
+    # 2026-09-25 deploy. So instead of dropping the uid, drop the danger of running
+    # as root: no capabilities (port 8080 is unprivileged and nothing here needs one)
+    # and no privilege escalation. A root process with no caps and no-new-privileges
+    # cannot do the privileged things a container escape would want.
     security_opt:
       - no-new-privileges:true
     cap_drop:
