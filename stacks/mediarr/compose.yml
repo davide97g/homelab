@@ -199,23 +199,84 @@ services:
       retries: 3
       start_period: 30s
 
+  # The VPN qBittorrent lives inside. It owns the network namespace
+  # qBittorrent joins, so every peer and tracker sees a ProtonVPN exit, never
+  # the home line. Its firewall is the kill switch: with the tunnel down there
+  # is no route out at all, rather than a quiet fallback to the real IP.
+  #
+  # ProtonVPN over WireGuard, P2P servers only, because only those forward a
+  # port -- and without an inbound port qBittorrent can reach seeders but no
+  # peer can reach it, which starves anything with few of them. Proton hands
+  # out a new port on each connect, so the up command pushes it into
+  # qBittorrent over the WebUI API (the only way its preferences stick; see
+  # the README) and binds qBittorrent to the tunnel interface as a second lock.
+  # That call arrives from 127.0.0.1 with no login, which is why qBittorrent
+  # needs `bypass_local_auth` on. The down command binds it to `lo`, so a lost
+  # port means no torrent traffic rather than traffic somewhere else.
+  #
+  # Side effect worth having: all peer connections now ride one WireGuard
+  # flow, so the FRITZ!Box keeps one NAT entry instead of one per peer.
+  gluetun:
+    image: qmcgaw/gluetun:v3.41.3
+    container_name: gluetun
+    restart: unless-stopped
+    networks:
+      mediarr:
+        # Radarr and Sonarr were wired to `qbittorrent:8080`. qBittorrent has no
+        # network of its own any more, so the name has to land here instead.
+        aliases: [qbittorrent]
+    cap_add: [NET_ADMIN]
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      TZ: ${TZ:-Europe/Rome}
+      VPN_SERVICE_PROVIDER: protonvpn
+      VPN_TYPE: wireguard
+      # From a Proton WireGuard config generated with NAT-PMP on and
+      # Moderate NAT off; Proton refuses to forward a port otherwise.
+      WIREGUARD_PRIVATE_KEY: ${WIREGUARD_PRIVATE_KEY:?set WIREGUARD_PRIVATE_KEY in .env}
+      SERVER_COUNTRIES: ${VPN_SERVER_COUNTRIES:-Switzerland,Netherlands}
+      PORT_FORWARD_ONLY: "on"
+      VPN_PORT_FORWARDING: "on"
+      VPN_PORT_FORWARDING_UP_COMMAND: >-
+        /bin/sh -c 'wget -O- -nv --retry-connrefused --post-data
+        "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}"
+        http://127.0.0.1:8080/api/v2/app/setPreferences'
+      VPN_PORT_FORWARDING_DOWN_COMMAND: >-
+        /bin/sh -c 'wget -O- -nv --retry-connrefused --post-data
+        "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}"
+        http://127.0.0.1:8080/api/v2/app/setPreferences'
+    ports:
+      # qBittorrent's WebUI (and Swarm, which it serves), published here because
+      # this is the container that has the network. No torrent port: inbound
+      # peers arrive through the VPN's forwarded port, not the router.
+      - "8080:8080"
+
+  # Not `<<: *common`: the anchor carries `networks`, compose refuses it next to
+  # network_mode, and `!reset` does not undo a merge key. Restart policy by hand.
   qbittorrent:
-    <<: *common
     image: lscr.io/linuxserver/qbittorrent:5.2.3
     container_name: qbittorrent
+    restart: unless-stopped
+    # Joins gluetun's network namespace, so it has no interface except the
+    # tunnel and gluetun's.
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        # A recreated gluetun is a new namespace; qBittorrent must rejoin it.
+        restart: true
     environment:
       <<: *common-env
       WEBUI_PORT: 8080
-      TORRENTING_PORT: 6881
-    ports:
-      - "8080:8080"
-      - "6881:6881"
-      - "6881:6881/udp"
     volumes:
       - qbittorrent-config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ >/dev/null || exit 1"]
+      # tun0 first: after gluetun restarts, qBittorrent is left in the dead
+      # namespace with only loopback -- its WebUI still answers on localhost,
+      # so the HTTP check alone would call it healthy. heal.sh restarts it.
+      test: ["CMD-SHELL", "test -e /sys/class/net/tun0 && curl -fsS http://localhost:8080/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

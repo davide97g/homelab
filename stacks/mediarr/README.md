@@ -18,7 +18,7 @@ plays it and reports back, which is what flips a request to *Available*.
 | Radarr | http://debian:7878 | Movies |
 | Sonarr | http://debian:8989 | TV |
 | Prowlarr | http://debian:9696 | Indexers, synced to both |
-| qBittorrent | http://debian:8080 | Download client, torrenting on 6881 |
+| qBittorrent | http://debian:8080 | Download client, torrenting through ProtonVPN (gluetun) |
 | Bazarr | http://debian:6767 | Subtitles, `.srt` next to the video |
 | Jellyfin | http://debian:8097 | Local server, plays this box's library |
 | Cinema | http://debian:8898 | Cinema's web client in front of it, `/jf` proxied |
@@ -90,6 +90,50 @@ the repo stays the only copy and there is nothing installed to drift:
 `wire.sh` skips whatever already exists, so re-running it after a rebuild is safe. It does the
 parts with no decisions in them: root folders, and registering Radarr and Sonarr as Prowlarr
 applications. Indexers and the Jellyseerr wizard need a human.
+
+## Torrents go through a VPN
+
+qBittorrent has no network of its own. It runs in `gluetun`'s network namespace
+(`network_mode: service:gluetun`), and gluetun holds a ProtonVPN WireGuard tunnel. Peers and
+trackers see a Proton exit IP, never the home line.
+
+- **Kill switch.** gluetun's firewall allows nothing out except the tunnel. If the VPN drops,
+  torrents stop; they do not fall back to the real IP. qBittorrent is also bound to `tun0`.
+- **Port forwarding.** Only Proton's P2P servers forward a port (`PORT_FORWARD_ONLY=on`), and
+  Proton picks a new one on every connect. gluetun's up command writes it into qBittorrent's
+  `listen_port` over the WebUI API. That call comes from `127.0.0.1` with no login, so
+  qBittorrent needs **`bypass_local_auth` on** (`vpn.sh prep`). The down command binds
+  qBittorrent to `lo`.
+- **Names and ports stay the same.** gluetun publishes `8080` (WebUI and Swarm) and carries the
+  network alias `qbittorrent`, so Radarr and Sonarr keep `qbittorrent:8080`. 6881 is no longer
+  published, and the FRITZ!Box forward for it does nothing any more.
+- **The router's NAT table stops mattering.** Every peer connection is inside one WireGuard flow,
+  so the FRITZ!Box tracks one session, not one per peer. The low `ConnectionSpeed=5` can go up.
+- **After gluetun restarts**, qBittorrent is stuck in the old namespace with only loopback. Its
+  healthcheck requires `tun0`, so it goes unhealthy and `heal.sh` restarts it.
+
+Needs `WIREGUARD_PRIVATE_KEY` in Dokploy's Environment tab for mediarr. Get it from
+account.protonvpn.com -> Downloads -> WireGuard configuration: platform *Router*, **NAT-PMP (Port
+Forwarding) on**, **Moderate NAT off**, any P2P server. Use only the `PrivateKey` line; gluetun
+chooses the server. `VPN_SERVER_COUNTRIES` is optional.
+
+### Switching it on
+
+A push to `main` deploys, so order matters:
+
+1. Put `WIREGUARD_PRIVATE_KEY` into Dokploy's Environment tab for `mediarr-uvnh8c`, and into the
+   local `.env` if you want it there too.
+2. Run `QBIT_PASS=... ./scripts/vpn.sh prep` while the current qBittorrent is still up. It prints
+   `"bypass_local_auth":true`.
+3. Push. Dokploy recreates qBittorrent inside gluetun.
+4. Run `./scripts/vpn.sh check`. It passes only if gluetun is healthy, qBittorrent exits on an IP
+   that is not the box's, and `listen_port` matches the port Proton forwarded, bound to `tun0`.
+5. Remove the 6881 TCP+UDP forward on the FRITZ!Box (*Internet > Abilitazioni > Abilitazioni
+   porte*, device `debian`).
+6. Optional: add the ipleak.net *Torrent Address detection* magnet. It must report the Proton IP.
+
+To back out, revert the commit and push. qBittorrent returns to the host network on 6881, and the
+FRITZ!Box forward is needed again.
 
 ## Staying up
 

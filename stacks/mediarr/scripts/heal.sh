@@ -16,7 +16,11 @@
 set -uo pipefail
 
 COMPOSE_DIR=${MEDIARR_COMPOSE_DIR:-/etc/dokploy/compose/mediarr-uvnh8c/code/stacks/mediarr}
-SERVICES=(jellyseerr jellyfin prowlarr radarr sonarr qbittorrent)
+# gluetun before qbittorrent: qBittorrent lives in gluetun's network namespace,
+# so there is no point restarting it into a VPN that is itself down. Once
+# gluetun is back, qBittorrent's healthcheck (no tun0) marks it unhealthy and
+# the next pass restarts it into the new namespace.
+SERVICES=(jellyseerr jellyfin prowlarr radarr sonarr gluetun qbittorrent)
 
 for c in "${SERVICES[@]}"; do
   state=$(docker inspect -f \
