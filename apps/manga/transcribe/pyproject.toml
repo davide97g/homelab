@@ -1,0 +1,29 @@
+[project]
+name = "transcribe"
+version = "0.1.0"
+description = "Manga chapter scripts: text, reading order and speaker, with local models only"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "torch>=2.5",
+  # Magi v2 is remote code written against transformers 4.x; 5.x moved things it imports.
+  "transformers>=4.45,<4.50",
+  "einops",
+  "timm",
+  "shapely",
+  "pulp",
+  "scipy",
+  "networkx",
+  "matplotlib",
+  "numpy<2.3",
+  "pillow",
+  "ollama>=0.4",
+  "pyyaml",
+  "tqdm",
+]
+
+[project.scripts]
+transcribe = "transcribe.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
