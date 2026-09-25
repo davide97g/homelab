@@ -4,6 +4,7 @@ import { display } from "../format.js";
 import { soft } from "../http.js";
 import { nasLogPulse } from "../loki/query.js";
 import { scalar } from "../prom/client.js";
+import { jellyfinConfigured, jellyfinViewers, type CinemaViewer } from "../media/clients.js";
 import type { Alert, Metric, Status, TopoLink, TopoNode, TopoSite, Topology, Unit } from "../wire.js";
 import { netDevice } from "./host.js";
 import { summary } from "./summary.js";
@@ -103,6 +104,14 @@ function rateOf(value: number | null, unit: Unit, text?: (v: number) => string):
   return { value, unit, display: text ? text(value) : display(value, unit) };
 }
 
+function viewingSummary(viewers: CinemaViewer[]): string {
+  if (viewers.length === 0) return "No active playback";
+  return viewers
+    .slice(0, 3)
+    .map((viewer) => `${viewer.user} watching ${viewer.watching}${viewer.paused ? " (paused)" : ""}`)
+    .join(" · ");
+}
+
 /** Which alerts belong to which node.
  *
  *  Every job relabels `instance`, so a plug alert arrives labelled `homelab`
@@ -124,7 +133,7 @@ export async function collectTopology(): Promise<Topology> {
 
   const device = await soft(netDevice("homelab"));
 
-  const [plugUp, plugWatts, plugKwh, nasLatency, plugLatency, rx, tx, pulse] = await Promise.all([
+  const [plugUp, plugWatts, plugKwh, nasLatency, plugLatency, rx, tx, pulse, viewers] = await Promise.all([
     soft(scalar('up{job="smartplug"}')),
     soft(scalar("tasmota_active_power_watts")),
     soft(scalar("tasmota_energy_today_kilowatt_hours")),
@@ -135,6 +144,7 @@ export async function collectTopology(): Promise<Topology> {
     device ? soft(scalar(`rate(node_network_receive_bytes_total{instance="homelab",device="${device}"}[2m])`)) : null,
     device ? soft(scalar(`rate(node_network_transmit_bytes_total{instance="homelab",device="${device}"}[2m])`)) : null,
     soft(nasLogPulse()),
+    jellyfinConfigured() ? soft(jellyfinViewers()) : Promise.resolve(null),
   ]);
 
   const homelab = snapshot.hosts.homelab;
@@ -146,6 +156,9 @@ export async function collectTopology(): Promise<Topology> {
   const lastAtMs = pulse?.lastAtMs ?? null;
   const silentMs = lastAtMs === null ? null : Date.now() - lastAtMs;
   const logsArriving = silentMs !== null && silentMs < LOG_SILENCE_MS;
+  const cinemaReachable = viewers !== null;
+  const viewerCount = viewers?.length ?? null;
+  const viewerLabel = viewerCount === null ? "viewers" : `${viewerCount} ${viewerCount === 1 ? "viewer" : "viewers"}`;
 
   const nodes: TopoNode[] = [
     {
@@ -255,27 +268,29 @@ export async function collectTopology(): Promise<Topology> {
       site: "cloud",
       role: `The NAS's own tunnel · ${config.topology.cinemaHost}`,
       addresses: [{ value: config.topology.cinemaHost, kind: "public" }],
-      // A second Cloudflare node rather than a second link into the first one.
-      // They are two tunnels with two credentials and two failure modes, and one
-      // of them is inferred up while the other is not watched at all — a single
-      // node could not carry both statuses without picking a lie.
-      status: "unconfigured",
-      note:
-        "Cloudflare answers the hostname, terminates TLS and reaches the NAS back down a tunnel the NAS dialled out. " +
-        "Ilario's router forwards nothing, and neither does ours. Nothing in this stack scrapes it.",
-      metrics: [],
+      status: cinemaReachable ? "up" : jellyfinConfigured() ? "warn" : "unconfigured",
+      note: cinemaReachable
+        ? "Jellyfin answered through the public cinema hostname. This confirms the Cloudflare edge, TLS, the NAS tunnel and Jellyfin itself; it does not expose a viewer's address."
+        : jellyfinConfigured()
+          ? "The configured Jellyfin sessions query did not answer through the public cinema hostname."
+          : "Not monitored yet. Add JELLYFIN_API_KEY to let the hub query active sessions through the public cinema hostname.",
+      metrics: [metric("cinema.viewers", "Watching now", viewerCount, "count", "distinct Jellyfin users")],
       alerts: [],
     },
     {
       id: "viewer",
-      label: "viewers",
+      label: viewerLabel,
       kind: "viewer",
       site: "cloud",
-      role: "Whoever is watching Jellyfin",
+      role: viewers ? viewingSummary(viewers) : "Jellyfin sessions are not connected yet",
       addresses: [{ value: "the public internet", kind: "none" }],
-      status: "unconfigured",
-      note: `Every request lands on Cloudflare's edge. Nobody outside ever addresses the NAS, only ${config.topology.cinemaHost}.`,
-      metrics: [],
+      status: cinemaReachable ? "up" : jellyfinConfigured() ? "warn" : "unconfigured",
+      note: cinemaReachable
+        ? `Every request lands on Cloudflare's edge. Nobody outside ever addresses the NAS, only ${config.topology.cinemaHost}.`
+        : "Active sessions appear here when Jellyfin API access is configured.",
+      metrics: [
+        metric("viewer.count", "Watching now", viewerCount, "count", "distinct Jellyfin users"),
+      ],
       alerts: [],
     },
   ];
@@ -344,11 +359,13 @@ export async function collectTopology(): Promise<Topology> {
       via: "nas-router",
       transport: "tunnel",
       carries: `${config.topology.cinemaHost}, published`,
-      status: "unconfigured",
+      status: cinemaReachable ? "up" : jellyfinConfigured() ? "warn" : "unconfigured",
       // The one path on this page that is genuinely unmeasured, drawn as such.
       rate: null,
       latencyMs: null,
-      note: "Jellyfin on the NAS, published by the NAS's own Cloudflare tunnel over Ilario's uplink. It never touches the mini PC, so nothing in this stack sees it — not measured, rather than idle.",
+      note: cinemaReachable
+        ? "Jellyfin is answering through the NAS's Cloudflare tunnel. Playback count is a session count, not throughput, so this line remains still."
+        : "Jellyfin on the NAS, published by the NAS's own Cloudflare tunnel over Ilario's uplink. Configure its API key to verify this path.",
     },
     {
       id: "cinema-public",
@@ -356,10 +373,12 @@ export async function collectTopology(): Promise<Topology> {
       to: "cinema-edge",
       transport: "internet",
       carries: "playback requests, inbound",
-      status: "unconfigured",
+      status: cinemaReachable ? "up" : jellyfinConfigured() ? "warn" : "unconfigured",
       rate: null,
       latencyMs: null,
-      note: `A viewer resolves ${config.topology.cinemaHost} to Cloudflare and talks only to Cloudflare. The arrow stops there because that is where the public internet stops: the rest of the way in is the tunnel above.`,
+      note: cinemaReachable
+        ? `Jellyfin reports ${viewerCount} active ${viewerCount === 1 ? "viewer" : "viewers"}; their addresses remain inside Jellyfin. The arrow stops at Cloudflare because that is where the public internet stops.`
+        : `A viewer resolves ${config.topology.cinemaHost} to Cloudflare and talks only to Cloudflare. The arrow stops there because that is where the public internet stops.`,
     },
   ];
 
