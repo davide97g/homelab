@@ -6,8 +6,10 @@ able to change from a browser.
 
 **Naming, because it will confuse someone in six months.** This repo is
 `homelab/hub` and it serves `monitoring.davideghiotto.it`. The repo next door,
-`homelab/monitoring`, is the Prometheus/Grafana/Loki *stack* this reads from, and
-it serves `grafana.davideghiotto.it`. The hub stores nothing and collects
+`homelab/monitoring`, is the Prometheus/Grafana/Loki *stack* this reads from. It
+used to serve `grafana.davideghiotto.it`; that hostname was removed on
+2026-09-19 and this hub is now the only public entrance. Grafana itself still
+runs, on the LAN at `http://debian:3001`. The hub stores nothing and collects
 nothing; it is a reader.
 
 ## Layout
