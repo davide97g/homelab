@@ -18,7 +18,7 @@ This trips people up, so it is first.
 |---|---|---|
 | [`monitoring/`](../apps/monitoring) | `grafana.davideghiotto.it` | The **stack**: Prometheus, Grafana, Loki, Alloy, exporters. A Dokploy Raw compose app. |
 | [`hub/`](../apps/hub) | `monitoring.davideghiotto.it` | The **reader**: a custom dashboard app. Stores nothing, collects nothing. |
-| [`dashboard/`](../archive/dashboard) | `mediarr.davideghiotto.it` | mediarr-dash, the pipeline graph. Untouched by this work, and the hub's reference implementation. |
+| [`dashboard/`](https://github.com/davide97g/homelab/tree/daf3ffb/archive/dashboard) | `mediarr.davideghiotto.it` | mediarr-dash, the pipeline graph. Untouched by this work, and the hub's reference implementation. |
 
 ---
 

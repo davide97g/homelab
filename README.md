@@ -13,7 +13,6 @@ history from before the merge, under `apps/`.
 | [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md) |
 | [`hosts/`](hosts/) | Per-host notes: [the NAS](hosts/nas.md) |
 | [`hardware/`](hardware/) | The 3D-printed [M6 stand](hardware/m6-stand/) |
-| [`archive/`](archive/) | Retired: the old [media dashboard](archive/dashboard/), replaced by the hub |
 | `.env` | Credentials, gitignored. [`.env.example`](.env.example) lists the keys |
 
 ## Projects
@@ -152,8 +151,9 @@ gateway gives friends their own API keys for their agents at `llm.davideghiotto.
 also public, with no Access. Plain
 `docker compose` in `~/local-ai`. Its [README](apps/local-ai/README.md) is the runbook.
 
-[`archive/dashboard/`](archive/dashboard/) used to draw that chain as a live graph on `:3002`. It is
-retired, and its container is gone from the box. [`apps/hub`](apps/hub/) replaced it.
+mediarr-dash used to draw that chain as a live graph on `:3002`. It is retired, its
+container is gone from the box, and its code was deleted from the repo; it lives on at
+[`daf3ffb`](https://github.com/davide97g/homelab/tree/daf3ffb/archive/dashboard). [`apps/hub`](apps/hub/) replaced it.
 
 `cloudflared` runs as a systemd service with a dashboard-managed token, so no inbound port
 is forwarded to the box. Public hostnames are configured in Cloudflare Zero Trust, not on

@@ -188,7 +188,7 @@ fallback.
 **`/media` is mediarr-dash's page, with its two structural mistakes fixed.**
 That app is gone: container removed, `mediarr.davideghiotto.it` unpublished —
 ingress rule, Access application and DNS record all deleted on 2026-09-20 — and
-the tree kept at `../../archive/dashboard` as a read-only reference. Every mention of it
+the tree deleted from the repo, readable at [`daf3ffb`](https://github.com/davide97g/homelab/tree/daf3ffb/archive/dashboard). Every mention of it
 below is about its *code*, which is still the reference for anything this port
 got wrong, not about something running.
 The shape is that app's and deliberately unchanged: one node per service, left

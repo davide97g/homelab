@@ -1,8 +1,0 @@
-packages:
-  - server
-  - frontend
-
-# esbuild ships a platform binary its postinstall script unpacks; Vite will not
-# start without it. Everything else stays script-free.
-allowBuilds:
-  esbuild: true

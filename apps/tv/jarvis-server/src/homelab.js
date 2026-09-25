@@ -12,7 +12,6 @@ const SERVICES = [
   { name: 'dokploy', port: 3000 },
   { name: 'traefik', port: 443 },
   { name: 'grafana', port: 3001 },
-  { name: 'dashboard', port: 3002 },
   { name: 'jellyfin', port: 8096 },
   { name: 'jellyseerr', port: 5055 },
   { name: 'radarr', port: 7878 },
