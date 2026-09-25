@@ -3,7 +3,7 @@
 # Run one of the Python helpers on the box.
 #
 #   ./scripts/on-box.sh bazarr-setup.py
-#   ./scripts/on-box.sh jellyseerr-repoint.py <jellyfin-api-key>
+#   ./scripts/on-box.sh jellyseerr-repoint.py <jellyfin-api-key> <jellyfin-url>
 #   ./scripts/on-box.sh jellyseerr-telegram.py <bot-token> [chat-id]
 #
 # These talk to APIs that are only published on the box's LAN interface, and

@@ -6,6 +6,7 @@ Credentials live in `.dokploy.env` (gitignored):
     DOKPLOY_URL=http://debian:3000
     DOKPLOY_API_KEY=...
     DOKPLOY_COMPOSE_ID=...
+    NAS_TAILNET_IP=...       # the NAS's Tailscale address, a scrape target
 
 Usage:
     ./deploy.py              # build, push, deploy
@@ -39,7 +40,7 @@ def load_env() -> dict:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip()
-    for key in ("DOKPLOY_URL", "DOKPLOY_API_KEY", "DOKPLOY_COMPOSE_ID"):
+    for key in ("DOKPLOY_URL", "DOKPLOY_API_KEY", "DOKPLOY_COMPOSE_ID", "NAS_TAILNET_IP"):
         if not env.get(key):
             sys.exit(f"{path.name}: {key} is not set")
     return env
@@ -67,7 +68,10 @@ def main() -> int:
     env = load_env()
 
     subprocess.run([sys.executable, str(HERE / "build.py")], check=True)
+    # The repo is public, so the NAS's tailnet address stays out of it: the
+    # committed compose says ${NAS_TAILNET_IP} and the value is filled in here.
     compose_file = (HERE / "docker-compose.yml").read_text()
+    compose_file = compose_file.replace("${NAS_TAILNET_IP}", env["NAS_TAILNET_IP"])
 
     call(env, "compose.update", {
         "composeId": env["DOKPLOY_COMPOSE_ID"],

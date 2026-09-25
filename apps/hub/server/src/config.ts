@@ -161,8 +161,8 @@ export const config = {
    *  address in `boxUrl` breaks the hub. Override any of them when DHCP moves. */
   topology: {
     boxLan: process.env.TOPO_BOX_LAN ?? "192.168.15.126",
-    boxTailnet: process.env.TOPO_BOX_TAILNET ?? "${BOX_TAILNET_IP}",
-    nasTailnet: process.env.TOPO_NAS_TAILNET ?? "${NAS_TAILNET_IP}",
+    boxTailnet: process.env.TOPO_BOX_TAILNET ?? "",
+    nasTailnet: process.env.TOPO_NAS_TAILNET ?? "",
     plugLan: process.env.TOPO_PLUG_LAN ?? "192.168.15.132",
     routerLan: process.env.TOPO_ROUTER_LAN ?? "192.168.15.1",
     subnet: process.env.TOPO_SUBNET ?? "192.168.15.0/24",

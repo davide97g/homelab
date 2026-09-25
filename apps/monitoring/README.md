@@ -339,9 +339,9 @@ The UGREEN DXP4800 Pro is Ilario's box on Ilario's network. Its shape dictates t
   `NasDown` waits 10 minutes before firing. Do not tighten either on the strength of a direct
   path that may not be there tomorrow.
 
-`${NAS_TAILNET_IP}` is hard-coded in the scrape config. That is the one place the no-hard-coded-IP
+The scrape config names the NAS by its tailnet address. That is the one place the no-hard-coded-IP
 rule below does not apply — a tailnet address is stable, and the NAS's LAN address is useless
-from here.
+from here. The repo only says `${NAS_TAILNET_IP}`; `deploy.py` fills it in from `.dokploy.env`.
 
 Its `node-exporter` sets `--path.procfs=/host/proc` and `--path.sysfs=/host/sys`, which the mini
 PC's does not. `--path.rootfs` alone does not redirect those two, and Docker masks

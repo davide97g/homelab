@@ -12,10 +12,10 @@ Jellyseerr user is keyed by the Jellyfin user id it was created from, and those
 ids differ between servers. Without the second half, logging in would mint a
 second account and the existing requests would lose their owner.
 
-Usage: python3 jellyseerr-repoint.py <jellyfin-api-key> [jellyfin-url]
+Usage: python3 jellyseerr-repoint.py <jellyfin-api-key> <jellyfin-url>
 
-The URL defaults to the NAS, which is the only Jellyfin now -- it is the one
-cinema.davideghiotto.it serves, and the only box the library is copied to. It
+The URL is normally the NAS, http://<NAS_TAILNET_IP>:8899, which is the only
+Jellyfin now -- it is the one cinema.davideghiotto.it serves, and the only box the library is copied to. It
 is reachable from the mini PC over Tailscale and nowhere else: the NAS is not
 on the home LAN despite advertising a 192.168.15.x address.
 
@@ -23,7 +23,7 @@ Key comes from that server's Dashboard -> API Keys -> +.
 """
 import json, sqlite3, subprocess, sys, time, urllib.parse, urllib.request
 
-JF = "http://${NAS_TAILNET_IP}:8899"
+JF = ""
 CFG = "/app/config/settings.json"
 DB = "/app/config/db/db.sqlite3"
 
@@ -54,11 +54,10 @@ def wait_healthy(container, timeout=120):
 
 def main():
     global JF
-    if not 2 <= len(sys.argv) <= 3:
+    if len(sys.argv) != 3:
         sys.exit(__doc__)
     key = sys.argv[1].strip()
-    if len(sys.argv) == 3:
-        JF = sys.argv[2].strip().rstrip("/")
+    JF = sys.argv[2].strip().rstrip("/")
 
     info = jf("/System/Info", key)
     print("jellyfin:", info["ServerName"], info["Version"], info["Id"])

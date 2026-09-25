@@ -77,7 +77,7 @@ the repo stays the only copy and there is nothing installed to drift:
 
 ```sh
 ./scripts/on-box.sh bazarr-setup.py
-./scripts/on-box.sh jellyseerr-repoint.py <jellyfin-api-key>
+./scripts/on-box.sh jellyseerr-repoint.py <jellyfin-api-key> http://$NAS_TAILNET_IP:8899
 ./scripts/on-box.sh jellyseerr-telegram.py <bot-token> [chat-id]
 ```
 
