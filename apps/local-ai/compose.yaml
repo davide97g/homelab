@@ -39,6 +39,15 @@ services:
     image: ghcr.io/open-webui/open-webui:v0.11.4
     container_name: open-webui
     restart: unless-stopped
+    # Non-root. The data volume was chowned to 1000:1000 to match. Drop all caps
+    # (port 8080 is unprivileged) and block privilege escalation. If a future image
+    # bump reintroduces a boot-time write outside the volume, this is the first
+    # thing to check.
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       - ollama
     ports:
