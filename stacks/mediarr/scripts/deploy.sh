@@ -1,32 +1,33 @@
 #!/usr/bin/env bash
 #
-# Push compose.yml and .env to the box and bring the stack up.
+# Operate the stack on the box. Deploying is a push to main: Dokploy's `mediarr`
+# app clones davide97g/homelab and runs compose from its checkout, with the
+# secrets from its Environment tab. This script works on that same checkout, so
+# nothing it does can bring back an older compose file.
 #
-#   ./scripts/deploy.sh          up -d
+#   ./scripts/deploy.sh          ask Dokploy to deploy main now (needs .dokploy.env)
 #   ./scripts/deploy.sh pull     pull images, then up -d
 #   ./scripts/deploy.sh down     stop the stack, keep the volumes
 #   ./scripts/deploy.sh logs     follow
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-[ -f .env ] || { echo "no .env -- cp .env.example .env"; exit 1; }
-set -a; . ./.env; set +a
-
-HOST=${DEPLOY_HOST:?}
-DIR=${DEPLOY_PATH:?}
+HOST=${DEPLOY_HOST:-homelab}
+DIR=/etc/dokploy/compose/mediarr/code/stacks/mediarr
+COMPOSE="docker compose -p mediarr --env-file .env -f compose.yml"
 ACTION=${1:-up}
 
 log() { printf '\033[38;5;154m▸\033[0m %s\n' "$*"; }
 
-log "Syncing to $HOST:$DIR"
-ssh "$HOST" "mkdir -p '$DIR' '$MEDIA_ROOT'/torrents '$MEDIA_ROOT'/library/movies '$MEDIA_ROOT'/library/tv"
-# tar over ssh rather than rsync -- the box has no rsync.
-COPYFILE_DISABLE=1 tar czf - compose.yml .env | ssh "$HOST" "tar xzf - -C '$DIR'"
-
 case "$ACTION" in
-  up)   log "Starting";      ssh "$HOST" "cd '$DIR' && docker compose up -d" ;;
-  pull) log "Pulling";       ssh "$HOST" "cd '$DIR' && docker compose pull && docker compose up -d" ;;
-  down) log "Stopping";      ssh "$HOST" "cd '$DIR' && docker compose down" ;;
-  logs) ssh -t "$HOST" "cd '$DIR' && docker compose logs -f" ;;
-  *)    ssh -t "$HOST" "cd '$DIR' && docker compose $*" ;;
+  up)
+    [ -f .dokploy.env ] || { echo "no .dokploy.env (DOKPLOY_URL, DOKPLOY_API_KEY, DOKPLOY_COMPOSE_ID)"; exit 1; }
+    set -a; . ./.dokploy.env; set +a
+    log "Asking Dokploy to deploy main"
+    curl -fsS -X POST -H "x-api-key: $DOKPLOY_API_KEY" -H 'content-type: application/json' \
+      -d "{\"composeId\":\"$DOKPLOY_COMPOSE_ID\",\"title\":\"manual deploy.sh\"}" "$DOKPLOY_URL/api/compose.deploy" ;;
+  pull) log "Pulling";       ssh "$HOST" "cd '$DIR' && $COMPOSE pull && $COMPOSE up -d" ;;
+  down) log "Stopping";      ssh "$HOST" "cd '$DIR' && $COMPOSE down" ;;
+  logs) ssh -t "$HOST" "cd '$DIR' && $COMPOSE logs -f" ;;
+  *)    ssh -t "$HOST" "cd '$DIR' && $COMPOSE $*" ;;
 esac

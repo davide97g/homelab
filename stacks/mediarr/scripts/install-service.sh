@@ -3,8 +3,12 @@
 # Installs the two systemd units on the box, so the stack survives a reboot even
 # if it was stopped, and a hung container gets restarted.
 #
-#   mediarr.service     brings the stack up at boot (docker compose up -d)
+#   mediarr.service     brings the stack up at boot, from Dokploy's checkout
 #   mediarr-heal.timer  runs heal.sh every minute
+#
+# Dokploy deploys the stack (app name `mediarr`), so both units use its checkout
+# in /etc/dokploy/compose/mediarr/code/stacks/mediarr and never a copy of their
+# own. heal.sh itself still lives in $DEPLOY_PATH.
 #
 # Needs sudo on the box, so run it from a terminal where you can type the
 # password:
@@ -18,6 +22,7 @@ set -a; . ./.env; set +a
 
 HOST=${DEPLOY_HOST:?}
 DIR=${DEPLOY_PATH:?}
+COMPOSE_DIR=/etc/dokploy/compose/mediarr/code/stacks/mediarr
 # The unit runs as the box user that owns $DIR, not as root.
 USER_ON_BOX=$(ssh "$HOST" id -un)
 
@@ -39,9 +44,9 @@ Wants=network-online.target
 Type=oneshot
 RemainAfterExit=yes
 User=$USER_ON_BOX
-WorkingDirectory=$DIR
-ExecStart=/usr/bin/docker compose up -d
-ExecStop=/usr/bin/docker compose stop
+WorkingDirectory=$COMPOSE_DIR
+ExecStart=/usr/bin/docker compose -p mediarr --env-file .env -f compose.yml up -d
+ExecStop=/usr/bin/docker compose -p mediarr --env-file .env -f compose.yml stop
 TimeoutStartSec=0
 
 [Install]
@@ -55,7 +60,7 @@ After=mediarr.service
 [Service]
 Type=oneshot
 User=$USER_ON_BOX
-Environment=MEDIARR_DIR=$DIR
+Environment=MEDIARR_COMPOSE_DIR=$COMPOSE_DIR
 ExecStart=$DIR/heal.sh
 UNIT
 sudo tee /etc/systemd/system/mediarr-heal.timer >/dev/null <<UNIT

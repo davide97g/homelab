@@ -1,0 +1,46 @@
+name: mediarr
+
+# Checks on every push and pull request touching stacks/mediarr; a push to main that passes
+# is deployed by Dokploy through the shared dokploy-deploy workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - stacks/mediarr/**
+      - .github/workflows/mediarr.yml
+      - .github/workflows/dokploy-deploy.yml
+  pull_request:
+    paths:
+      - stacks/mediarr/**
+      - .github/workflows/mediarr.yml
+
+# Queue rather than cancel: a cancelled run leaves main green but undeployed.
+concurrency:
+  group: mediarr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Scripts parse
+        run: |
+          for f in stacks/mediarr/scripts/*.sh; do bash -n "$f"; done
+          python3 -m py_compile stacks/mediarr/scripts/*.py
+      - name: Compose file is valid
+        env:
+          MEDIA_ROOT: /tmp/media
+          NAS_TAILNET_IP: 100.64.0.1
+        run: docker compose -f stacks/mediarr/compose.yml config --quiet
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/dokploy-deploy.yml
+    with:
+      app: mediarr
+    secrets:
+      compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_MEDIARR }}
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}

@@ -49,7 +49,7 @@ Keeping the shim on port 8096 means everything that already said "Jellyfin is at
 |---|---|
 | `compose.yml` | All seven services, one network. |
 | `.env` | Deploy target, `MEDIA_ROOT`, `PUID`/`PGID`, Jellyfin's LAN URL. Not committed. |
-| `scripts/deploy.sh` | Ship `compose.yml` + `.env` to the box over SSH and run compose there. |
+| `scripts/deploy.sh` | Trigger a Dokploy deploy, or run `pull`/`down`/`logs` against Dokploy's checkout. |
 | `scripts/wire.sh` | The API calls that are the same every rebuild. Idempotent. |
 | `scripts/install-service.sh` | Installs the systemd units on the box. Needs sudo there. |
 | `scripts/heal.sh` | Runs on the box every minute; restarts hung or missing containers. |
@@ -63,13 +63,20 @@ Nothing is installed on the box beyond a folder of two files — `~/mediarr/comp
 
 ## Deploy
 
+**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `mediarr` app (app
+name `mediarr`, so the project, containers, `mediarr_*` volumes and the `mediarr_mediarr` network
+are the ones that were already there) runs compose from its checkout in
+`/etc/dokploy/compose/mediarr/code/stacks/mediarr`, with `MEDIA_ROOT`, `PUID`/`PGID`, `TZ`,
+`RENDER_GID` and `NAS_TAILNET_IP` from its Environment tab. The local `.env` only tells the helper
+scripts which host to ssh to.
+
 ```sh
-cp .env.example .env
-./scripts/deploy.sh            # sync + up -d
+./scripts/deploy.sh            # deploy main now (needs .dokploy.env)
 ./scripts/wire.sh              # root folders, Prowlarr -> Radarr/Sonarr
 ```
 
-`deploy.sh` also takes `pull`, `down`, `logs`, or any raw compose arguments.
+`deploy.sh` also takes `pull`, `down`, `logs`, or any raw compose arguments, always against
+Dokploy's checkout.
 
 The Python helpers run **on the box** — they read API keys out of the containers and call
 APIs that are only published on the box's LAN interface. `on-box.sh` pipes them over SSH, so
@@ -92,7 +99,7 @@ Three layers, because each one catches what the one below it misses.
 | Layer | Catches |
 |---|---|
 | `restart: unless-stopped` | The process inside a container exiting. Docker restarts it immediately. |
-| `mediarr.service` | A reboot, and a stack that was left stopped. Runs `docker compose up -d` at boot. |
+| `mediarr.service` | A reboot, and a stack that was left stopped. Runs `docker compose up -d` at boot, from Dokploy's checkout. |
 | `mediarr-heal.timer` | A container that is *running but wedged* — qBittorrent still alive, Web UI not answering. |
 
 The third one is the interesting case. Docker's restart policy only ever reacts to a process
