@@ -1,0 +1,135 @@
+# Ollama on the mini PC. Plain `docker compose` in ~/local-ai, not a Dokploy app.
+# LAN + tailnet only — Ollama has no auth, so it is never put on the tunnel.
+# Hostnames and IPs come from .env (see .env.example), which compose reads on its own.
+services:
+  ollama:
+    image: ollama/ollama:0.34.4
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    # Radeon 760M (gfx1103) through Vulkan. The render group is 992 on the host.
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "992"
+      - video
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_VULKAN: "1"
+      OLLAMA_IGPU_ENABLE: "1"
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: q8_0
+      # 64k because coding agents send 15-30k tokens of system prompt and tools per turn.
+      OLLAMA_CONTEXT_LENGTH: "65536"
+      # The box also runs ~55 other containers: one model, and unload after 15 idle
+      # minutes so the RAM goes back to them. One request at a time: Ollama 0.34.4 forces
+      # it for this architecture anyway ("model architecture does not currently support
+      # parallel requests" architecture=qwen35moe). KV cache at 64k is ~0.7 GB.
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_KEEP_ALIVE: 15m
+    mem_limit: 30g
+
+  # Chat UI. LAN + tailnet only as well. It has its own login: the admin comes from
+  # WEBUI_ADMIN_* in .env on first boot, which also turns public sign-up off.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.11.4
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    ports:
+      - "3080:8080"
+    volumes:
+      - open-webui:/app/backend/data
+      # UI tweaks. Open WebUI copies build/static into its static dir on boot, and every
+      # page loads custom.css and loader.js from there (both empty upstream).
+      - ./webui/custom.css:/app/build/static/custom.css:ro
+      - ./webui/loader.js:/app/build/static/loader.js:ro
+    env_file: .env
+    # Most of these are PersistentConfig: read on the first boot only, after which the
+    # database (Admin Settings) wins. Change them in the UI, not here.
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      ENABLE_OPENAI_API: "false"
+      ENABLE_EVALUATION_ARENA_MODELS: "false"
+      DEFAULT_MODELS: qwen3.6:35b-a3b-q4_K_M
+      ANONYMIZED_TELEMETRY: "false"
+      DO_NOT_TRACK: "true"
+      SCARF_NO_ANALYTICS: "true"
+      DEFAULT_USER_ROLE: pending
+      WEBUI_URL: https://${OPENUI_HOST:?}
+      CORS_ALLOW_ORIGIN: "https://${OPENUI_HOST:?};http://${LAN_HOST:?}:3080;http://${TAILNET_HOST:?}:3080;http://${LAN_IP:?}:3080"
+      # Ollama serves one request at a time, so every side task the UI fires queues
+      # behind the chat. Title generation is off too (set in the UI, 2026-09-24).
+      ENABLE_TITLE_GENERATION: "false"
+      ENABLE_TAGS_GENERATION: "false"
+      ENABLE_FOLLOW_UP_GENERATION: "false"
+      ENABLE_AUTOCOMPLETE_GENERATION: "false"
+    mem_limit: 2g
+
+  # Web search backend for Open WebUI: a metasearch engine, free, no API key. Internal
+  # only, no published port: Open WebUI reaches it at http://searxng:8080 on the compose
+  # network. Secret in searxng.env on the box.
+  searxng:
+    image: searxng/searxng:2026.9.22-2ed96e6fc
+    container_name: searxng
+    restart: unless-stopped
+    volumes:
+      - ./searxng.yml:/etc/searxng/settings.yml:ro
+    env_file: searxng.env
+    mem_limit: 512m
+
+  # API gateway: per-user keys, usage, limits. Public at $LLM_HOST — /ui is
+  # the dashboard, /v1 the API. Secrets in litellm.env (not .env: Open WebUI reads that).
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.102.1
+    container_name: litellm
+    restart: unless-stopped
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm.yaml:/app/config.yaml:ro
+    # One worker: without Redis every worker keeps its own rate-limit counters, so two
+    # workers would double each key's limits. One GPU does not need more.
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
+    env_file: litellm.env
+    environment:
+      LITELLM_MODE: PRODUCTION
+      PROXY_BASE_URL: https://${LLM_HOST:?}
+      STORE_MODEL_IN_DB: "False"
+      NO_DOCS: "True" # no public Swagger / openapi.json
+      NO_REDOC: "True"
+    mem_limit: 2g # one worker sits at ~0.7 GB idle
+
+  litellm-db:
+    image: postgres:17.6-alpine
+    container_name: litellm-db
+    restart: unless-stopped
+    env_file: litellm.env
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+    volumes:
+      - litellm-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 5s
+      retries: 20
+    mem_limit: 512m
+
+volumes:
+  ollama:
+    name: ollama
+  open-webui:
+    name: open-webui
+  litellm-db:
+    name: litellm-db
