@@ -227,10 +227,11 @@ services:
       # Resolved at request time against the source address, so only Alloy can reach
       # this even though it shares the network.
       - -allowfrom=homelab-alloy
-      # discovery.docker lists containers; loki.source.docker inspects each and
-      # streams its logs. Nothing writes. Note what is absent: no /events, /exec,
-      # /images, /volumes, /networks.
-      - -allowGET=/(v[0-9.]+/)?(version|info|_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs))
+      # discovery.docker lists containers and reads networks (to compute the
+      # __meta_docker_network_* labels); loki.source.docker inspects each container
+      # and streams its logs. All reads, nothing writes. Note what is absent: no
+      # /events, /exec, /images, /volumes.
+      - -allowGET=/(v[0-9.]+/)?(version|info|_ping|networks|networks/[a-zA-Z0-9_.-]+|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs))
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
