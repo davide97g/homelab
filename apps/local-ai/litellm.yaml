@@ -65,6 +65,9 @@ general_settings:
   # proxy_admin DB user with its own password instead.
   disable_env_credential_login: false
   database_url: os.environ/DATABASE_URL
-  store_model_in_db: false
-  store_prompts_in_spend_logs: false
+  # Models added in the Admin UI are saved to Postgres, next to the ones listed above.
+  store_model_in_db: true
+  # Full request and reply bodies land in LiteLLM_SpendLogs and show in Logs. The admin
+  # can read every user's prompts.
+  store_prompts_in_spend_logs: true
   disable_spend_logs: false

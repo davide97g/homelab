@@ -177,8 +177,9 @@ shows it as "high demand, reconnecting 5/5". Ollama serves `/v1/chat/completions
 - Every key gets `max_parallel_requests: 2`, `rpm_limit: 30`, `tpm_limit: 300000` by default,
   and `upperbound_key_generate_params` refuses anything higher: *"max_parallel_requests is
   over max limit set in config - user_value=50; max_value=2"*.
-- Prompts and replies are not stored (`store_prompts_in_spend_logs: false`). Usage rows
-  have tokens and model only.
+- Prompts and replies are stored (`store_prompts_in_spend_logs: true`, since 2026-09-25)
+  and show under Logs in the admin UI: an admin can read every user's requests. Only
+  requests after the change have bodies. Set it back to `false` for token-and-model-only rows.
 
 **Adding a user.** Invitation links do not work with the master key. `/invitation/new`
 answers *"User id does not exist in LiteLLM_UserTable"* about the inviter, which is the
