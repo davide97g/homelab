@@ -186,9 +186,13 @@ services:
     restart: unless-stopped
     depends_on:
       - loki
-    # Root for two reasons: the journal files are root:systemd-journal, and the
-    # Docker socket is root:docker. Promtail would have done this job but went
-    # end-of-life on 2 March 2026.
+      - docker-proxy
+    # Root for the journal files only (root:systemd-journal). It no longer mounts
+    # the Docker socket -- that went through the socket-proxy below, so a compromise
+    # of Alloy can no longer reach the Docker API and, through it, host root. A `:ro`
+    # bind of the socket would not have prevented that: read-only stops replacing the
+    # socket file, not write calls over it. Promtail would have done this job but
+    # went end-of-life on 2 March 2026.
     user: root
     command:
       - run
@@ -197,7 +201,6 @@ services:
       - /etc/alloy/config.alloy
     volumes:
       - alloy-data:/var/lib/alloy/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log/journal:/var/log/journal:ro
       - /etc/machine-id:/etc/machine-id:ro
     configs:
@@ -205,6 +208,36 @@ services:
         target: /etc/alloy/config.alloy
     networks:
       - monitoring
+      - docker-proxy
+
+  # Holds the Docker socket so Alloy does not have to. wollomatic/socket-proxy
+  # filters by method and path (not resource), the same pattern hub uses. Alloy is
+  # read-only: it lists containers (discovery) and streams their logs, nothing else,
+  # so only those GETs are allowed and no POST is. Runs as nobody plus the host's
+  # docker group -- DOCKER_GID is that gid (`getent group docker | cut -d: -f3`,
+  # 989 on this box); set it in the Dokploy Environment tab if it ever differs.
+  docker-proxy:
+    image: wollomatic/socket-proxy:1
+    container_name: homelab-docker-proxy
+    restart: unless-stopped
+    user: "65534:${DOCKER_GID:-989}"
+    command:
+      - -loglevel=info
+      - -listenip=0.0.0.0
+      # Resolved at request time against the source address, so only Alloy can reach
+      # this even though it shares the network.
+      - -allowfrom=homelab-alloy
+      # discovery.docker lists containers; loki.source.docker inspects each and
+      # streams its logs. Nothing writes. Note what is absent: no /events, /exec,
+      # /images, /volumes, /networks.
+      - -allowGET=/(v[0-9.]+/)?(version|info|_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs))
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-proxy
+    # No healthcheck: the image is distroless (no shell), so any compose healthcheck
+    # exits -1 and marks a healthy proxy unhealthy forever. Whether it works shows up
+    # where it matters -- container logs still arriving in Loki.
 
   grafana:
     image: grafana/grafana:13.2.1
@@ -256,6 +289,11 @@ volumes:
 networks:
   monitoring:
     driver: bridge
+  # internal: true -- no gateway, no route off the box. The proxy holds the most
+  # dangerous handle on the machine and has no business being reachable from anywhere
+  # but Alloy.
+  docker-proxy:
+    internal: true
 
 configs:
   prometheus_yml:
@@ -666,7 +704,7 @@ configs:
       }
 
       discovery.docker "containers" {
-        host             = "unix:///var/run/docker.sock"
+        host             = "tcp://homelab-docker-proxy:2375"
         refresh_interval = "15s"
       }
 
@@ -694,7 +732,7 @@ configs:
       }
 
       loki.source.docker "containers" {
-        host       = "unix:///var/run/docker.sock"
+        host       = "tcp://homelab-docker-proxy:2375"
         targets    = discovery.relabel.containers.output
         labels     = { host = "homelab" }
         forward_to = [loki.write.local.receiver]
