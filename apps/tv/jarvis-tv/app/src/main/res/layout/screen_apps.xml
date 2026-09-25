@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/screenApps"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingStart="@dimen/screen_pad_h"
+    android:paddingEnd="@dimen/screen_pad_h"
+    android:paddingTop="@dimen/screen_pad_v"
+    android:paddingBottom="@dimen/screen_pad_v"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- ── top bar ─────────────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/avatar"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:background="@drawable/avatar_bg"
+        android:gravity="center"
+        android:text="D"
+        android:textColor="#04262B"
+        android:textSize="12sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/greeting"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="9dp"
+        android:fontFamily="sans-serif-light"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_greeting"
+        app:layout_constraintStart_toEndOf="@id/avatar"
+        app:layout_constraintTop_toTopOf="@id/avatar" />
+
+    <TextView
+        android:id="@+id/dateLine"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="9dp"
+        android:textColor="@color/text_faint"
+        android:textSize="@dimen/text_sub"
+        app:layout_constraintStart_toEndOf="@id/avatar"
+        app:layout_constraintTop_toBottomOf="@id/greeting" />
+
+    <LinearLayout
+        android:id="@+id/linkPill"
+        android:layout_width="wrap_content"
+        android:layout_height="20dp"
+        android:background="@drawable/pill_bg"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="9dp"
+        android:paddingEnd="9dp"
+        app:layout_constraintEnd_toStartOf="@id/clock"
+        app:layout_constraintTop_toTopOf="@id/avatar"
+        app:layout_constraintBottom_toBottomOf="@id/avatar">
+
+        <View
+            android:id="@+id/linkDot"
+            android:layout_width="5dp"
+            android:layout_height="5dp"
+            android:layout_marginEnd="5dp"
+            android:background="@drawable/dot" />
+
+        <TextView
+            android:id="@+id/linkText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.14"
+            android:text="@string/status_offline"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_pill" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="16dp"
+        android:fontFamily="sans-serif-light"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_clock"
+        app:layout_constraintEnd_toStartOf="@id/gear"
+        app:layout_constraintTop_toTopOf="@id/avatar"
+        app:layout_constraintBottom_toBottomOf="@id/avatar" />
+
+    <ImageView
+        android:id="@+id/gear"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:alpha="0.7"
+        android:clickable="false"
+        android:focusable="false"
+        android:background="@drawable/gear_bg"
+        android:contentDescription="@string/settings_title"
+        android:padding="5dp"
+        android:src="@drawable/ic_gear"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/avatar"
+        app:layout_constraintBottom_toBottomOf="@id/avatar" />
+
+    <!-- ── hero ────────────────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/heroKicker"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.22"
+        android:textAllCaps="true"
+        android:textColor="@color/accent"
+        android:textSize="@dimen/text_kicker"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/heroTitle"
+        android:layout_marginBottom="7dp" />
+
+    <TextView
+        android:id="@+id/heroTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-light"
+        android:maxLines="2"
+        android:shadowColor="#8C000000"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="20"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_hero"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintWidth_max="450dp"
+        app:layout_constraintBottom_toTopOf="@id/heroMeta"
+        android:layout_marginBottom="9dp" />
+
+    <LinearLayout
+        android:id="@+id/heroMeta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/heroProgressRow"
+        android:layout_marginBottom="10dp" />
+
+    <LinearLayout
+        android:id="@+id/heroProgressRow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/heroCta"
+        android:layout_marginBottom="12dp">
+
+        <ProgressBar
+            android:id="@+id/heroProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="160dp"
+            android:layout_height="2dp"
+            android:max="1000"
+            android:progressDrawable="@drawable/progress_bar" />
+
+        <TextView
+            android:id="@+id/heroProgressText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/text_faint"
+            android:textSize="@dimen/text_chip" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/heroCta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/rail"
+        android:layout_marginBottom="22dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/key_bg"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.08"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="OK"
+            android:textColor="#05080C"
+            android:textSize="@dimen/text_pill" />
+
+        <TextView
+            android:id="@+id/heroCtaText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_cta" />
+    </LinearLayout>
+
+    <!-- ── rail ────────────────────────────────────────────────────────────── -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rail"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:focusable="false"
+        android:paddingTop="9dp"
+        android:paddingBottom="12dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="14dp" />
+
+    <LinearLayout
+        android:id="@+id/scrollHint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <TextView
+            style="@style/Wayfind"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/wayfind_down" />
+
+        <TextView
+            style="@style/Wayfind"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:text="▾" />
+    </LinearLayout>
+
+    <!-- The house line. Laid out where it docks; the wake translates the whole
+         wrap to the middle of the frame, then brings it back. The word sits above
+         the strip and has to be allowed out of the wrap. -->
+    <FrameLayout
+        android:id="@+id/houseWrap"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="16dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/avatar">
+
+        <it.davideghiotto.jarvistv.HouseSpineView
+            android:id="@+id/house"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false" />
+
+        <TextView
+            android:id="@+id/houseWord"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="-54dp"
+            android:alpha="0"
+            android:fontFamily="sans-serif-light"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.26"
+            android:text="@string/house_word"
+            android:textAllCaps="true"
+            android:textColor="@color/ivory"
+            android:textSize="39sp" />
+    </FrameLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/panel_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="15dp"
+    android:paddingEnd="15dp">
+
+    <View
+        android:id="@+id/serviceDot"
+        android:layout_width="5dp"
+        android:layout_height="5dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/dot" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/serviceName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_service" />
+
+        <TextView
+            android:id="@+id/serviceMeta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="monospace"
+            android:maxLines="1"
+            android:textColor="@color/text_faint"
+            android:textSize="@dimen/text_service_meta" />
+    </LinearLayout>
+</LinearLayout>

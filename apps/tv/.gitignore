@@ -1,0 +1,29 @@
+# ── secrets: never commit, in any subdirectory ──────────────────────────────────
+# The real credentials live in the homelab project's .env, one level up and outside
+# this repo. Only .env.example (placeholders) is tracked here.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── android ─────────────────────────────────────────────────────────────────────
+local.properties
+.gradle/
+.kotlin/
+**/build/
+*.apk
+*.keystore
+!debug.keystore
+.idea/
+*.iml
+
+# ── node ────────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── os ──────────────────────────────────────────────────────────────────────────
+.DS_Store
+
+# ── editor ──────────────────────────────────────────────────────────────────────
+.cursor/

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JARVIS</string>
+
+    <!-- home -->
+    <string name="status_online">HOMELAB ONLINE</string>
+    <string name="status_offline">HOMELAB OFFLINE</string>
+    <string name="open">Apri</string>
+    <string name="resume">Riprendi</string>
+    <string name="resume_badge">RIPRENDI</string>
+    <string name="opening">apertura in corso</string>
+    <string name="wayfind_down">JARVIS e homelab</string>
+    <string name="house_word">Casa in linea</string>
+    <string name="house_tv">Questa TV</string>
+    <string name="house_tv_meta">65PUS8505 · pronta</string>
+    <string name="house_host">Debian</string>
+    <string name="house_services">Servizi</string>
+    <string name="house_tunnel">Tunnel</string>
+
+    <!-- jarvis -->
+    <string name="orb_idle">pronto</string>
+    <string name="orb_listening">in ascolto</string>
+    <string name="orb_thinking">sto pensando</string>
+    <string name="orb_speaking">sto parlando</string>
+    <string name="orb_error">non ci arrivo</string>
+    <string name="jarvis_hint_phone">tieni premuto sul telefono per parlare</string>
+    <string name="jarvis_offline">nessun collegamento al mini PC</string>
+    <string name="wayfind_apps">app</string>
+    <string name="wayfind_homelab">homelab</string>
+    <string name="wayfind_jarvis">JARVIS</string>
+    <string name="wayfind_up_apps">▴ app</string>
+    <string name="wayfind_down_homelab">▾ homelab</string>
+    <string name="wayfind_up_jarvis">▴ JARVIS</string>
+
+    <!-- homelab -->
+    <string name="section_homelab">Homelab</string>
+    <string name="section_services">Servizi · sonda TCP</string>
+    <string name="metric_cpu">CPU</string>
+    <string name="metric_ram">RAM</string>
+    <string name="metric_uptime">Uptime</string>
+    <string name="metric_services">Servizi</string>
+    <string name="homelab_unreachable">Nessuna risposta dal mini PC</string>
+    <string name="service_down">nessuna risposta</string>
+
+    <!-- settings -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="section_launcher">Launcher</string>
+    <string name="restore_help">JARVIS è impostato come schermata principale. Per tornare al launcher Google, apri i dettagli dell\'app e premi "Attiva".</string>
+    <string name="restore_button">Ripristina launcher Google</string>
+    <string name="open_tv_settings">Impostazioni della TV</string>
+</resources>

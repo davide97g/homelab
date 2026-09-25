@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One rail card. Everything inside it is drawn by the view itself, so the rail can
+     hold forty-odd apps on a set with 2 GB of RAM without forty-odd view trees. -->
+<it.davideghiotto.jarvistv.AppCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="@dimen/card_w"
+    android:layout_height="@dimen/card_h" />

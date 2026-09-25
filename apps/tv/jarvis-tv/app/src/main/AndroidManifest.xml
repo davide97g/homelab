@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- This TV has no microphone and no touchscreen; without these the app is
+         filtered off anything that does, which is fine, but leanback must be
+         declared required or it will not be offered as a HOME candidate. -->
+    <uses-feature android:name="android.software.leanback" android:required="true" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- Android 11+ package visibility: we only ever enumerate what the TV itself
+         considers launchable, so declare exactly that instead of QUERY_ALL_PACKAGES. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:banner="@drawable/banner"
+        android:icon="@drawable/banner"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.JarvisTv"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".HomeActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode"
+            android:theme="@style/Theme.JarvisTv">
+
+            <!-- LEANBACK_LAUNCHER alone makes it an app. HOME + DEFAULT is what makes
+                 it eligible as the launcher, selectable via `cmd package
+                 set-home-activity` or the system's own "default app" picker. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.JarvisTv" />
+    </application>
+</manifest>

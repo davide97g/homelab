@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The showcase sits under everything and never moves; the three screens ride the
+     reel above it; the takeover covers the lot while an app starts. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:clipChildren="false">
+
+    <it.davideghiotto.jarvistv.ShowcaseView
+        android:id="@+id/showcase"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <it.davideghiotto.jarvistv.ReelLayout
+        android:id="@+id/reel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <include android:id="@+id/apps" layout="@layout/screen_apps" />
+        <include android:id="@+id/jarvis" layout="@layout/screen_jarvis" />
+        <include android:id="@+id/homelab" layout="@layout/screen_homelab" />
+    </it.davideghiotto.jarvistv.ReelLayout>
+
+    <it.davideghiotto.jarvistv.TakeoverView
+        android:id="@+id/takeover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+</FrameLayout>
