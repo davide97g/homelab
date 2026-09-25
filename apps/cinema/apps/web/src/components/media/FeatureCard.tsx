@@ -73,8 +73,10 @@ export function FeatureCard({ items, className }: { items: BaseItemDto[]; classN
         )}
 
         <div className="mt-1 flex flex-wrap items-center gap-2">
+          {/* A Series has no media source of its own, so the player 400s on it.
+              The detail page resolves one; send folders there instead. */}
           <Link
-            to={`/play/${item.Id}`}
+            to={item.IsFolder ? `/item/${item.Id}` : `/play/${item.Id}`}
             className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Play className="size-4 fill-current" />

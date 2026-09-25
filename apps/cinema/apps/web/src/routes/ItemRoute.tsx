@@ -7,13 +7,15 @@ import { DotList, KindTag } from '@/components/media/item-meta'
 import { useAuth } from '@/lib/jellyfin/auth'
 import { useAvailability } from '@/lib/jellyfin/availability'
 import { ImageType, itemBackdropUrl, itemImageUrl } from '@/lib/jellyfin/images'
-import { useItem } from '@/lib/jellyfin/queries'
+import { useItem, usePlayTarget } from '@/lib/jellyfin/queries'
 import { formatRuntime, formatTimecode, ticksToSeconds } from '@/lib/jellyfin/ticks'
 
 export function ItemRoute() {
   const { itemId } = useParams<{ itemId: string }>()
   const { api } = useAuth()
   const { data: item, isLoading } = useItem(itemId)
+  // A Series cannot be played directly -- this is the episode the buttons open.
+  const { target: playTarget } = usePlayTarget(item)
   // Called before the loading return, so it keeps its hook slot; it stays
   // disabled until there is an item to probe.
   const { data: availability, refetch: recheck, isFetching: rechecking } = useAvailability(item)
@@ -31,7 +33,17 @@ export function ItemRoute() {
   const backdrop = itemBackdropUrl(api, item)
   const poster = itemImageUrl(api, item, ImageType.Primary, { maxWidth: 400 })
   const logo = itemImageUrl(api, item, ImageType.Logo, { maxWidth: 480 })
-  const resumeTicks = item.UserData?.PlaybackPositionTicks ?? 0
+  // Resume position belongs to whatever will actually play, which for a series
+  // is the episode, not the folder.
+  const resumeTicks = playTarget?.UserData?.PlaybackPositionTicks ?? 0
+  const playId = playTarget?.Id
+  // A series whose episodes have not been copied to the server yet resolves to
+  // nothing; better a missing button than one that opens a 400.
+  const playable = Boolean(playId)
+  const episodeLabel =
+    playTarget && playTarget.Type === 'Episode' && playTarget.Id !== item.Id
+      ? `S${playTarget.ParentIndexNumber ?? 1}:E${playTarget.IndexNumber ?? 1}`
+      : null
   const source = item.MediaSources?.[0]
   const video = source?.MediaStreams?.find((s) => s.Type === MediaStreamType.Video)
   const audioTracks = source?.MediaStreams?.filter((s) => s.Type === MediaStreamType.Audio) ?? []
@@ -79,21 +91,21 @@ export function ItemRoute() {
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {offline ? (
               <OfflineNotice rechecking={rechecking} onRecheck={() => void recheck()} />
-            ) : resumeTicks > 0 ? (
+            ) : !playable ? null : resumeTicks > 0 ? (
               <>
-                <PrimaryAction to={`/play/${item.Id}?t=${Math.floor(ticksToSeconds(resumeTicks))}`}>
+                <PrimaryAction to={`/play/${playId}?t=${Math.floor(ticksToSeconds(resumeTicks))}`}>
                   <Play className="size-4 fill-current" />
-                  Resume at {formatTimecode(ticksToSeconds(resumeTicks))}
+                  Resume {episodeLabel ?? ''} at {formatTimecode(ticksToSeconds(resumeTicks))}
                 </PrimaryAction>
-                <SecondaryAction to={`/play/${item.Id}`}>
+                <SecondaryAction to={`/play/${playId}`}>
                   <RotateCcw className="size-4" />
                   Start over
                 </SecondaryAction>
               </>
             ) : (
-              <PrimaryAction to={`/play/${item.Id}`}>
+              <PrimaryAction to={`/play/${playId}`}>
                 <Play className="size-4 fill-current" />
-                Play
+                {episodeLabel ? `Play ${episodeLabel}` : 'Play'}
               </PrimaryAction>
             )}
           </div>

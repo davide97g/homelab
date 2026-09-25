@@ -36,6 +36,7 @@ export const queryKeys = {
   items: (userId: string, params: unknown) => ['items', userId, params] as const,
   suggestions: (userId: string) => ['suggestions', userId] as const,
   item: (userId: string, itemId: string) => ['item', userId, itemId] as const,
+  playTarget: (userId: string, itemId: string) => ['playTarget', userId, itemId] as const,
   viewers: () => ['viewers'] as const,
 }
 
@@ -184,6 +185,49 @@ export function useItem(itemId: string | undefined) {
       return data
     },
   })
+}
+
+/**
+ * What pressing Play on this item should actually open.
+ *
+ * A Series is a folder -- no media source of its own -- and asking the server
+ * for its `PlaybackInfo` is a 400, not an empty answer. So `/play/<seriesId>`
+ * could never have worked; the button has to resolve to an episode first:
+ * whatever Next Up says, or the first one for a series nobody has started.
+ *
+ * Everything that is not a folder is its own play target.
+ */
+export function usePlayTarget(item: BaseItemDto | undefined) {
+  const { api, userId } = useSession()
+  const seriesId = item?.Type === BaseItemKind.Series ? (item.Id ?? undefined) : undefined
+
+  // Called unconditionally so it keeps its hook slot; `enabled` is what makes
+  // it a no-op for a film.
+  const query = useQuery({
+    queryKey: queryKeys.playTarget(userId, seriesId ?? ''),
+    enabled: Boolean(seriesId),
+    queryFn: async (): Promise<BaseItemDto | null> => {
+      const { data: nextUp } = await getTvShowsApi(api).getNextUp({
+        userId,
+        seriesId,
+        limit: 1,
+        fields: [...DETAIL_FIELDS],
+      })
+      if (nextUp.Items?.[0]) return nextUp.Items[0]
+
+      // Nothing watched yet, so Next Up has nothing to offer.
+      const { data: episodes } = await getTvShowsApi(api).getEpisodes({
+        seriesId: seriesId as string,
+        userId,
+        limit: 1,
+        fields: [...DETAIL_FIELDS],
+      })
+      return episodes.Items?.[0] ?? null
+    },
+  })
+
+  if (!seriesId) return { target: item, isLoading: false }
+  return { target: query.data ?? undefined, isLoading: query.isLoading }
 }
 
 /** One person, one screen, one thing playing on it. */
