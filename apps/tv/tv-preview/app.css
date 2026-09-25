@@ -17,6 +17,8 @@
   --text-3:        rgba(242,247,250,.40);
   --accent:        #4DE8F4;
   --ok:            #4ADE80;
+  --warn:          #FBBF24;
+  --ivory:         #F4EDE2;
   --err:           #F87171;
 
   /* one easing for everything: slow out, no bounce, reads calm on a big screen */
@@ -162,6 +164,7 @@ body {
    gone behind the orb */
 .stage.at-jarvis .backdrop,
 .stage.at-homelab .backdrop { filter: blur(26px) saturate(.75); transform: scale(1.06); }
+.stage.is-acquiring .backdrop { filter: saturate(.78) brightness(.5); }
 .backdrop { transition: filter var(--slow), transform var(--slow); }
 .stage.at-jarvis .backdrop__scrim,
 .stage.at-homelab .backdrop__scrim { background: linear-gradient(180deg, rgba(5,8,12,.88), rgba(5,8,12,.94)); }
@@ -203,6 +206,162 @@ body {
   background: #fff; color: #05080C; transform: scale(1.1);
   box-shadow: 0 0 0 5px rgba(255,255,255,.18);
 }
+
+/* ── the house, reporting in ─────────────────────────────────────────────────
+   Four systems on one wire. While .is-acquiring they sit mid-frame and lock;
+   then the same nodes travel up under the clock and a light keeps walking. */
+.command {
+  position: absolute;
+  left: 108px; right: 108px;
+  top: 158px;
+  z-index: 3;
+  pointer-events: none;
+  transition: top 700ms var(--ease), transform 700ms var(--ease);
+}
+.stage.is-acquiring .command {
+  top: 50%;
+  transform: translateY(-46%);
+}
+.command__word {
+  position: absolute;
+  left: 0; right: 0;
+  top: -108px;
+  text-align: center;
+  font-weight: 200;
+  font-size: 78px;
+  letter-spacing: .26em;
+  text-indent: .26em;
+  text-transform: uppercase;
+  color: var(--ivory);
+  text-shadow: 0 0 40px rgba(244,237,226,.28);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 380ms var(--ease), transform 380ms var(--ease);
+}
+.command.is-locked .command__word { opacity: 1; transform: none; }
+.stage:not(.is-acquiring) .command__word {
+  opacity: 0;
+  transform: translateY(-16px);
+  transition-duration: 240ms;
+}
+.command__spine {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 72px;
+}
+.command__wire {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%;
+  height: 12px;
+  /* the viewBox is 1000×12, and Chrome turns that into an aspect-ratio that
+     ignores left/right and stops the wire halfway across the spine */
+  aspect-ratio: unset;
+  overflow: visible;
+}
+.wire-glow, .wire-base, .wire-pulse {
+  fill: none;
+  stroke-linecap: round;
+}
+.wire-glow {
+  stroke: rgba(244,237,226,.42);
+  stroke-width: 6;
+}
+.wire-base {
+  stroke: rgba(244,237,226,.9);
+  stroke-width: 1.75;
+}
+.stage.is-acquiring .wire-glow,
+.stage.is-acquiring .wire-base {
+  stroke-dasharray: 964;
+  stroke-dashoffset: 964;
+  animation: drawWire 860ms var(--ease) 60ms forwards;
+}
+@keyframes drawWire { to { stroke-dashoffset: 0; } }
+.wire-pulse { stroke: transparent; stroke-width: 2; }
+.stage:not(.is-acquiring) .wire-pulse {
+  stroke: var(--ivory);
+  stroke-dasharray: 70 894;
+  animation: travel 3.4s linear infinite;
+}
+@keyframes travel { to { stroke-dashoffset: -964; } }
+
+.node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 340px;
+}
+.node:nth-child(3),
+.node:nth-child(4) { align-items: center; text-align: center; }
+.node:last-child { align-items: flex-end; text-align: right; }
+.stage.is-acquiring .node {
+  animation: nodeIn 520ms var(--ease) both;
+  animation-delay: calc(var(--i) * 140ms);
+}
+@keyframes nodeIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+.node__lamp {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 5px rgba(74,222,128,.12), 0 0 16px var(--ok);
+  flex: none;
+}
+.node--warn .node__lamp {
+  background: var(--warn);
+  box-shadow: 0 0 0 5px rgba(251,191,36,.14), 0 0 16px var(--warn);
+}
+.stage.is-acquiring .node__lamp {
+  animation: ignite 620ms var(--ease) both;
+  animation-delay: calc(var(--i) * 140ms);
+}
+.command.is-locked .node__lamp { animation: confirm 480ms var(--ease); }
+@keyframes ignite {
+  0%   { transform: scale(.15); opacity: 0; }
+  42%  { transform: scale(1.85); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes confirm {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.9); filter: brightness(1.5); }
+  100% { transform: scale(1); filter: none; }
+}
+.node__name {
+  display: block;
+  font-size: 16px; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase;
+  text-shadow: 0 2px 18px rgba(0,0,0,.8);
+}
+.node__meta {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 15px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.node--warn .node__meta { color: var(--warn); }
+
+/* the picture steps back while the house reports; the remote cancels it */
+.stage.is-acquiring .topbar,
+.stage.is-acquiring .hero,
+.stage.is-acquiring .rail,
+.stage.is-acquiring .scrollhint {
+  opacity: 0;
+  transition-duration: 180ms;
+  transition-delay: 0ms;
+}
+.topbar, .hero, .rail { transition: opacity 560ms var(--ease), transform 560ms var(--ease); }
+.hero { transition-delay: 80ms; }
+.rail { transition-delay: 160ms; }
 
 /* ── hero ───────────────────────────────────────────────────────────────────── */
 .hero { margin-top: auto; max-width: 900px; }

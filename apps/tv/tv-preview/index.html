@@ -9,7 +9,7 @@
 <!-- Roboto is what Android TV actually renders with; matching it here keeps the
      preview honest about line lengths and weights. -->
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=1789568665">
+<link rel="stylesheet" href="app.css?v=1789604200">
 </head>
 <body>
 
@@ -26,6 +26,7 @@
     <label><input type="checkbox" id="tglSafe"> safe area</label>
     <label><input type="checkbox" id="tglAmbi" checked> ambilight</label>
     <label><input type="checkbox" id="tglBezel" checked> cornice</label>
+    <button id="btnCasa">casa</button>
     <button id="btnSay">ciclo completo</button>
     <button data-state="LISTENING">ascolto</button>
     <button data-state="THINKING">pensa</button>
@@ -38,7 +39,7 @@
   <div class="tv" id="tv">
     <div class="tv__ambilight" id="ambilight"></div>
     <div class="tv__panel">
-      <div class="stage" id="stage">
+      <div class="stage is-acquiring" id="stage">
 
         <!-- the showcase sits inside a margin, so the photograph reads as a framed
              picture instead of wallpaper, and the set's edge backlight has somewhere
@@ -70,6 +71,47 @@
                 <button class="gear" id="gear" data-focus="gear" aria-label="Impostazioni">
                   <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5m7.43-2.53a7.6 7.6 0 0 0 0-1.94l2.03-1.58a.5.5 0 0 0 .12-.62l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.68-.97l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54a7.3 7.3 0 0 0-1.68.97l-2.39-.96a.5.5 0 0 0-.6.22L2.42 8.83a.5.5 0 0 0 .12.62l2.03 1.58a7.6 7.6 0 0 0 0 1.94l-2.03 1.58a.5.5 0 0 0-.12.62l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.52.4 1.08.73 1.68.97l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.6-.24 1.16-.57 1.68-.97l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.62Z"/></svg>
                 </button>
+              </div>
+            </div>
+
+            <!-- the house, reporting in. Four real systems, one line.
+                 Acquire plays once; the same nodes then dock under the clock. -->
+            <div class="command" id="command">
+              <div class="command__word">Casa in linea</div>
+              <div class="command__spine">
+                <svg class="command__wire" viewBox="0 0 1000 12" preserveAspectRatio="none" aria-hidden="true">
+                  <line class="wire-glow" x1="18" y1="6" x2="982" y2="6" />
+                  <line class="wire-base" x1="18" y1="6" x2="982" y2="6" />
+                  <line class="wire-pulse" x1="18" y1="6" x2="982" y2="6" />
+                </svg>
+                <div class="node" style="--i:0">
+                  <i class="node__lamp"></i>
+                  <div class="node__copy">
+                    <span class="node__name">Questa TV</span>
+                    <em class="node__meta">65PUS8505 · pronta</em>
+                  </div>
+                </div>
+                <div class="node" style="--i:1">
+                  <i class="node__lamp"></i>
+                  <div class="node__copy">
+                    <span class="node__name">Debian</span>
+                    <em class="node__meta" id="nodeHost">12g 4h</em>
+                  </div>
+                </div>
+                <div class="node" style="--i:2" id="nodeServices">
+                  <i class="node__lamp"></i>
+                  <div class="node__copy">
+                    <span class="node__name">Servizi</span>
+                    <em class="node__meta" id="nodeServicesMeta">—</em>
+                  </div>
+                </div>
+                <div class="node" style="--i:3">
+                  <i class="node__lamp"></i>
+                  <div class="node__copy">
+                    <span class="node__name">Tunnel</span>
+                    <em class="node__meta">cloudflared · 2 ms</em>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -134,8 +176,8 @@
   <div class="room__caption">Frecce / click per muoverti · ↓ per JARVIS · le misure sono quelle reali del pannello</div>
 </div>
 
-<script src="data.js?v=1789568665"></script>
+<script src="data.js?v=1789604200"></script>
 <script src="orb.js"></script>
-<script src="app.js?v=1789568665"></script>
+<script src="app.js?v=1789604200"></script>
 </body>
 </html>

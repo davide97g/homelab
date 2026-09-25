@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -70,6 +71,10 @@ class HomeActivity : AppCompatActivity() {
     private var picked = 0
     private var railScroll = 0
     private var launching = false
+    private var houseAwake = false
+    private var houseHeld = false
+    private var housePeaked = false
+    private var lastSnap: Snapshot? = null
     private var showcase: List<ShowcaseItem> = emptyList()
     private val backdrops = mutableMapOf<String, Bitmap>()
 
@@ -123,6 +128,7 @@ class HomeActivity : AppCompatActivity() {
 
         buildGauges()
         setJarvisState(OrbView.State.IDLE)
+        watchHouse()
 
         ui.reel.post {
             for (i in 0 until ui.reel.childCount) {
@@ -157,6 +163,7 @@ class HomeActivity : AppCompatActivity() {
         }
         sweep.start()
         if (zone == Zone.JARVIS) ui.jarvis.orb.start()
+        if (houseAwake) ui.apps.house.startWalker()
     }
 
     override fun onPause() {
@@ -164,6 +171,8 @@ class HomeActivity : AppCompatActivity() {
         clockJob?.cancel()
         sweep.cancel()
         ui.jarvis.orb.stop()
+        if (ui.apps.house.acquiring) ui.apps.house.finish()
+        ui.apps.house.stopWalker()
         // Hand Ambilight back before whatever the viewer launched takes the screen,
         // otherwise a manual-mode pulse would freeze over their film.
         ambilight.stopPulse()
@@ -190,6 +199,7 @@ class HomeActivity : AppCompatActivity() {
             openSettings(); return true
         }
         if (launching) return true
+        if (ui.apps.house.acquiring) ui.apps.house.finish()
         return when (zone) {
             Zone.RAIL -> when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_RIGHT -> { pick(picked + 1); true }
@@ -246,6 +256,7 @@ class HomeActivity : AppCompatActivity() {
 
         // the orb costs a frame of canvas work, so it only runs while it is on screen
         if (next == Zone.JARVIS) ui.jarvis.orb.start() else ui.jarvis.orb.stop()
+        if (next == Zone.RAIL || next == Zone.GEAR) ui.apps.house.startWalker() else ui.apps.house.stopWalker()
         if (next == Zone.JARVIS) tintAmbilight(orbColour()) else tintAmbilight(pickedAccent())
     }
 
@@ -571,6 +582,7 @@ class HomeActivity : AppCompatActivity() {
         val colour = ContextCompat.getColor(this, if (up) R.color.ok else R.color.err)
         ui.apps.linkDot.background.mutate().setTint(colour)
         ui.apps.linkText.setText(if (up) R.string.status_online else R.string.status_offline)
+        ui.apps.house.bind(up, if (up) lastSnap?.host else null, if (up) lastSnap?.services.orEmpty() else emptyList())
         if (!up) {
             ui.jarvis.jarvisPrompt.setText(R.string.jarvis_offline)
             ui.jarvis.jarvisReply.text = ""
@@ -586,6 +598,8 @@ class HomeActivity : AppCompatActivity() {
 
     private fun renderHomelab(snap: Snapshot) {
         val host = snap.host
+        lastSnap = snap
+        ui.apps.house.bind(true, host, snap.services)
         ui.homelab.hostName.text = host?.name ?: getString(R.string.homelab_unreachable)
         services.items = snap.services
 
@@ -605,6 +619,62 @@ class HomeActivity : AppCompatActivity() {
         }
         set(3, "$upCount/${snap.services.size}", "", 
             if (snap.services.isNotEmpty()) upCount.toFloat() / snap.services.size else 0f)
+    }
+
+    /**
+     * The house reports in once, the first time the launcher is drawn. Any key
+     * docks it immediately — the remote stays in charge.
+     */
+    private fun watchHouse() {
+        ui.apps.house.onFrame = { word, acquiring ->
+            ui.apps.houseWord.alpha = word
+            if (acquiring && !houseHeld && !housePeaked) {
+                houseHeld = true
+                fadeChrome(0f, 180)
+                ui.showcase.dim = .5f
+                if (prefs.ambilightEnabled) ambilight.startPulse(0x9E, 0xEA, 0xF2)
+            }
+            if (word > .5f) housePeaked = true
+            if (acquiring && housePeaked && prefs.ambilightEnabled && word > .85f) {
+                ambilight.stopPulse(restore = false)
+                ambilight.setColour(0xFFF4EDE2.toInt())
+            }
+            // chrome comes back as the line starts home, not after it has arrived
+            if (houseHeld && (!acquiring || (housePeaked && word < .2f))) {
+                houseHeld = false
+                housePeaked = false
+                fadeChrome(1f, 560)
+                ui.showcase.dim = when (zone) {
+                    Zone.JARVIS -> .06f
+                    Zone.HOMELAB -> .12f
+                    else -> 1f
+                }
+                ambilight.stopPulse(restore = false)
+                tintAmbilight(if (zone == Zone.JARVIS) orbColour() else pickedAccent())
+            }
+        }
+        ui.apps.houseWrap.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (ui.apps.houseWrap.height == 0) return true
+                if (!ui.apps.houseWrap.viewTreeObserver.isAlive) return true
+                ui.apps.houseWrap.viewTreeObserver.removeOnPreDrawListener(this)
+                if (!houseAwake) {
+                    houseAwake = true
+                    ui.apps.house.play()
+                }
+                return true
+            }
+        })
+    }
+
+    private fun fadeChrome(alpha: Float, ms: Long) {
+        listOf(
+            ui.apps.avatar, ui.apps.greeting, ui.apps.dateLine, ui.apps.linkPill,
+            ui.apps.clock, ui.apps.gear,
+            ui.apps.heroKicker, ui.apps.heroTitle, ui.apps.heroMeta,
+            ui.apps.heroProgressRow, ui.apps.heroCta,
+            ui.apps.rail, ui.apps.scrollHint,
+        ).forEach { it.animate().alpha(alpha).setDuration(ms).start() }
     }
 
     // ── wiring ───────────────────────────────────────────────────────────────────

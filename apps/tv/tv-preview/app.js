@@ -75,7 +75,9 @@ function render() {
 
   track.style.transform = `translateX(${-Math.max(0, index - LEAD) * (CARD_W + GAP)}px)`;
 
-  tv.style.setProperty('--ambi', app.accent);
+  if (!stage.classList.contains('is-acquiring')) {
+    tv.style.setProperty('--ambi', app.accent);
+  }
   stage.style.setProperty('--accent', app.accent);
 
   // fade the hero out, swap text at the bottom of the fade, fade it back in
@@ -120,6 +122,7 @@ const goHome   = () => goto('rail');
 
 // ── D-pad ───────────────────────────────────────────────────────────────────
 function key(k) {
+  if (stage.classList.contains('is-acquiring')) finishAcquire();
   if (zone === 'homelab') {
     if (k === 'ArrowUp') goJarvis();
     if (k === 'Escape' || k === 'Backspace') goHome();
@@ -329,4 +332,76 @@ function fit() {
 }
 addEventListener('resize', fit);
 fit();
+
+/* ── the house reports in, once, then the same four nodes dock under the clock.
+   Any key yields: the remote is in charge, the ceremony is not. */
+const command = document.getElementById('command');
+let acquireTimers = [];
+
+(function houseStatus() {
+  const up = SERVICES.filter((s) => s.up).length;
+  const down = SERVICES.find((s) => !s.up);
+  const tunnel = SERVICES.find((s) => s.name === 'cloudflared');
+  const meta = document.getElementById('nodeServicesMeta');
+  meta.textContent = down
+    ? `${up} di ${SERVICES.length} · ${down.name} muto`
+    : `${up} di ${SERVICES.length}`;
+  document.getElementById('nodeServices').classList.toggle('node--warn', Boolean(down));
+  if (tunnel) {
+    command.querySelector('.node:last-child .node__meta').textContent =
+      `cloudflared · ${tunnel.ms} ms`;
+  }
+})();
+
+function clearAcquire() {
+  acquireTimers.forEach(clearTimeout);
+  acquireTimers = [];
+}
+
+function finishAcquire() {
+  clearAcquire();
+  stage.classList.remove('is-acquiring');
+  command.classList.remove('is-locked');
+  tv.classList.remove('ambi-pulse');
+  tv.style.setProperty('--ambi', APPS[index].accent);
+}
+
+function armAcquire() {
+  clearAcquire();
+  acquireTimers.push(setTimeout(() => {
+    if (!stage.classList.contains('is-acquiring')) return;
+    command.classList.add('is-locked');
+    tv.style.setProperty('--ambi', '#F4EDE2');
+  }, 1120));
+  acquireTimers.push(setTimeout(finishAcquire, 2140));
+}
+
+function acquireHouse() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    finishAcquire();
+    return;
+  }
+  if (zone !== 'rail' && zone !== 'gear') goHome();
+  command.classList.remove('is-locked');
+  stage.classList.remove('is-acquiring');
+  void stage.offsetWidth;
+  stage.classList.add('is-acquiring');
+  command.querySelectorAll('.node, .node__lamp, .wire-base, .wire-glow').forEach((el) => {
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+  });
+  tv.style.setProperty('--ambi', '#9EEAF2');
+  tv.classList.add('ambi-pulse');
+  armAcquire();
+}
+
+document.getElementById('btnCasa').addEventListener('click', acquireHouse);
+
 render();
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) finishAcquire();
+else {
+  tv.style.setProperty('--ambi', '#9EEAF2');
+  tv.classList.add('ambi-pulse');
+  armAcquire();
+}

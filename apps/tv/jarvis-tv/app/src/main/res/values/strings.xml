@@ -10,6 +10,12 @@
     <string name="resume_badge">RIPRENDI</string>
     <string name="opening">apertura in corso</string>
     <string name="wayfind_down">JARVIS e homelab</string>
+    <string name="house_word">Casa in linea</string>
+    <string name="house_tv">Questa TV</string>
+    <string name="house_tv_meta">65PUS8505 · pronta</string>
+    <string name="house_host">Debian</string>
+    <string name="house_services">Servizi</string>
+    <string name="house_tunnel">Tunnel</string>
 
     <!-- jarvis -->
     <string name="orb_idle">pronto</string>

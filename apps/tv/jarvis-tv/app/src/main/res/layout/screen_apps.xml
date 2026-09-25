@@ -8,7 +8,9 @@
     android:paddingStart="@dimen/screen_pad_h"
     android:paddingEnd="@dimen/screen_pad_h"
     android:paddingTop="@dimen/screen_pad_v"
-    android:paddingBottom="@dimen/screen_pad_v">
+    android:paddingBottom="@dimen/screen_pad_v"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
     <!-- ── top bar ─────────────────────────────────────────────────────────── -->
     <TextView
@@ -245,4 +247,41 @@
             android:layout_marginStart="5dp"
             android:text="▾" />
     </LinearLayout>
+
+    <!-- The house line. Laid out where it docks; the wake translates the whole
+         wrap to the middle of the frame, then brings it back. The word sits above
+         the strip and has to be allowed out of the wrap. -->
+    <FrameLayout
+        android:id="@+id/houseWrap"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="16dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/avatar">
+
+        <it.davideghiotto.jarvistv.HouseSpineView
+            android:id="@+id/house"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false" />
+
+        <TextView
+            android:id="@+id/houseWord"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="-54dp"
+            android:alpha="0"
+            android:fontFamily="sans-serif-light"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.26"
+            android:text="@string/house_word"
+            android:textAllCaps="true"
+            android:textColor="@color/ivory"
+            android:textSize="39sp" />
+    </FrameLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
