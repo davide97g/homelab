@@ -226,6 +226,8 @@ itself and writes `: keepalive` comment lines every 15 s until LiteLLM starts st
 SSE clients skip comments. A later LiteLLM error becomes an SSE error event in that API's
 shape. Non-streaming requests pass through unchanged and can still hit the 100 s limit.
 Every agent in [`CONNECT.md`](CONNECT.md) streams. The LAN `:4000` does not go through it.
+Checked over the public URL: a 28k-token streaming prompt got its first token at 160 s
+and finished with a 200 (it was a 524 at 100 s before).
 
 After a new hostname, the Mac's resolver can hold a cached NXDOMAIN for a few minutes
 (`curl` exit 6 while `dig @1.1.1.1` answers). `curl --doh-url https://1.1.1.1/dns-query`
