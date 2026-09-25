@@ -20,16 +20,48 @@ history from before the merge, under `apps/`.
 
 | Project | Path | Runs on | Public URL | Deploy |
 |---|---|---|---|---|
-| Cinema, Jellyfin front end | `apps/cinema` | NAS, plus a second copy on the mini PC | `cinema.davideghiotto.it`, `home-cinema.davideghiotto.it` (Access) | tar over ssh, [`docs/DEPLOY.md`](apps/cinema/docs/DEPLOY.md) |
-| Hub, the homelab's front door | `apps/hub` | mini PC, Dokploy | `monitoring.davideghiotto.it` | `./deploy.py` |
-| Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | `./deploy.py` |
-| Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | `git archive` over ssh, [README](apps/manga/README.md) |
-| JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | `scripts/deploy-tv.sh` |
-| Local AI: Ollama, Open WebUI, LiteLLM | `apps/local-ai` | mini PC, `~/local-ai` | `openui.davideghiotto.it`, `llm.davideghiotto.it` | compose over ssh |
-| mediarr: the *arr stack, qBittorrent, Jellyseerr | `stacks/mediarr` | mini PC, `~/mediarr` | none, LAN only | `scripts/deploy.sh` |
-| Swarm, qBittorrent WebUI | `stacks/swarm` | mini PC, inside qBittorrent | none, `http://debian:8080` | `./deploy.py` |
+| Cinema, Jellyfin front end | `apps/cinema` | NAS, plus a second copy on the mini PC | `cinema.davideghiotto.it`, `home-cinema.davideghiotto.it` (Access) | mini PC: push to `main`. NAS: tar over ssh, [`DEPLOY.md`](apps/cinema/docs/DEPLOY.md) |
+| Hub, the homelab's front door | `apps/hub` | mini PC, Dokploy | `monitoring.davideghiotto.it` | push to `main` |
+| Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
+| Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
+| JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | server: push to `main`. APK: `scripts/deploy-tv.sh` |
+| Local AI: Ollama, Open WebUI, LiteLLM | `apps/local-ai` | mini PC, `~/local-ai` | `openui.davideghiotto.it`, `llm.davideghiotto.it` | push to `main` |
+| mediarr: the *arr stack, qBittorrent, Jellyseerr | `stacks/mediarr` | mini PC, `~/mediarr` | none, LAN only | push to `main` |
+| Swarm, qBittorrent WebUI | `stacks/swarm` | mini PC, inside qBittorrent | none, `http://debian:8080` | push to `main` |
 
 `riddle` also runs on the box but is its own repository (see below).
+
+## Deploying
+
+**Push to `main`.** Every stack that runs on the mini PC is a Dokploy compose app sourced from this
+repository (GitHub provider, branch `main`, its own compose path), so all of them are visible and
+restartable in the Dokploy UI at `http://debian:3000`. Dokploy's own auto-deploy is off: each app
+has a workflow in [`.github/workflows/`](.github/workflows/) that runs only when its folder
+changes, checks it (build, lint, `docker compose config`), and then calls the shared
+[`dokploy-deploy.yml`](.github/workflows/dokploy-deploy.yml). That triggers `compose.deploy`
+through `deploy-homelab.davideghiotto.it` — a tunnel hostname whose path rule lets only
+`api/compose.(deploy|one)` through — and waits for Dokploy's verdict, so a failed deploy is a red
+run. Each deployment is titled with its commit, which makes Dokploy's Deployments tab the version
+history; rolling back is reverting the commit.
+
+| App | Dokploy app name | Compose path | Workflow |
+|---|---|---|---|
+| hub | `hub` | `apps/hub/docker-compose.yml` | `hub.yml` |
+| monitoring | `monitoring-frontend-fnhjyi` | `apps/monitoring/docker-compose.yml` | `monitoring.yml` |
+| manga | `manga` | `apps/manga/compose.yml` | `manga.yml` |
+| local-ai | `local-ai` | `apps/local-ai/compose.yaml` | `local-ai.yml` |
+| cinema, mini PC copy | `web` | `apps/cinema/services/web/compose.yaml` | `cinema.yml` |
+| jarvis-server | `jarvis-server` | `apps/tv/jarvis-server/docker-compose.yml` | `jarvis-server.yml` |
+| mediarr | `mediarr` | `stacks/mediarr/compose.yml` | `mediarr.yml` |
+| swarm | `swarm` | `stacks/swarm/compose.yml` | `swarm.yml` |
+
+The app names are the compose project names these stacks already had, so moving them into
+Dokploy kept their containers, volumes and networks. Secrets live in each app's Environment tab,
+which Dokploy writes to a `.env` beside the compose file. Repository secrets: `DOKPLOY_URL`,
+`DOKPLOY_API_KEY`, and one `DOKPLOY_COMPOSE_ID_<APP>` per app.
+
+Not in Dokploy, because it cannot reach them: the NAS copy of Cinema and the NAS monitoring
+agents (Dokploy has no root docker on the NAS), and the TV launcher APK (installed over ADB).
 
 ## Host
 
