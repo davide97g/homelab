@@ -25,7 +25,7 @@ nothing; it is a reader.
 | `server/src/loki/query.ts` | Structured log filters → LogQL. Nothing else assembles a query. |
 | `server/src/actions/` | The one write path: registry, dispatcher, audit. |
 | `server/src/jev/` | `/api/ask`: a sentence → a chart spec, decided by Jev. Client, questions, validator. |
-| `deploy.py` | Copy up, build there, bring it up. |
+| `deploy.py` | Manual deploy of `main` through Dokploy; `--direct` is the no-Dokploy fallback. |
 | `scripts/collect-env.sh` | Runs **on the box**, writes `.env` mode 600. |
 
 **One container, one origin, one port.** The server serves the API and the page,
@@ -50,13 +50,19 @@ two can only disagree about the handful of values the browser derives itself.
 
 ## Deploy
 
+**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `hub` app (app name `hub`, so the compose project,
+container and `hub_hub-data` volume are the ones that were already there) clones the repo and runs
+`up -d --build` in `apps/hub`: the image is built on the box, there is no registry. Secrets live
+in its Environment tab.
+
 ```sh
-./deploy.py              # sync, build the image on the box, bring it up
-./deploy.py --no-build   # redeploy the image already there
+./deploy.py              # deploy main now, without a push
+./deploy.py --direct     # Dokploy is down: tar to ~/hub, build, compose up with ~/hub/.env
 ./deploy.py --logs       # follow the container log afterwards
 ```
 
-The image is built on the box: there is no registry in this setup. Then, once,
+`collect-env.sh` still writes `~/hub/.env` on the box; copy what it collects into the Dokploy
+Environment tab, which is what the deployed hub reads. Then, once,
 on the box:
 
 ```sh

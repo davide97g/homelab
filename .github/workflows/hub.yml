@@ -1,0 +1,49 @@
+name: hub
+
+# Checks on every push and pull request touching apps/hub; a push to main that passes
+# is deployed by Dokploy through the shared dokploy-deploy workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/hub/**
+      - .github/workflows/hub.yml
+      - .github/workflows/dokploy-deploy.yml
+  pull_request:
+    paths:
+      - apps/hub/**
+      - .github/workflows/hub.yml
+
+# Queue rather than cancel: a cancelled run leaves main green but undeployed.
+concurrency:
+  group: hub-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+        working-directory: apps/hub
+      - run: pnpm build
+        working-directory: apps/hub
+      - name: Compose file is valid
+        run: docker compose -f apps/hub/docker-compose.yml config --quiet
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/dokploy-deploy.yml
+    with:
+      app: hub
+    secrets:
+      compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_HUB }}
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}

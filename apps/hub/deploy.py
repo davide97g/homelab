@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-"""Ship the hub to the homelab box.
+"""Deploy the hub by hand. A push to main already does this from CI.
 
-    ./deploy.py              # sync, build the image on the box, deploy
-    ./deploy.py --no-build   # redeploy the image that is already there
+    ./deploy.py              # ask Dokploy to deploy main (it clones and builds)
+    ./deploy.py --direct     # Dokploy is down: copy this tree to ~/hub, build, compose up
     ./deploy.py --logs       # follow the container log afterwards
 
-The image is built on the box rather than here: there is no registry in this
-setup, and Dokploy's Raw compose provider can only reference an image, not a
-build context. So the source is copied to ~/hub, `docker build` runs
-over SSH, and the compose file that Dokploy holds just names the result.
+Dokploy's hub app pulls apps/hub from davide97g/homelab and runs `up -d --build`
+on the box, so the normal path copies nothing: it checks main is pushed and
+triggers the deploy. Its secrets live in the Dokploy Environment tab.
 
-Dokploy is optional. With DOKPLOY_COMPOSE_ID set in .dokploy.env the compose
-file is pushed through its API and deployed there; without it the stack is
-brought up with plain `docker compose` in ~/hub, which is also the
-fallback if Dokploy is ever down.
+--direct is the old path and the fallback: the source goes to ~/hub as a tar
+over ssh, `docker build` runs there, and plain `docker compose` brings it up
+with ~/hub/.env. Anything deployed that way is replaced by the next Dokploy
+deploy.
 
 .dokploy.env (gitignored, chmod 600):
 
@@ -112,6 +111,21 @@ def main() -> int:
     args = sys.argv[1:]
     env = load_env()
 
+    compose_id = env.get("DOKPLOY_COMPOSE_ID")
+    if "--direct" not in args:
+        if not (compose_id and env.get("DOKPLOY_URL") and env.get("DOKPLOY_API_KEY")):
+            sys.exit(".dokploy.env has no DOKPLOY_URL/API_KEY/COMPOSE_ID -- use --direct")
+        git = lambda *a: subprocess.run(["git", "-C", str(HERE), *a], capture_output=True, text=True)
+        git("fetch", "-q", "origin", "main")
+        if git("rev-parse", "HEAD").stdout != git("rev-parse", "origin/main").stdout:
+            sys.exit("HEAD is not origin/main: Dokploy deploys main from GitHub, so push first")
+        dokploy(env, "compose.deploy", {"composeId": compose_id, "title": "manual deploy.py"})
+        print("deployment queued in Dokploy")
+        if "--logs" in args:
+            time.sleep(8)
+            subprocess.run(["ssh", SSH_HOST, "docker logs -f --tail 60 homelab-hub"])
+        return 0
+
     sync()
 
     if "--no-build" not in args:
@@ -119,17 +133,7 @@ def main() -> int:
         # change rebuilds in seconds.
         ssh(f"cd {REMOTE_DIR} && DOCKER_BUILDKIT=1 docker build -t {IMAGE} .")
 
-    compose_id = env.get("DOKPLOY_COMPOSE_ID")
-    if compose_id and env.get("DOKPLOY_URL") and env.get("DOKPLOY_API_KEY"):
-        compose_file = (HERE / "docker-compose.yml").read_text()
-        dokploy(env, "compose.update", {"composeId": compose_id, "composeFile": compose_file})
-        print("pushed compose to Dokploy")
-        dokploy(env, "compose.deploy", {"composeId": compose_id})
-        print("deployment queued in Dokploy")
-        time.sleep(8)
-    else:
-        print("no DOKPLOY_COMPOSE_ID — bringing the stack up directly on the box")
-        ssh(f"cd {REMOTE_DIR} && docker compose up -d --remove-orphans")
+    ssh(f"cd {REMOTE_DIR} && docker compose up -d --remove-orphans")
 
     ssh("docker ps --filter name=homelab-hub --format '{{.Names}}\t{{.Status}}\t{{.Ports}}'")
 

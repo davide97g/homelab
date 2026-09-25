@@ -1,5 +1,7 @@
-# What runs on the box. The image is built there -- there is no registry in this
-# setup -- so this file only ever names it.
+# What runs on the box. Dokploy deploys it from davide97g/homelab on every push to
+# main (.github/workflows/hub.yml): it clones the repo and runs `up -d --build`
+# here, so the image is built on the box from this directory -- there is no
+# registry in this setup.
 #
 # One container, one origin, one port: the server serves both /api and the built
 # page, so there is no CORS to configure, the session cookie is same-origin by
@@ -7,11 +9,14 @@
 
 services:
   hub:
+    build: .
     image: ${HUB_IMAGE:-homelab-hub:latest}
     container_name: homelab-hub
     restart: unless-stopped
+    # Dokploy writes its Environment tab to .env beside this file. In the
+    # fallback deploy (deploy.py --direct) it is ~/hub/.env on the box instead.
     env_file:
-      - path: /home/davide/hub/.env
+      - path: .env
         required: false
     environment:
       PORT: 8080
@@ -71,7 +76,7 @@ services:
     restart: unless-stopped
     # The image runs as nobody and cannot read the socket without the host's
     # docker group. That gid is host-specific -- `getent group docker | cut -d: -f3`
-    # -- so it comes from .env, which scripts/collect-env.sh fills in on the box.
+    # -- so it comes from DOCKER_GID in the Dokploy Environment tab.
     user: "65534:${DOCKER_GID:-989}"
     command:
       - -loglevel=info
