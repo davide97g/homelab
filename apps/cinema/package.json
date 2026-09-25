@@ -1,0 +1,17 @@
+{
+  "name": "cinema",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd apps/web dev",
+    "dev:all": "bash services/jellyfin/dev.sh",
+    "build": "bun run tokens && bun run --cwd apps/web build",
+    "lint": "bun run --cwd apps/web lint",
+    "tokens": "bun run packages/design-tokens/build.ts"
+  }
+}

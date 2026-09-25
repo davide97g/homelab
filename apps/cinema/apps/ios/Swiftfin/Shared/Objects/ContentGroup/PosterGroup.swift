@@ -1,0 +1,94 @@
+//
+// Swiftfin is subject to the terms of the Mozilla Public
+// License, v2.0. If a copy of the MPL was not distributed with this
+// file, you can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2026 Jellyfin & Jellyfin Contributors
+//
+
+import SwiftUI
+
+struct PosterGroup<Library: PagingLibrary>: ContentGroup where Library.Element: LibraryElement, Library.Element: Poster {
+
+    struct Environment: WithDefaultValue, WithViewContext {
+
+        var isHeaderButtonEnabled: Bool = true
+        var viewContext: ViewContext = .init()
+
+        static var `default`: Self {
+            .init()
+        }
+    }
+
+    let displayTitle: String
+    let environment: Environment
+    let id: String
+    let library: Library
+    let posterDisplayType: PosterDisplayType
+    let posterSize: PosterDisplayType.Size
+    let viewModel: PagingLibraryViewModel<Library>
+
+    var _shouldBeResolved: Bool {
+        viewModel.elements.isNotEmpty
+    }
+
+    init(
+        id: String = UUID().uuidString,
+        library: Library,
+        posterDisplayType: PosterDisplayType = .portrait,
+        posterSize: PosterDisplayType.Size = .small,
+        environment: Environment
+    ) {
+        self.displayTitle = library.parent.displayTitle
+        self.environment = environment
+        self.id = id
+        self.library = library
+        self.posterDisplayType = posterDisplayType
+        self.posterSize = posterSize
+        self.viewModel = .init(library: library, pageSize: 20)
+    }
+
+    /// A group over a view model that already exists, for when two groups draw
+    /// from one library: `ContentGroupViewModel` refreshes view models uniqued
+    /// by identity, so sharing one is what keeps the screen to a single request.
+    init(
+        id: String = UUID().uuidString,
+        viewModel: PagingLibraryViewModel<Library>,
+        posterDisplayType: PosterDisplayType = .portrait,
+        posterSize: PosterDisplayType.Size = .small,
+        environment: Environment = .default
+    ) {
+        self.displayTitle = viewModel.library.parent.displayTitle
+        self.environment = environment
+        self.id = id
+        self.library = viewModel.library
+        self.posterDisplayType = posterDisplayType
+        self.posterSize = posterSize
+        self.viewModel = viewModel
+    }
+
+    init(
+        id: String = UUID().uuidString,
+        library: Library,
+        posterDisplayType: PosterDisplayType = .portrait,
+        posterSize: PosterDisplayType.Size = .small,
+        _viewContext: ViewContext? = nil
+    ) {
+        self.init(
+            id: id,
+            library: library,
+            posterDisplayType: posterDisplayType,
+            posterSize: posterSize,
+            environment: .init(viewContext: _viewContext ?? .init())
+        )
+    }
+
+    @ViewBuilder
+    func body(with viewModel: PagingLibraryViewModel<Library>) -> some View {
+        PosterHStackLibrarySection(
+            viewModel: viewModel,
+            group: self
+        )
+        .withViewContext(environment.viewContext)
+    }
+}

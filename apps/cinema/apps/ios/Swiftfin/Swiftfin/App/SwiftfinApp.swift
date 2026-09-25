@@ -1,0 +1,54 @@
+//
+// Swiftfin is subject to the terms of the Mozilla Public
+// License, v2.0. If a copy of the MPL was not distributed with this
+// file, you can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2026 Jellyfin & Jellyfin Contributors
+//
+
+import PreferencesView
+import SwiftUI
+import UIKit
+
+@main
+struct SwiftfinApp: App {
+
+    init() {
+        Self.configure()
+
+        UIScrollView.appearance().keyboardDismissMode = .onDrag
+
+        // Sometimes the tab bar won't appear properly on push, always have material background.
+        UITabBar.appearance().scrollEdgeAppearance = UITabBarAppearance(idiom: .unspecified)
+
+        SwiftfinSpotlight().addSwiftfinToSpotlight()
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            OverlayToastView {
+                PreferencesView {
+                    WithLocalUserAuthentication {
+                        RootView()
+                            .supportedOrientations(UIDevice.isPad ? .allButUpsideDown : .portrait)
+                    }
+                }
+            }
+            .ignoresSafeArea()
+            // Cinema is dark-only. This is declarative rather than the window
+            // override upstream uses, because that one guards on `keyWindow`
+            // and silently does nothing when it runs before a window exists.
+            // It does not replace `RootCoordinator.applyAppAppearance()`, which
+            // is what reaches UIKit and the accent colour; see the note there.
+            .preferredColorScheme(.dark)
+        }
+    }
+}
+
+extension UINavigationController {
+
+    // Remove back button text
+    override open func viewWillLayoutSubviews() {
+        navigationBar.topItem?.backButtonDisplayMode = .minimal
+    }
+}

@@ -1,0 +1,13 @@
+{
+  "files": [],
+  /* Not used for compilation (see references), but the shadcn CLI reads path
+     aliases from this file -- without them it writes into a literal `@/` dir. */
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

@@ -1,0 +1,67 @@
+<resources>
+    <!-- Player theme -->
+    <style name="Theme.Findroid.Player" parent="Theme.Findroid">
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Base application theme. -->
+    <style name="Theme.Findroid" parent="Base.Theme.Findroid" />
+
+    <!--
+      Cinema: dark-only, so the base theme is Dark rather than DayNight. This is the
+      layer Compose cannot reach - the window background behind it, the system bars,
+      and the ExoPlayer control layouts in app/phone/res/layout, which are real Views
+      resolving ?attr/colorPrimary and ?attr/colorSurface.
+
+      The @color/cinema_* values are generated from packages/design-tokens/tokens.json
+      by apps/android/sync-tokens.sh, the same source as the Compose palette.
+    -->
+    <style name="Base.Theme.Findroid" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Primary -->
+        <item name="colorPrimary">@color/cinema_primary</item>
+        <item name="colorOnPrimary">@color/cinema_primary_foreground</item>
+        <item name="colorPrimaryContainer">@color/cinema_surface_2</item>
+        <item name="colorOnPrimaryContainer">@color/cinema_foreground</item>
+
+        <!-- Secondary -->
+        <item name="colorSecondary">@color/cinema_muted_foreground</item>
+        <item name="colorOnSecondary">@color/cinema_canvas</item>
+        <item name="colorSecondaryContainer">@color/cinema_surface_2</item>
+        <item name="colorOnSecondaryContainer">@color/cinema_foreground</item>
+
+        <!-- Surface -->
+        <item name="android:colorBackground">@color/cinema_canvas</item>
+        <item name="colorSurface">@color/cinema_canvas</item>
+        <item name="colorOnSurface">@color/cinema_foreground</item>
+        <item name="colorSurfaceContainer">@color/cinema_surface</item>
+        <item name="colorSurfaceContainerLow">@color/cinema_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/cinema_surface_2</item>
+
+        <!-- Error -->
+        <item name="colorError">@color/cinema_danger</item>
+        <item name="colorOnError">@color/cinema_primary_foreground</item>
+
+        <!-- Status bar -->
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+
+        <!-- Shapes -->
+        <item name="shapeAppearanceCornerExtraSmall">
+            @style/ShapeAppearance.Findroid.Corner.ExtraSmall
+        </item>
+        <item name="shapeAppearanceCornerSmall">@style/ShapeAppearance.Findroid.Corner.Small</item>
+
+        <!-- Toolbar -->
+        <item name="toolbarStyle">@style/Widget.Material3.Toolbar.Surface</item>
+
+        <!-- Navigation bar -->
+        <item name="android:navigationBarColor">?attr/colorSurfaceContainer</item>
+        <item name="android:windowLightNavigationBar">?attr/isLightTheme</item>
+
+        <!-- Extra -->
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
+        <item name="dialogCornerRadius">28dp</item>
+    </style>
+</resources>
