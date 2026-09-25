@@ -8,7 +8,7 @@ The first two were Dokploy **compose** apps; ral-gate is a Dockerfile
 **application**. The shape of the port is identical and only the endpoint names
 change — see [Porting an application, not a compose app](#porting-an-application-not-a-compose-app).
 
-Credentials and ids for every step are in [`.env`](.env) beside this file. Read
+Credentials and ids for every step are in [`.env`](../.env) beside this file. Read
 that first; nothing below asks you to go looking for a key.
 
 ---
@@ -292,7 +292,7 @@ The ids you just generated are the ones the next change needs. They go in the
 app repo's own gitignored `.env`, **not** in the Dokploy environment — the key
 manages the deployment, so the deployment must not be able to read it. Update the
 app's `CLAUDE.md` / README where it says "VPS", and add a line to this box's
-[README](README.md).
+[README](../README.md).
 
 ---
 

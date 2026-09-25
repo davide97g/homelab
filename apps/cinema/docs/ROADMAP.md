@@ -125,7 +125,7 @@ them comes back. Re-measure before believing a number — the repository moves.
 | 7 | `CinemaTokens.swift` existed twice, kept in step by remembering to run a second script | `bun run tokens` writes it once, straight into the app (the sync scripts went with the submodules) |
 | 8 | `JELLYFIN_UPSTREAM` and `CINEMA_PORT` retyped on every deploy — a typo shipped a container proxying to nothing | Defaults in `compose.yaml`; the deploy is a bare `docker compose up -d --build` |
 | 9 | Dark forced in three places on iOS, two looking redundant | One was genuinely dead and is back at upstream's `.system`; the other two earn their place and now say why in a comment |
-| 10 | The monorepo existed on one machine | Pushed to `github.com/davide97g/cinema`, public — see below; `main` still runs ahead between pushes |
+| 10 | The monorepo existed on one machine | Pushed to `github.com/davide97g/cinema`, public — see below. Since 2026-09-25 it lives in `apps/cinema` of the public `github.com/davide97g/homelab` |
 
 Since then the two forks have been **vendored**: no submodules, no fork remotes, one repository and
 one origin. It costs `git merge upstream/main` — see each fork's README for the manual route and

@@ -1,6 +1,6 @@
 # mediarr
 
-The request-to-file chain, running on the [homelab](../homelab) box, `debian`.
+The request-to-file chain, running on the [homelab](../../README.md) box, `debian`.
 
 ```
 Jellyseerr -> Radarr / Sonarr -> Prowlarr -> qBittorrent -> Bazarr -> Jellyfin

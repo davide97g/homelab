@@ -49,14 +49,14 @@ with the reasoning collapsed, a model picker, search and a new chat button. Data
 
 | | |
 |---|---|
-| Login | `OPEN_WEBUI_ADMIN_EMAIL` / `OPEN_WEBUI_ADMIN_PASSWORD` in [`../.env`](../.env) |
+| Login | `OPEN_WEBUI_ADMIN_EMAIL` / `OPEN_WEBUI_ADMIN_PASSWORD` in [`../../.env`](../../.env) |
 | Sign-up | off. New users are added from Admin Panel → Users → **+** |
-| Users | one test user (role `user`, 2026-09-24). Credentials `OPEN_WEBUI_USER_*` in `../.env` |
+| Users | one test user (role `user`, 2026-09-24). Credentials `OPEN_WEBUI_USER_*` in `../../.env` |
 | Picker | **Qwen3.6 35B-A3B** (`qwen3.6-fast`, `think: false`, default) and **Qwen3.6 35B-A3B (thinking)** (`qwen3.6:35b-a3b-q4_K_M`) |
 
 The admin was created on first boot from `WEBUI_ADMIN_*` in `~/local-ai/.env` on the box
 (mode 600, beside `WEBUI_SECRET_KEY`). Those lines do nothing once a user exists. If the
-password changes in the UI, update `../.env` too.
+password changes in the UI, update `../../.env` too.
 
 **Most env vars in `compose.yaml` are first boot only.** Open WebUI copies them into its
 database, and from then on Admin Settings win. Everything below was set through the admin
@@ -149,7 +149,7 @@ Nothing is billed: prices are $0, so the spend pages count tokens.
 | LAN | `http://$LAN_HOST:4000` (`/ui`, `/v1`) |
 | Config | [`litellm.yaml`](litellm.yaml), secrets in `~/local-ai/litellm.env` on the box (mode 600) |
 | Storage | Postgres 17 (`litellm-db`, volume `litellm-db`): users, keys, usage |
-| Admin | UI: an admin user (`proxy_admin`), `LITELLM_UI_ADMIN_*`. API: `LITELLM_MASTER_KEY`. Both in [`../.env`](../.env) |
+| Admin | UI: an admin user (`proxy_admin`), `LITELLM_UI_ADMIN_*`. API: `LITELLM_MASTER_KEY`. Both in [`../../.env`](../../.env) |
 | Users | one test user (`internal_user`), `LITELLM_USER_<NAME>_*` |
 | For users | [`CONNECT.md`](CONNECT.md): sign in, make a key, paste-ready config per agent |
 
@@ -264,7 +264,7 @@ tower is only a small part of the RAM.
 
 `$OPENUI_HOST` -> `http://localhost:3080`, an ingress rule on the box's own tunnel
 (`CF_TUNNEL_*`), placed before the catch-all, plus a proxied CNAME to `$CF_TUNNEL_CNAME`.
-The steps are [`porting-to-homelab.md`](../porting-to-homelab.md) §5, minus Dokploy and Traefik:
+The steps are [`porting-to-homelab.md`](../../docs/porting-to-homelab.md) §5, minus Dokploy and Traefik:
 cloudflared goes straight to the published port. **Not behind Access**, on purpose. The
 login is the gate, the same arrangement as maestro and riddle. What that login holds back:
 

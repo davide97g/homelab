@@ -16,9 +16,9 @@ Kavita's REST API and nothing else.
 
 ## Where it runs
 
-The mini PC (`debian`), since 2026-09-23, as its own compose project in `~/manga`, a clone of
-this repository ([davide97g/manga](https://github.com/davide97g/manga), private). The box pulls
-it with a read-only deploy key: `Host github-manga` in its `~/.ssh/config`.
+The mini PC (`debian`), since 2026-09-23, as its own compose project in `~/manga`. That folder
+is a plain copy of `apps/manga` from the homelab monorepo, not a clone: the deploy below ships
+the committed tree over ssh, the same way cinema, swarm and tv do.
 
 | | |
 |---|---|
@@ -39,16 +39,19 @@ key, read out of `kavita.db` by the hub's `scripts/collect-env.sh`.
 **Deploy** (no CI):
 
 ```sh
-git push
-ssh homelab 'cd ~/manga && git pull --ff-only && docker compose up -d --build'
+# from the repo root: ship what is committed, then rebuild on the box
+git archive HEAD:apps/manga | ssh homelab 'tar x -C ~/manga'
+ssh homelab 'cd ~/manga && docker compose up -d --build'
 ```
 
-`up -d` recreates only the services whose config changed, and the named volumes survive it.
+Only committed files travel, so commit first. `tar x` overwrites and never deletes: `.env`,
+`data/` and `work/` on the box are left alone, and a file removed here has to be removed there
+by hand. `up -d` recreates only the services whose config changed, and the named volumes survive it.
 
 **Cloudflare.** One ingress rule on the mini PC's tunnel, `manga.davideghiotto.it` ->
 `http://localhost:4571`, before the catch-all, and a proxied CNAME to the tunnel. It's not behind
 Access: Kavita's sign-in is the gate, and the nginx allowlist below is what keeps everything else
-of Kavita off the internet. The calls are the ones in `../porting-to-homelab.md` § 5.
+of Kavita off the internet. The calls are the ones in `../../docs/porting-to-homelab.md` § 5.
 
 ## Files
 

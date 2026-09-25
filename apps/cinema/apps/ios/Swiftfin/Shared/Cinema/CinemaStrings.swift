@@ -28,10 +28,10 @@ extension URL {
     ///
     /// The repository is public, which is what publishes the modified MPL
     /// files this fork is built from.
-    static let cinemaGithub: URL = URL(string: "https://github.com/davide97g/cinema")!
+    static let cinemaGithub: URL = URL(string: "https://github.com/davide97g/homelab/tree/main/apps/cinema")!
 
     static let cinemaGithubLicense: URL =
-        URL(string: "https://github.com/davide97g/cinema/blob/main/apps/ios/Swiftfin/LICENSE.md")!
+        URL(string: "https://github.com/davide97g/homelab/blob/main/apps/cinema/apps/ios/Swiftfin/LICENSE.md")!
 
-    static let cinemaGithubIssues: URL = URL(string: "https://github.com/davide97g/cinema/issues")!
+    static let cinemaGithubIssues: URL = URL(string: "https://github.com/davide97g/homelab/issues")!
 }

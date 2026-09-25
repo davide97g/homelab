@@ -3,7 +3,7 @@
 > **Retired on 2026-09-20. Nothing here runs any more.**
 >
 > The pipeline graph lives on the hub, at `monitoring.davideghiotto.it/media`
-> — see [`../hub`](../hub). The container is gone from the box,
+> — see [`apps/hub`](../../apps/hub). The container is gone from the box,
 > `mediarr.davideghiotto.it` no longer resolves, and its Cloudflare Access
 > application and tunnel ingress rule have been deleted. `~/mediarr-dash` on the
 > box is still there and is now just files.
@@ -21,7 +21,7 @@ protected, meant for one person.
 
 ![the pipeline](docs/pipeline.png)
 
-The shape on screen is the shape in [`../media-pipeline.md`](../media-pipeline.md)
+The shape on screen is the shape in [`docs/media-pipeline.md`](../../docs/media-pipeline.md)
 — a request enters at Jellyseerr on the left and leaves as a playable file at
 Jellyfin on the right, with a dashed line running back underneath for the
 availability signal that closes the loop. An edge animates only while something
@@ -49,7 +49,7 @@ Tunnel to point at later.
 
 | Node | Source | Shows |
 |---|---|---|
-| Homelab | Prometheus, from the [monitoring stack](../monitoring) | CPU, RAM, disk, temperature, estimated watts, load, `eno1` throughput, uptime, and per-container CPU and memory from cAdvisor |
+| Homelab | Prometheus, from the [monitoring stack](../../apps/monitoring) | CPU, RAM, disk, temperature, estimated watts, load, `eno1` throughput, uptime, and per-container CPU and memory from cAdvisor |
 | Jellyseerr | `/api/v1` | request counts, what is pending or processing, availability, the eight latest requests with titles |
 | Radarr / Sonarr | `/api/v3` | library size and count, queue with per-item progress, missing, health |
 | Prowlarr | `/api/v1` | indexers enabled, queries and grabs in the last 24 h, failures |

@@ -145,7 +145,7 @@ service still runs; the only UI entry point to the homelab is now
 Grafana is reachable on the LAN at `http://debian:3001`, and over the tailnet the same way. To
 publish it again: add an ingress rule `grafana.davideghiotto.it` → `http://localhost:3001` before
 the catch-all, and a **proxied** CNAME to the tunnel — the two calls are in the Cloudflare section
-of `../porting-to-homelab.md`. Its Access application was left in place, so it would be gated
+of `../../docs/porting-to-homelab.md`. Its Access application was left in place, so it would be gated
 again the moment the hostname came back.
 
 `GRAFANA_ROOT_URL` in the Dokploy Environment tab still points at the dead hostname. It only

@@ -6,7 +6,7 @@ import { cap, clamp01, Collected, down, unconfigured } from "./shape.js";
 
 // The manga lane: Suwayomi downloads chapters as CBZ files, Kavita indexes the
 // same folder, and Yomu is the reader people open. Its own compose project in
-// ~/manga on the box (github.com/davide97g/manga), not part of mediarr.
+// ~/manga on the box (apps/manga in this repo), not part of mediarr.
 //
 // Only Yomu is public. Suwayomi has no auth at all and Kavita's admin UI stays on
 // the LAN, which is why their links are box addresses and Yomu's is the tunnel.

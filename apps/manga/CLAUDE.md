@@ -11,7 +11,7 @@ deployed; this file is where the work stands and what comes next.
   Our own services get their own prefix (`/script/` for `scripts`), never a hole in `/api`.
 - **Don't stop or recreate Kavita or Suwayomi** unless asked. The volumes hold the user's Kavita
   admin account and reading progress. `docker compose up -d <service>` recreates only that one.
-- This folder is a git repository (`davide97g/manga`, private). `homelab/` around it is not.
+- This folder is `apps/manga` in the homelab monorepo (`davide97g/homelab`, public). No separate repo.
 - Commits: conventional, with a scope (`yomu`, `compose`, `docs`, `transcribe`), lowercase.
 - **Chapter scripts are made on the Mac** (`transcribe/`, Magi v2 + Qwen3-VL through Ollama, MPS).
   The box only serves them. Scripts and banks live in `MANGA_ROOT/scripts`, never inside
@@ -49,4 +49,5 @@ pre-filled from the crops and confirmed by the user. The Yomu script panel, `/se
   (keys live in the `AppUserAuthKey` table). `/api/Plugin/authenticate` fails on 0.9.1.4.
 - Suwayomi Library still holds the dead MangaDex B&W One Piece (id 81).
 - Candidate extensions the user hasn't chosen yet: Webtoons.com, VIZ, Comikey.
-- No CI: deploy is `git pull` + `docker compose up -d --build` on the box.
+- No CI: deploy is `git archive HEAD:apps/manga | ssh homelab 'tar x -C ~/manga'` from the repo root,
+  then `docker compose up -d --build` on the box. See README § Deploy.

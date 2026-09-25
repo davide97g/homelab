@@ -3,7 +3,7 @@
 How a request becomes a file with subtitles on it, a status in Jellyseerr, and a message in
 Telegram. Written 2026-09-13, after the chain was finished and debugged end to end.
 
-The containers themselves live in [`mediarr`](../mediarr) — this is the part that is not
+The containers themselves live in [`mediarr`](../stacks/mediarr) — this is the part that is not
 obvious from `compose.yml`: what talks to what, why each piece is there, and the four things
 that were quietly broken.
 
@@ -79,7 +79,7 @@ It should print `192.168.15.126 8096 c5dcde12…`.
 
 ### Repointing it
 
-[`jellyseerr-repoint.py`](../mediarr/scripts/jellyseerr-repoint.py) takes the key and the server
+[`jellyseerr-repoint.py`](../stacks/mediarr/scripts/jellyseerr-repoint.py) takes the key and the server
 URL, and does it in two halves because a Jellyseerr account is keyed by the Jellyfin user id it
 was created from, and those ids differ per server:
 
@@ -87,7 +87,7 @@ was created from, and those ids differ per server:
 2. `db.sqlite3` — the `user` row's `jellyfinUserId`, matched by username.
 
 ```sh
-cd ../mediarr && ./scripts/on-box.sh jellyseerr-repoint.py <key> http://192.168.15.126:8096
+cd stacks/mediarr && ./scripts/on-box.sh jellyseerr-repoint.py <key> http://192.168.15.126:8096
 ```
 
 Two traps it walks into, both hit on 2026-09-19:
@@ -298,11 +298,11 @@ Two Telegram details that cost time:
   supergroup would be `-100…`. The id from the `web.telegram.org` URL is the real one — verify
   with `getChat` before saving, rather than guessing at the prefix.
 
-[`jellyseerr-telegram.py`](../mediarr/scripts/jellyseerr-telegram.py) does all of it — resolves
+[`jellyseerr-telegram.py`](../stacks/mediarr/scripts/jellyseerr-telegram.py) does all of it — resolves
 the chat, sends a test, saves the agent, disables web push:
 
 ```sh
-cd ../mediarr && ./scripts/on-box.sh jellyseerr-telegram.py <bot-token> [chat-id]
+cd stacks/mediarr && ./scripts/on-box.sh jellyseerr-telegram.py <bot-token> [chat-id]
 ```
 
 Without a chat id it picks up whoever last messaged the bot. With one, it targets that chat.
@@ -353,7 +353,7 @@ reports nothing found either way.
 
 ## Scripts
 
-They live in [`mediarr/scripts/`](../mediarr/scripts) and run **on the box**, because they read
+They live in [`mediarr/scripts/`](../stacks/mediarr/scripts) and run **on the box**, because they read
 API keys out of the containers and call ports that are only published on the box's LAN
 interface. `on-box.sh` pipes them over SSH, so the repo is the only copy.
 

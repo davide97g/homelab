@@ -3,7 +3,7 @@
 > **Retired on 2026-09-20. Nothing here runs any more.**
 >
 > The pipeline graph lives on the hub, at `monitoring.davideghiotto.it/media`
-> — see [`../hub`](../hub). The container is gone from the box,
+> — see [`apps/hub`](../../apps/hub). The container is gone from the box,
 > `mediarr.davideghiotto.it` no longer resolves, and its Cloudflare Access
 > application and tunnel ingress rule have been deleted. `~/mediarr-dash` on the
 > box is still there and is now just files.
@@ -24,7 +24,7 @@ part that is not obvious from the code: why it is shaped this way, what the
 upstream APIs actually do as opposed to what their docs say, and which small
 decisions will bite if they are undone.
 
-`../media-pipeline.md` is the companion document — it explains the pipeline
+`docs/media-pipeline.md` is the companion document — it explains the pipeline
 itself, which is what this dashboard visualises.
 
 ## Where it runs
@@ -202,7 +202,7 @@ guards with `!= null`, so the flag simply disappears from the card.
   Sonarr and several providers. A plain `sed -n 's/^  apikey: //p'` concatenates
   all of them and produces a 102-character string that is not a key. The one that
   matters is inside the `auth:` block; `collect-env.sh` matches the block.
-  *(The same bad command is in `../media-pipeline.md`, left as found.)*
+  *(The same bad command is in `docs/media-pipeline.md`, left as found.)*
 - **A healthy SignalR feed reads `"LIVE"`**, not `"connected"`. Both are accepted.
 - **`/api/providers` lists only the providers currently throttled.** An empty
   list is the healthy case, not a missing answer.
@@ -224,7 +224,7 @@ guards with `!= null`, so the flag simply disappears from the card.
   the key lives in `jellyfin.db`. It has to come from Dashboard → API Keys → +.
 - `PlayMethod` containing `Transcode` is the expensive case and is called out
   separately from plain playback. `TranscodeReasons` explains why, and is worth
-  surfacing — see the PGS burn-in trap in `../media-pipeline.md`.
+  surfacing — see the PGS burn-in trap in `docs/media-pipeline.md`.
 - There are **two Jellyfin servers on this LAN**. The homelab one
   (`d412939b4e0c48b9abed2887b9911ef1`) is the real one. Check this first if
   numbers look wrong.

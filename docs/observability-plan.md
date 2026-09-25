@@ -1,6 +1,6 @@
 # Observability: where this got to, and what is left
 
-Companion to [`README.md`](README.md) and [`media-pipeline.md`](media-pipeline.md). This one is
+Companion to [`README.md`](../README.md) and [`media-pipeline.md`](media-pipeline.md). This one is
 the running plan for logs, NAS monitoring and the hub at `monitoring.davideghiotto.it`, written so
 someone picking it up cold — a person or a fresh agent — can continue without re-deriving
 anything.
@@ -16,9 +16,9 @@ This trips people up, so it is first.
 
 | Repo | Serves | Is |
 |---|---|---|
-| [`monitoring/`](monitoring) | `grafana.davideghiotto.it` | The **stack**: Prometheus, Grafana, Loki, Alloy, exporters. A Dokploy Raw compose app. |
-| [`hub/`](hub) | `monitoring.davideghiotto.it` | The **reader**: a custom dashboard app. Stores nothing, collects nothing. |
-| [`dashboard/`](dashboard) | `mediarr.davideghiotto.it` | mediarr-dash, the pipeline graph. Untouched by this work, and the hub's reference implementation. |
+| [`monitoring/`](../apps/monitoring) | `grafana.davideghiotto.it` | The **stack**: Prometheus, Grafana, Loki, Alloy, exporters. A Dokploy Raw compose app. |
+| [`hub/`](../apps/hub) | `monitoring.davideghiotto.it` | The **reader**: a custom dashboard app. Stores nothing, collects nothing. |
+| [`dashboard/`](../archive/dashboard) | `mediarr.davideghiotto.it` | mediarr-dash, the pipeline graph. Untouched by this work, and the hub's reference implementation. |
 
 ---
 

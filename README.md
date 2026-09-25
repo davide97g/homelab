@@ -25,7 +25,7 @@ Notes for the mini PC on the LAN.
 ## Services
 
 Dokploy (`:3000`) with Traefik on `:80`/`:443`, Docker Swarm active.
-Monitoring stack in [`monitoring/`](monitoring/) — Grafana on `:3001`, and at
+Monitoring stack in [`monitoring/`](apps/monitoring/) — Grafana on `:3001`, and at
 `https://grafana.davideghiotto.it` through the Cloudflare Tunnel behind Access.
 
 Web apps run as Dokploy apps, each published on the tunnel and deployed by its own CI rather
@@ -47,22 +47,22 @@ bind-mounted; nothing large is ever built on this box. Its own
 Access: a native iOS client cannot pass an Access challenge, so Clerk bearer tokens are the gate
 and every route except `/health` requires one. No CI yet — released with one `compose.deploy` call.
 
-[`porting-to-homelab.md`](porting-to-homelab.md) is the runbook for moving the next one:
+[`porting-to-homelab.md`](docs/porting-to-homelab.md) is the runbook for moving the next one:
 the order of operations, the Dokploy and Cloudflare API calls, and the traps. The
 credentials every step of it needs are in the gitignored [`.env`](.env) beside it.
 
-Media requests and downloads live in the [`mediarr`](../mediarr) project — Jellyseerr on
+Media requests and downloads live in the [`mediarr`](stacks/mediarr) project — Jellyseerr on
 `:5055`, Radarr `:7878`, Sonarr `:8989`, Prowlarr `:9696`, Bazarr `:6767`, qBittorrent
 `:8080`, the NAS Jellyfin shim `:8096`, and since 2026-09-19 a local Jellyfin on `:8097` with
 Cinema's web client on `:8898`, LAN only, for the library that never made it to the NAS. Plain `docker compose` over SSH in `~/mediarr`, not a Dokploy app.
-[`media-pipeline.md`](media-pipeline.md) covers how those fit together — subtitles,
+[`media-pipeline.md`](docs/media-pipeline.md) covers how those fit together — subtitles,
 availability, Telegram, and the traps found along the way.
 
-[manga](manga/) ([repo](https://github.com/davide97g/manga), private) since 2026-09-23 —
+[manga](apps/manga/) since 2026-09-23 —
 Suwayomi downloads, Kavita library, Yomu reader. Plain `docker compose` in `~/manga`, not Dokploy.
 Only Yomu is public, `manga.davideghiotto.it` -> `http://localhost:4571`, not behind Access
 (Kavita's login is the gate, and Yomu's nginx forwards only the reader's API routes). Suwayomi
-`:4567` and Kavita's admin UI `:5000` are LAN only. Its [README](manga/README.md) is the runbook.
+`:4567` and Kavita's admin UI `:5000` are LAN only. Its [README](apps/manga/README.md) is the runbook.
 
 [riddle](../riddle) runs here too, since 2026-09-21 — the reMarkable diary. Two
 **user** systemd units out of `~/riddle` (`riddle-voice`, `riddle-diary`) with
@@ -79,16 +79,16 @@ this box needed for it was `build-essential` and `cmake`, to build
 `parakeet-cli` (whisper.cpp v1.9.1, static) for the page's microphone —
 whisper.cpp ships no Linux binaries.
 
-[`local-ai/`](local-ai/) — Ollama since 2026-09-24, `:11434`, LAN and tailnet only (no auth,
+[`local-ai/`](apps/local-ai/) — Ollama since 2026-09-24, `:11434`, LAN and tailnet only (no auth,
 never on the tunnel). Qwen3.6-35B-A3B on the 760M through Vulkan, ~24 tok/s. The Open WebUI
 chat in front of it is public at `openui.davideghiotto.it` -> `http://localhost:3080`, **not
 behind Access**. Its own login is the gate (`OPEN_WEBUI_*` in `.env`, sign-up off). A LiteLLM
 gateway gives friends their own API keys for their agents at `llm.davideghiotto.it`
 (`/ui` to sign in and mint keys, `/v1` OpenAI and Anthropic APIs, `LITELLM_*` in `.env`),
 also public, with no Access. Plain
-`docker compose` in `~/local-ai`. Its [README](local-ai/README.md) is the runbook.
+`docker compose` in `~/local-ai`. Its [README](apps/local-ai/README.md) is the runbook.
 
-[`dashboard/`](dashboard/) draws that chain as a live graph on `:3002` — a node per service
+[`dashboard/`](archive/dashboard/) draws that chain as a live graph on `:3002` — a node per service
 with its own metrics, links into each web UI, and the host's load underneath. Password
 protected; the service API keys are read out of the containers and stay on the box.
 
@@ -215,7 +215,7 @@ It answers on **`https://cinema.davideghiotto.it`** with no Tailscale on the cli
 a **second tunnel of its own, `nas-ilario`** — the NAS dials Cloudflare directly, so a
 stream crosses Ilario's uplink once and never touches this box.
 
-That hostname serves [Cinema](cinema/), the custom front end, from the `cinema-web`
+That hostname serves [Cinema](apps/cinema/), the custom front end, from the `cinema-web`
 container on `:8898`. **Jellyfin itself is no longer published on its own hostname**: as of
 2026-09-17 `jellyfin.davideghiotto.it` is gone from both the tunnel and DNS, and Jellyfin is
 reached under `https://cinema.davideghiotto.it/jf` — which is a complete Jellyfin base URL, so
@@ -232,7 +232,7 @@ NAS) with `cinema-web` on `:8898` in front of it, published on *this* box's tunn
 **behind Access** (app `cinema (home)`), because that Jellyfin's admin account is deliberately
 trivial for LAN use; the edge is the real gate, which also means native clients cannot use this
 hostname and stay on `http://debian:8097`. One label, not `home.cinema.…`: Universal SSL does
-not cover a second level. Details in [`cinema/docs/DEPLOY.md`](cinema/docs/DEPLOY.md).
+not cover a second level. Details in [`cinema/docs/DEPLOY.md`](apps/cinema/docs/DEPLOY.md).
 
 | | |
 |---|---|
@@ -363,6 +363,6 @@ buffer empty and raises the average. Measured bufferbloat here is real — idle 
 The movie library is **301 G** and `/volume1` has **~233 G** free after the first film. The
 whole library does not fit. Individual films do.
 
-[`observability-plan.md`](observability-plan.md) is the running plan for logs, NAS
+[`observability-plan.md`](docs/observability-plan.md) is the running plan for logs, NAS
 monitoring and the hub at `monitoring.davideghiotto.it`: what is live, what is left, and
 the findings that cost time to discover.

@@ -4,6 +4,9 @@ Cinema is a front end for [Jellyfin](https://jellyfin.org). Two of its three cli
 other people's applications, vendored into this repository as ordinary source. This file says who
 wrote what, and under which licence, because most of the work here was not done by us.
 
+The repository is [davide97g/homelab](https://github.com/davide97g/homelab), public, and Cinema is
+its `apps/cinema`. Paths below are relative to that folder.
+
 ## Written for Cinema
 
 Copyright © 2026 Davide Ghiotto — [@davide97g](https://github.com/davide97g),
