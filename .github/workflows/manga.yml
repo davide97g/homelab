@@ -1,0 +1,54 @@
+name: manga
+
+# Checks on every push and pull request touching apps/manga; a push to main that passes
+# is deployed by Dokploy through the shared dokploy-deploy workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/manga/**
+      - "!apps/manga/transcribe/**"
+      - "apps/manga/transcribe/serve.py"
+      - .github/workflows/manga.yml
+      - .github/workflows/dokploy-deploy.yml
+  pull_request:
+    paths:
+      - apps/manga/**
+      - "!apps/manga/transcribe/**"
+      - "apps/manga/transcribe/serve.py"
+      - .github/workflows/manga.yml
+
+# Queue rather than cancel: a cancelled run leaves main green but undeployed.
+concurrency:
+  group: manga-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+        working-directory: apps/manga/web
+      - run: bun run lint
+        working-directory: apps/manga/web
+      - run: bun run build
+        working-directory: apps/manga/web
+      - name: Python services compile
+        run: python3 -m py_compile apps/manga/covers/*.py apps/manga/transcribe/serve.py
+      - name: Compose file is valid
+        env:
+          MANGA_ROOT: /tmp/manga
+        run: docker compose -f apps/manga/compose.yml config --quiet
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/dokploy-deploy.yml
+    with:
+      app: manga
+    secrets:
+      compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_MANGA }}
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}

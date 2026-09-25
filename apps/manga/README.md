@@ -38,15 +38,11 @@ key, read out of `kavita.db` by the hub's `scripts/collect-env.sh`.
 
 **Deploy** (no CI):
 
-```sh
-# from the repo root: ship what is committed, then rebuild on the box
-git archive HEAD:apps/manga | ssh homelab 'tar x -C ~/manga'
-ssh homelab 'cd ~/manga && docker compose up -d --build'
-```
-
-Only committed files travel, so commit first. `tar x` overwrites and never deletes: `.env`,
-`data/` and `work/` on the box are left alone, and a file removed here has to be removed there
-by hand. `up -d` recreates only the services whose config changed, and the named volumes survive it.
+**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `manga` app (app name `manga`, so the project, containers and the
+`manga_kavita-config` / `manga_suwayomi-data` volumes are unchanged) builds Yomu and brings the
+stack up from its checkout. `MANGA_ROOT` in its Environment tab is the absolute
+`/home/davide/manga/data`: the library, downloads and scripts stay in `~/manga/data` on the box,
+outside anything a deploy replaces. **Never delete `~/manga/data`.** `up -d` recreates only the services whose config changed, and the named volumes survive it.
 
 **Cloudflare.** One ingress rule on the mini PC's tunnel, `manga.davideghiotto.it` ->
 `http://localhost:4571`, before the catch-all, and a proxied CNAME to the tunnel. It's not behind
