@@ -1,0 +1,50 @@
+name: cinema
+
+# Checks on every push and pull request touching apps/cinema; a push to main that passes
+# is deployed by Dokploy through the shared dokploy-deploy workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/cinema/**
+      - "!apps/cinema/apps/ios/**"
+      - "!apps/cinema/apps/android/**"
+      - .github/workflows/cinema.yml
+      - .github/workflows/dokploy-deploy.yml
+  pull_request:
+    paths:
+      - apps/cinema/**
+      - "!apps/cinema/apps/ios/**"
+      - "!apps/cinema/apps/android/**"
+      - .github/workflows/cinema.yml
+
+# Queue rather than cancel: a cancelled run leaves main green but undeployed.
+concurrency:
+  group: cinema-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+        working-directory: apps/cinema
+      - run: bun run lint
+        working-directory: apps/cinema
+      - run: bun run build
+        working-directory: apps/cinema
+      - name: Compose file is valid
+        run: docker compose -f apps/cinema/services/web/compose.yaml config --quiet
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/dokploy-deploy.yml
+    with:
+      app: cinema
+    secrets:
+      compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_CINEMA }}
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}

@@ -115,8 +115,11 @@ its users, watch state and libraries came back as they were; the volumes were ro
 to be `chown`ed to `1000:1000` for the container's non-root user, which otherwise dies at startup
 with `SQLite Error 8: attempt to write a readonly database`.
 
-The deploy is the same tar as above with `nas` replaced by `homelab`, and the per-host `.env`
-beside `services/web/compose.yaml` on that box says:
+This copy deploys itself: a push to `main` that touches `apps/cinema` (outside the iOS and Android
+forks) runs `.github/workflows/cinema.yml`, and Dokploy's app `web` on the mini PC — the same
+compose project name, and so the same `cinema-web` container, as before — builds it from the
+repo. The NAS copy above is still the tar by hand: Dokploy cannot reach the NAS. The mini PC's
+two per-host values live in that app's Dokploy Environment tab:
 
 ```sh
 JELLYFIN_UPSTREAM=http://172.17.0.1:8097

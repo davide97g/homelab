@@ -135,10 +135,10 @@ An empty `-e server_host ""` does **not** clear a stored value; use `pm clear`.
 
 ## The server
 
-```sh
-rsync -a --exclude node_modules --exclude .env jarvis-server/ homelab:~/jarvis-server/
-ssh homelab 'cd ~/jarvis-server && docker compose up -d --build'
-```
+**Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `jarvis-server` app
+(same project and container name as before) builds it from `apps/tv/jarvis-server`, with its
+`.env` from the Dokploy Environment tab. The launcher APK is not deployed that way: it installs
+over ADB on the LAN with `scripts/deploy-tv.sh`.
 
 `.env` on the box holds `OPENAI_API_KEY` and the two model names. The compose file
 uses `network_mode: host` because the mDNS advert has to reach the LAN and the service

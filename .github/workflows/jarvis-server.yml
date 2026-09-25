@@ -1,0 +1,47 @@
+name: jarvis-server
+
+# Checks on every push and pull request touching apps/tv/jarvis-server; a push to main that passes
+# is deployed by Dokploy through the shared dokploy-deploy workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/tv/jarvis-server/**
+      - .github/workflows/jarvis-server.yml
+      - .github/workflows/dokploy-deploy.yml
+  pull_request:
+    paths:
+      - apps/tv/jarvis-server/**
+      - .github/workflows/jarvis-server.yml
+
+# Queue rather than cancel: a cancelled run leaves main green but undeployed.
+concurrency:
+  group: jarvis-server-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Sources parse
+        run: find apps/tv/jarvis-server/src -name '*.js' -exec node --check {} \;
+      # The real .env is written by Dokploy on the box; compose only needs one to exist.
+      - name: Compose file is valid
+        run: |
+          touch apps/tv/jarvis-server/.env
+          docker compose -f apps/tv/jarvis-server/docker-compose.yml config --quiet
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/dokploy-deploy.yml
+    with:
+      app: jarvis-server
+    secrets:
+      compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_JARVIS_SERVER }}
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
