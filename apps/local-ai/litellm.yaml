@@ -60,9 +60,10 @@ litellm_settings:
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
-  # Admin UI login is a real proxy_admin user with its own
-  # password, not the shared UI_USERNAME/UI_PASSWORD (or master key) env login.
-  disable_env_credential_login: true
+  # Admin UI login: username `admin`, password is the LITELLM_MASTER_KEY (the env
+  # credential path). Set disable_env_credential_login back to true to require a real
+  # proxy_admin DB user with its own password instead.
+  disable_env_credential_login: false
   database_url: os.environ/DATABASE_URL
   store_model_in_db: false
   store_prompts_in_spend_logs: false
