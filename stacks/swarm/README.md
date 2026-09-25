@@ -10,9 +10,15 @@ itself, so there is no extra container, port, hostname or login.
 ```
 pnpm install
 pnpm dev                  # localhost:5173, proxied to the real qBittorrent
-QBIT_PASS=… ./deploy.py   # build, ship, switch
+QBIT_PASS=… ./deploy.py   # first time only: build, ship, switch qBittorrent to it
 QBIT_PASS=… ./deploy.py --revert
 ```
+
+**After the first time, push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's
+`swarm` app runs [`compose.yml`](compose.yml): one `swarm-build` container builds the UI from the
+checkout, swaps it into `/home/davide/media/webui/public` with two renames, and exits. qBittorrent
+serves the new files on the next page load; nothing restarts. An exited `swarm-build` is the
+normal state.
 
 ## How it is served
 

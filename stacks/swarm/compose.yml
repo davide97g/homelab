@@ -1,0 +1,42 @@
+# Swarm has no container of its own: qBittorrent serves it as its alternative
+# WebUI from /home/davide/media/webui/public (see README and deploy.py). This
+# compose exists so Dokploy can deploy it like everything else: one short-lived
+# container builds the UI from the checkout Dokploy just cloned, swaps it into
+# that directory, and exits. Dokploy shows the deploy; qBittorrent picks up the
+# new files on the next page load, with no restart.
+#
+# The one-time qBittorrent preference (alternative WebUI on, root folder
+# /data/webui) is deploy.py's job and is not touched here; ./deploy.py --revert
+# is still the rollback.
+services:
+  swarm-build:
+    image: node:22-alpine
+    container_name: swarm-build
+    restart: "no"
+    # The host user, and the uid qBittorrent runs as, so the files land with the
+    # ownership it can read -- the same reason deploy.py writes as davide.
+    user: "1000:1000"
+    environment:
+      HOME: /tmp
+      COREPACK_HOME: /tmp/corepack
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    volumes:
+      - ./:/src:ro
+      - ${SWARM_WEBUI_DIR:-/home/davide/media/webui}:/out
+    # Built in a scratch copy (the checkout is read-only here), then swapped in
+    # with two renames so qBittorrent never serves a half-copied tree -- and so a
+    # renamed asset never lingers, which is what deploy.py's rsync --delete did.
+    command:
+      - sh
+      - -euc
+      - |
+        rm -rf /tmp/swarm && cp -r /src /tmp/swarm && cd /tmp/swarm
+        rm -rf node_modules frontend/node_modules frontend/dist .env
+        corepack pnpm install --frozen-lockfile
+        corepack pnpm build
+        rm -rf /out/public.new /out/public.old
+        cp -r frontend/dist /out/public.new
+        if [ -d /out/public ]; then mv /out/public /out/public.old; fi
+        mv /out/public.new /out/public
+        rm -rf /out/public.old
+        echo "swarm deployed: $$(ls /out/public | wc -l) entries in /out/public"
