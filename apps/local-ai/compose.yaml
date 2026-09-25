@@ -98,6 +98,14 @@ services:
     image: ghcr.io/berriai/litellm:v1.102.1
     container_name: litellm
     restart: unless-stopped
+    # Non-root: the proxy only reads its config (mounted ro) and talks to Postgres
+    # over the network, so it never needs to write inside the image. Drop all caps
+    # (port 4000 is unprivileged) and block privilege escalation.
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       litellm-db:
         condition: service_healthy
