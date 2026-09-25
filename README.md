@@ -1,6 +1,35 @@
 # Homelab
 
-Notes for the mini PC on the LAN.
+Everything that runs on the homelab, in one repository: the mini PC on the LAN (`debian`), the
+NAS it shares a tailnet with, and every app, stack and runbook for both. Each app keeps its own
+history from before the merge, under `apps/`.
+
+## Layout
+
+| Path | What |
+|---|---|
+| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/) |
+| [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
+| [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md) |
+| [`hosts/`](hosts/) | Per-host notes: [the NAS](hosts/nas.md) |
+| [`hardware/`](hardware/) | The 3D-printed [M6 stand](hardware/m6-stand/) |
+| [`archive/`](archive/) | Retired: the old [media dashboard](archive/dashboard/), replaced by the hub |
+| `.env` | Credentials, gitignored. [`.env.example`](.env.example) lists the keys |
+
+## Projects
+
+| Project | Path | Runs on | Public URL | Deploy |
+|---|---|---|---|---|
+| Cinema, Jellyfin front end | `apps/cinema` | NAS, plus a second copy on the mini PC | `cinema.davideghiotto.it`, `home-cinema.davideghiotto.it` (Access) | tar over ssh, [`docs/DEPLOY.md`](apps/cinema/docs/DEPLOY.md) |
+| Hub, the homelab's front door | `apps/hub` | mini PC, Dokploy | `monitoring.davideghiotto.it` | `./deploy.py` |
+| Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | `./deploy.py` |
+| Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | `git archive` over ssh, [README](apps/manga/README.md) |
+| JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | `scripts/deploy-tv.sh` |
+| Local AI: Ollama, Open WebUI, LiteLLM | `apps/local-ai` | mini PC, `~/local-ai` | `openui.davideghiotto.it`, `llm.davideghiotto.it` | compose over ssh |
+| mediarr: the *arr stack, qBittorrent, Jellyseerr | `stacks/mediarr` | mini PC, `~/mediarr` | none, LAN only | `scripts/deploy.sh` |
+| Swarm, qBittorrent WebUI | `stacks/swarm` | mini PC, inside qBittorrent | none, `http://debian:8080` | `./deploy.py` |
+
+`riddle` also runs on the box but is its own repository (see below).
 
 ## Host
 
@@ -25,8 +54,9 @@ Notes for the mini PC on the LAN.
 ## Services
 
 Dokploy (`:3000`) with Traefik on `:80`/`:443`, Docker Swarm active.
-Monitoring stack in [`monitoring/`](apps/monitoring/) — Grafana on `:3001`, and at
-`https://grafana.davideghiotto.it` through the Cloudflare Tunnel behind Access.
+Monitoring stack in [`apps/monitoring/`](apps/monitoring/) — Grafana on `:3001`, LAN only since
+`grafana.davideghiotto.it` was removed on 2026-09-19. The hub at `monitoring.davideghiotto.it`
+is the public entrance.
 
 Web apps run as Dokploy apps, each published on the tunnel and deployed by its own CI rather
 than by Dokploy's auto-deploy — `calorico.davideghiotto.it`, `thumb.davideghiotto.it`,
@@ -59,7 +89,7 @@ Cinema's web client on `:8898`, LAN only, for the library that never made it to 
 availability, Telegram, and the traps found along the way.
 
 [manga](apps/manga/) since 2026-09-23 —
-Suwayomi downloads, Kavita library, Yomu reader. Plain `docker compose` in `~/manga`, not Dokploy.
+Suwayomi downloads, Kavita library, Yomu reader. Plain `docker compose` in `~/manga`, not Dokploy, shipped with `git archive`.
 Only Yomu is public, `manga.davideghiotto.it` -> `http://localhost:4571`, not behind Access
 (Kavita's login is the gate, and Yomu's nginx forwards only the reader's API routes). Suwayomi
 `:4567` and Kavita's admin UI `:5000` are LAN only. Its [README](apps/manga/README.md) is the runbook.
@@ -79,7 +109,7 @@ this box needed for it was `build-essential` and `cmake`, to build
 `parakeet-cli` (whisper.cpp v1.9.1, static) for the page's microphone —
 whisper.cpp ships no Linux binaries.
 
-[`local-ai/`](apps/local-ai/) — Ollama since 2026-09-24, `:11434`, LAN and tailnet only (no auth,
+[`apps/local-ai/`](apps/local-ai/) — Ollama since 2026-09-24, `:11434`, LAN and tailnet only (no auth,
 never on the tunnel). Qwen3.6-35B-A3B on the 760M through Vulkan, ~24 tok/s. The Open WebUI
 chat in front of it is public at `openui.davideghiotto.it` -> `http://localhost:3080`, **not
 behind Access**. Its own login is the gate (`OPEN_WEBUI_*` in `.env`, sign-up off). A LiteLLM
@@ -88,9 +118,8 @@ gateway gives friends their own API keys for their agents at `llm.davideghiotto.
 also public, with no Access. Plain
 `docker compose` in `~/local-ai`. Its [README](apps/local-ai/README.md) is the runbook.
 
-[`dashboard/`](archive/dashboard/) draws that chain as a live graph on `:3002` — a node per service
-with its own metrics, links into each web UI, and the host's load underneath. Password
-protected; the service API keys are read out of the containers and stay on the box.
+[`archive/dashboard/`](archive/dashboard/) used to draw that chain as a live graph on `:3002`. It is
+retired, and its container is gone from the box. [`apps/hub`](apps/hub/) replaced it.
 
 `cloudflared` runs as a systemd service with a dashboard-managed token, so no inbound port
 is forwarded to the box. Public hostnames are configured in Cloudflare Zero Trust, not on
