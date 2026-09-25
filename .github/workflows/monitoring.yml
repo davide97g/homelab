@@ -1,0 +1,55 @@
+name: monitoring
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/monitoring/**
+      - "!apps/monitoring/nas-agents/**"
+      - .github/workflows/monitoring.yml
+      - .github/workflows/dokploy-deploy.yml
+  pull_request:
+    paths:
+      - apps/monitoring/**
+      - .github/workflows/monitoring.yml
+
+# Two pushes in quick succession would otherwise deploy out of order. Queue them
+# instead of cancelling: a cancelled run leaves main green but undeployed.
+concurrency:
+  group: monitoring-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/monitoring
+    steps:
+      - uses: actions/checkout@v5
+
+      # Dokploy deploys the committed docker-compose.yml, not compose.base.yml, so
+      # a dashboard edit without a rebuild would silently never ship.
+      - name: docker-compose.yml matches build.py
+        run: |
+          python3 build.py
+          git diff --exit-code -- docker-compose.yml
+
+      - name: Compose file is valid
+        env:
+          NAS_TAILNET_IP: 100.64.0.1
+          QBITTORRENT_USER: ci
+          QBITTORRENT_PASS: ci
+          GRAFANA_ADMIN_PASSWORD: ci
+        run: docker compose -f docker-compose.yml config --quiet
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/dokploy-deploy.yml
+    with:
+      app: monitoring
+    secrets:
+      compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_MONITORING }}
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}

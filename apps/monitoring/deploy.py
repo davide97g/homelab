@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
-"""Build docker-compose.yml and push it to Dokploy, then deploy.
+"""Deploy what is on main, by hand. A push to main already does this from CI.
+
+Dokploy pulls apps/monitoring/docker-compose.yml from davide97g/homelab itself,
+so this script pushes nothing: it checks that the committed compose matches
+build.py and that main is pushed, then asks Dokploy to deploy. NAS_TAILNET_IP
+and the other secrets live in the compose's Environment tab in Dokploy.
 
 Credentials live in `.dokploy.env` (gitignored):
 
     DOKPLOY_URL=http://debian:3000
     DOKPLOY_API_KEY=...
     DOKPLOY_COMPOSE_ID=...
-    NAS_TAILNET_IP=...       # the NAS's Tailscale address, a scrape target
 
 Usage:
-    ./deploy.py              # build, push, deploy
+    ./deploy.py              # deploy main
     ./deploy.py --recreate   # same, but stop the stack first
 
-`docker compose up -d` does not notice a change in the *content* of an inline
-`configs:` entry, so editing a dashboard and deploying normally leaves the old
-JSON mounted. Use --recreate whenever compose.base.yml configs or a dashboard
-changed. It costs a few seconds of monitoring downtime; the Prometheus and
-Grafana volumes are untouched.
+build.py labels every service with a hash of the configs it mounts, so a changed
+dashboard or scrape config recreates its service on a normal deploy. --recreate
+is only for when something else needs a clean start.
 """
 
 import json
@@ -40,7 +42,7 @@ def load_env() -> dict:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip()
-    for key in ("DOKPLOY_URL", "DOKPLOY_API_KEY", "DOKPLOY_COMPOSE_ID", "NAS_TAILNET_IP"):
+    for key in ("DOKPLOY_URL", "DOKPLOY_API_KEY", "DOKPLOY_COMPOSE_ID"):
         if not env.get(key):
             sys.exit(f"{path.name}: {key} is not set")
     return env
@@ -68,16 +70,12 @@ def main() -> int:
     env = load_env()
 
     subprocess.run([sys.executable, str(HERE / "build.py")], check=True)
-    # The repo is public, so the NAS's tailnet address stays out of it: the
-    # committed compose says ${NAS_TAILNET_IP} and the value is filled in here.
-    compose_file = (HERE / "docker-compose.yml").read_text()
-    compose_file = compose_file.replace("${NAS_TAILNET_IP}", env["NAS_TAILNET_IP"])
-
-    call(env, "compose.update", {
-        "composeId": env["DOKPLOY_COMPOSE_ID"],
-        "composeFile": compose_file,
-    })
-    print("pushed compose to Dokploy")
+    git = lambda *a: subprocess.run(["git", "-C", str(HERE), *a], capture_output=True, text=True)
+    if git("diff", "--quiet", "HEAD", "--", "docker-compose.yml").returncode:
+        sys.exit("docker-compose.yml differs from the last commit: commit it and push first")
+    git("fetch", "-q", "origin", "main")
+    if git("rev-parse", "HEAD").stdout != git("rev-parse", "origin/main").stdout:
+        sys.exit("HEAD is not origin/main: Dokploy deploys main from GitHub, so push first")
 
     if recreate:
         call(env, "compose.stop", {"composeId": env["DOKPLOY_COMPOSE_ID"]})

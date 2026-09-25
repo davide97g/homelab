@@ -5,8 +5,10 @@ The dashboards are inlined as compose `configs` so the resulting compose file is
 a single self-contained artifact that can be pasted straight into Dokploy.
 """
 
+import hashlib
 import json
 import pathlib
+import re
 import sys
 
 HERE = pathlib.Path(__file__).parent
@@ -52,6 +54,35 @@ def inline(path: pathlib.Path) -> str:
     return "\n".join(INDENT + line for line in text.splitlines())
 
 
+def stamp_config_hashes(out: str) -> str:
+    """Label each service with a hash of the configs it mounts.
+
+    `docker compose up -d` does not notice a change in the *content* of an inline
+    `configs:` entry, so a dashboard edit deployed from CI would leave the old JSON
+    mounted. A changed label is a changed service definition, which compose does
+    recreate -- and only for the services whose configs actually changed.
+    """
+    head, sep, configs = out.partition("\nconfigs:\n")
+    if not sep:
+        return out
+    bodies = dict(re.findall(r"^  ([a-z0-9_]+):\n((?:(?:    .*)?\n)*)", configs, re.M))
+
+    def label(match: re.Match) -> str:
+        block = match.group(0)
+        sources = re.findall(r"^      - source: ([a-z0-9_]+)$", block, re.M)
+        if not sources:
+            return block
+        digest = hashlib.sha256("".join(bodies.get(s, s) for s in sources).encode()).hexdigest()[:12]
+        return re.sub(r"^(    container_name: .*\n)",
+                      rf'\1    labels:\n      homelab.configs-hash: "{digest}"\n', block, count=1, flags=re.M)
+
+    services_start = head.index("\nservices:\n")
+    services_end = head.index("\nvolumes:\n", services_start)
+    services = re.sub(r"^  [a-z0-9-]+:\n(?:(?:    .*)?\n)*", label,
+                      head[services_start:services_end] + "\n", flags=re.M)[:-1]
+    return head[:services_start] + services + head[services_end:] + sep + configs
+
+
 def main() -> int:
     out = (HERE / "compose.base.yml").read_text()
     for placeholder, relpath in PLACEHOLDERS.items():
@@ -66,6 +97,8 @@ def main() -> int:
         "# GENERATED FILE — do not edit. Edit compose.base.yml and dashboards/*.json,\n"
         "# then run ./build.py.",
     )
+
+    out = stamp_config_hashes(out)
 
     target = HERE / "docker-compose.yml"
     target.write_text(out)

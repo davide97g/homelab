@@ -16,10 +16,11 @@ actually saying at the time.
 | `dashboards/homelab-logs.json` | The logs dashboard. Same deal. |
 | `dashboards/viewers-3d.js` | The three.js code of the "Who is watching" panel, kept as JavaScript. |
 | `build.py` | Inlines the dashboards into the compose file, and the panel JavaScript into the dashboard. |
-| `deploy.py` | Builds, pushes the compose to Dokploy over its API, and deploys. |
+| `deploy.py` | Manual deploy of `main` through the Dokploy API. CI does the same on every push. |
 | `nas-agents/` | node_exporter + cAdvisor + Alloy for the NAS. Plain compose over SSH, its own `deploy.py`. |
 | `.dokploy.env` | **Gitignored.** Dokploy URL, API key, compose id used by `deploy.py`. |
-| `docker-compose.yml` | **Generated.** Self-contained — paste it into Dokploy as-is. |
+| `.github/workflows/monitoring.yml` | At the repo root: checks the build, then deploys on a push to `main`. |
+| `docker-compose.yml` | **Generated, and committed.** What Dokploy deploys, straight from GitHub. |
 
 Edit `compose.base.yml` or a dashboard, then:
 
@@ -29,33 +30,28 @@ Edit `compose.base.yml` or a dashboard, then:
 
 Never edit `docker-compose.yml` by hand; `build.py` overwrites it.
 
-Everything is inlined as compose `configs`, so there are no side files to copy to the box. That
-is what makes a Dokploy Raw compose app viable.
+Everything is inlined as compose `configs`, so the one file is the whole stack. `build.py` also
+labels each service with a hash of the configs it mounts (`homelab.configs-hash`): `docker compose
+up -d` ignores a change in an inline config's *content*, but a changed label recreates the
+service, so a dashboard edit ships on a normal deploy.
 
 ## Deploy
 
-Once the stack exists in Dokploy, deploying is one command:
+**Push to `main`.** Dokploy's compose app pulls `apps/monitoring/docker-compose.yml` from
+`davide97g/homelab` (GitHub provider, auto-deploy off), and `.github/workflows/monitoring.yml`
+does the rest: it checks that `docker-compose.yml` matches `build.py` and is valid compose, then
+calls `compose.deploy` through `deploy-homelab.davideghiotto.it` and waits for Dokploy's verdict.
+Each deploy is titled with its commit in Dokploy's Deployments tab.
+
+By hand, for the same thing without a push:
 
 ```sh
-./deploy.py              # build, push, deploy
+./deploy.py              # deploy main; refuses if the compose is uncommitted or unpushed
 ./deploy.py --recreate   # same, but stop the stack first
 ```
 
-**Keep the generated compose under ~100 KB.** Dokploy writes it to the box by passing the whole
-file as one shell argument, and the kernel rejects an argument over 128 KiB with `E2BIG`. The
-deployment then fails at `Initializing deployment` with nothing in the deployment log to say why —
-the reason is only in `docker logs dokploy.1.*`, as `spawn E2BIG`. Worse, `--recreate` stops the
-stack *before* deploying, so a file that has crossed the line takes monitoring down and cannot put
-it back. That is why `build.py` inlines the dashboards as compact JSON: pretty-printed, they put
-the file at 108 KB and every deploy failed. If it ever needs shrinking again, the dashboards are
-the bulk of it. To restart a stack that is down without deploying: `compose.start` on the Dokploy
-API.
-
-Use `--recreate` whenever `compose.base.yml` **configs** or a dashboard changed. `docker compose
-up -d` compares the service spec, not the *content* of an inline `configs:` entry, so a plain
-deploy leaves the previous dashboard JSON mounted and nothing appears to happen. Recreating
-costs a few seconds of monitoring downtime; the `grafana-data` and `prometheus-data` volumes are
-untouched.
+`--recreate` stops the stack before deploying, so a deploy that then fails leaves monitoring down.
+To bring a stopped stack back without deploying: `compose.start` on the Dokploy API.
 
 Credentials live in `.dokploy.env`, which is gitignored and `chmod 600`:
 
@@ -72,20 +68,22 @@ Settings → API/CLI if it is ever shared or copied elsewhere.
 ### First-time setup
 
 1. Dokploy → project → **Create Service → Compose**.
-2. Provider **Raw**, paste the whole of `docker-compose.yml`.
+2. Provider **GitHub**, repository `davide97g/homelab`, branch `main`, compose path
+   `./apps/monitoring/docker-compose.yml`, auto-deploy **off**.
 3. **Environment** tab, set:
    ```
    GRAFANA_ADMIN_PASSWORD=<pick one>
    QBITTORRENT_USER=<the qBittorrent WebUI login>
    QBITTORRENT_PASS=<its password>
+   NAS_TAILNET_IP=<the NAS's Tailscale address>
    ```
-   The compose file refuses to start without all three, on purpose — `${VAR:?}` fails the whole
+   The compose file refuses to start without the first three, on purpose — `${VAR:?}` fails the whole
    file rather than starting the stack with a broken exporter. The corollary is that adding a
    `${VAR:?}` and deploying before the variable exists takes the stack down, so set them first.
    The qBittorrent pair is the same one already in `/home/davide/mediarr-dash/.env`.
 4. Deploy.
-5. Copy the compose id out of the browser URL into `.dokploy.env`, and from then on use
-   `./deploy.py`.
+5. Copy the compose id out of the browser URL into `.dokploy.env` and into the repository
+   secret `DOKPLOY_COMPOSE_ID_MONITORING`. From then on a push to `main` deploys.
 
 Grafana lands on `http://debian:3001`, user `admin`. Prometheus and cAdvisor are not
 published to the LAN — they sit on the internal `monitoring` network and are reachable through
@@ -341,7 +339,7 @@ The UGREEN DXP4800 Pro is Ilario's box on Ilario's network. Its shape dictates t
 
 The scrape config names the NAS by its tailnet address. That is the one place the no-hard-coded-IP
 rule below does not apply — a tailnet address is stable, and the NAS's LAN address is useless
-from here. The repo only says `${NAS_TAILNET_IP}`; `deploy.py` fills it in from `.dokploy.env`.
+from here. The repo only says `${NAS_TAILNET_IP}`; compose fills it in from the Dokploy Environment tab.
 
 Its `node-exporter` sets `--path.procfs=/host/proc` and `--path.sysfs=/host/sys`, which the mini
 PC's does not. `--path.rootfs` alone does not redirect those two, and Docker masks

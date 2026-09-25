@@ -17,6 +17,8 @@ services:
   prometheus:
     image: prom/prometheus:v3.14.0
     container_name: homelab-prometheus
+    labels:
+      homelab.configs-hash: "a9c0b213502f"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -111,6 +113,8 @@ services:
   json-exporter:
     image: prometheuscommunity/json-exporter:v0.8.0
     container_name: homelab-json-exporter
+    labels:
+      homelab.configs-hash: "87b92f43a5b1"
     restart: unless-stopped
     # Bridges the Tasmota smart plug into Prometheus. The plug speaks JSON over
     # HTTP (/cm?cmnd=Status 10) and has no /metrics of its own, so this maps its
@@ -154,6 +158,8 @@ services:
   loki:
     image: grafana/loki:3.7.8
     container_name: homelab-loki
+    labels:
+      homelab.configs-hash: "7549b9ec8974"
     restart: unless-stopped
     # Root because a fresh named volume comes up owned by root and Loki's
     # default uid (10001) cannot create /loki/chunks inside it.
@@ -183,6 +189,8 @@ services:
   alloy:
     image: grafana/alloy:v1.19.2
     container_name: homelab-alloy
+    labels:
+      homelab.configs-hash: "1d2d3f60cd8d"
     restart: unless-stopped
     depends_on:
       - loki
@@ -209,6 +217,8 @@ services:
   grafana:
     image: grafana/grafana:13.2.1
     container_name: homelab-grafana
+    labels:
+      homelab.configs-hash: "f095b2262083"
     restart: unless-stopped
     depends_on:
       - prometheus

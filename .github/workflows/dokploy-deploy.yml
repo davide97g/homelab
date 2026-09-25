@@ -1,0 +1,88 @@
+name: Dokploy deploy
+
+# Called by each app's workflow once its checks pass. Dokploy's own auto-deploy is
+# off everywhere, so this is the only path from main to the box: it asks Dokploy to
+# deploy the commit on main and waits for the result, because a red deploy under a
+# green workflow is the failure this job exists to prevent.
+#
+# Dokploy is reached through deploy-homelab.davideghiotto.it, a tunnel hostname
+# whose path rule lets api/compose.(deploy|one) through and 404s everything else
+# at Cloudflare's edge. Copied from calorico's CI; see docs/porting-to-homelab.md § 7.
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: Name shown in the logs
+        required: true
+        type: string
+    secrets:
+      compose-id:
+        required: true
+      DOKPLOY_URL:
+        required: true
+      DOKPLOY_API_KEY:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+      DOKPLOY_COMPOSE_ID: ${{ secrets.compose-id }}
+
+    steps:
+      # The compose status alone cannot say whether a deploy has started yet: it
+      # still reads "done" from the previous one for the first few seconds. The
+      # id of the newest deployment is what tells this run apart from the last —
+      # newest by createdAt, because Dokploy returns the list oldest first.
+      - name: Note the current deployment
+        run: |
+          echo "before=$(curl -fsS --max-time 30 \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            "$DOKPLOY_URL/api/compose.one?composeId=$DOKPLOY_COMPOSE_ID" |
+            python3 -c 'import json,sys; d=sorted(json.load(sys.stdin)["deployments"], key=lambda x: x["createdAt"]); print(d[-1]["deploymentId"] if d else "")')" >> "$GITHUB_ENV"
+
+      # Dokploy deploys whatever main is when it clones, which is this commit or a
+      # newer one queued behind it. The title puts the commit in Dokploy's
+      # Deployments tab, so every deploy there reads as a version.
+      - name: Trigger the Dokploy deploy of ${{ inputs.app }}
+        env:
+          SUBJECT: ${{ github.event.head_commit.message }}
+        run: |
+          body="$(python3 -c 'import json,os; print(json.dumps({
+            "composeId": os.environ["DOKPLOY_COMPOSE_ID"],
+            "title": os.environ["GITHUB_SHA"][:7] + " " + os.environ.get("SUBJECT", "").splitlines()[0][:80] if os.environ.get("SUBJECT") else os.environ["GITHUB_SHA"][:7],
+            "description": os.environ["GITHUB_SERVER_URL"] + "/" + os.environ["GITHUB_REPOSITORY"] + "/commit/" + os.environ["GITHUB_SHA"],
+          }))')"
+          curl -fsS --max-time 60 -X POST \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -H 'content-type: application/json' \
+            -d "$body" \
+            "$DOKPLOY_URL/api/compose.deploy"
+
+      # The trigger only queues the build. Without this wait a red deploy still
+      # shows a green workflow.
+      - name: Wait for the deploy to finish
+        run: |
+          for _ in $(seq 1 120); do
+            sleep 15
+            latest="$(curl -fsS --max-time 30 \
+              -H "x-api-key: $DOKPLOY_API_KEY" \
+              "$DOKPLOY_URL/api/compose.one?composeId=$DOKPLOY_COMPOSE_ID" |
+              python3 -c 'import json,sys; d=sorted(json.load(sys.stdin)["deployments"], key=lambda x: x["createdAt"]); print(d[-1]["deploymentId"], d[-1]["status"]) if d else print("none idle")')"
+            id="${latest%% *}"
+            status="${latest##* }"
+            if [ "$id" = "$before" ]; then
+              echo "waiting for Dokploy to pick up the deploy"
+              continue
+            fi
+            echo "deployment $id: $status"
+            case "$status" in
+              done) exit 0 ;;
+              error) echo "::error::Dokploy reported a failed deploy of ${{ inputs.app }}"; exit 1 ;;
+            esac
+          done
+          echo "::error::deploy of ${{ inputs.app }} still running after 30 minutes"
+          exit 1
