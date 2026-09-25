@@ -1,7 +1,7 @@
 # local-ai
 
-Ollama on the mini PC, set up 2026-09-24. Plain `docker compose` in `~/local-ai` on the
-box, not a Dokploy app — same pattern as `mediarr` and `manga`.
+Ollama on the mini PC, set up 2026-09-24. Since 2026-09-25 it is a Dokploy compose app
+(`local-ai-uurnqn`) that deploys on push to `main`; `~/local-ai` on the box is a stale copy.
 
 | | |
 |---|---|
@@ -312,3 +312,33 @@ at q8_0. Resident with everything up: ollama ~23 GB with the model loaded, litel
 Change the image tag in `compose.yaml` and push to `main`.
 Check `docker logs ollama | grep "inference compute"` still says `library=Vulkan` and `ollama ps`
 still says `100% GPU`.
+
+## Config-file edits need a force-recreate — a push is not enough
+
+`litellm.yaml`, `searxng.yml` and the `webui/` files are **bind-mounted** into their
+containers (e.g. `./litellm.yaml:/app/config.yaml:ro`). A push that changes only one of
+these deploys the new file to the box, but `docker compose up` does **not** recreate the
+container, because the service definition itself is unchanged. Worse, git replaces the file
+with a new inode, so the already-running container keeps its mount pinned to the *old* file
+and never sees the edit — the on-disk file and the file inside the container disagree.
+
+Confirm before assuming it applied:
+
+```sh
+# on-disk (correct after a push):
+grep <key> /etc/dokploy/compose/local-ai-uurnqn/code/apps/local-ai/litellm.yaml
+# inside the running container (what actually takes effect):
+docker exec litellm grep <key> /app/config.yaml
+```
+
+If they disagree, force-recreate just that service:
+
+```sh
+cd /etc/dokploy/compose/local-ai-uurnqn/code/apps/local-ai
+docker compose -p local-ai-uurnqn --env-file .env up -d --force-recreate litellm
+```
+
+(Bitten 2026-09-25: re-enabling the LiteLLM UI's `admin` + master-key login by setting
+`disable_env_credential_login: false` deployed fine but did nothing until litellm was
+recreated. An image-tag bump does not have this problem — that changes the service
+definition, so compose recreates the container on its own.)
