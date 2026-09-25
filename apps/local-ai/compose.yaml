@@ -49,10 +49,18 @@ services:
       # page loads custom.css and loader.js from there (both empty upstream).
       - ./webui/custom.css:/app/build/static/custom.css:ro
       - ./webui/loader.js:/app/build/static/loader.js:ro
-    env_file: .env
     # Most of these are PersistentConfig: read on the first boot only, after which the
     # database (Admin Settings) wins. Change them in the UI, not here.
+    #
+    # Secrets come from the Dokploy Environment tab, which Dokploy writes to a single
+    # .env beside this file. Each service names only the variables it needs, so
+    # Open WebUI never sees LiteLLM's master key -- the reason litellm.env and
+    # searxng.env were separate files before this moved to Dokploy.
     environment:
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?}
+      WEBUI_ADMIN_EMAIL: ${WEBUI_ADMIN_EMAIL:-}
+      WEBUI_ADMIN_NAME: ${WEBUI_ADMIN_NAME:-}
+      WEBUI_ADMIN_PASSWORD: ${WEBUI_ADMIN_PASSWORD:-}
       OLLAMA_BASE_URL: http://ollama:11434
       ENABLE_OPENAI_API: "false"
       ENABLE_EVALUATION_ARENA_MODELS: "false"
@@ -73,18 +81,19 @@ services:
 
   # Web search backend for Open WebUI: a metasearch engine, free, no API key. Internal
   # only, no published port: Open WebUI reaches it at http://searxng:8080 on the compose
-  # network. Secret in searxng.env on the box.
+  # network.
   searxng:
     image: searxng/searxng:2026.9.22-2ed96e6fc
     container_name: searxng
     restart: unless-stopped
     volumes:
       - ./searxng.yml:/etc/searxng/settings.yml:ro
-    env_file: searxng.env
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?}
     mem_limit: 512m
 
   # API gateway: per-user keys, usage, limits. Public at $LLM_HOST — /ui is
-  # the dashboard, /v1 the API. Secrets in litellm.env (not .env: Open WebUI reads that).
+  # the dashboard, /v1 the API.
   litellm:
     image: ghcr.io/berriai/litellm:v1.102.1
     container_name: litellm
@@ -101,8 +110,10 @@ services:
     # One worker: without Redis every worker keeps its own rate-limit counters, so two
     # workers would double each key's limits. One GPU does not need more.
     command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
-    env_file: litellm.env
     environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?}
+      DATABASE_URL: ${DATABASE_URL:?}
       LITELLM_MODE: PRODUCTION
       PROXY_BASE_URL: https://${LLM_HOST:?}
       STORE_MODEL_IN_DB: "False"
@@ -114,8 +125,8 @@ services:
     image: postgres:17.6-alpine
     container_name: litellm-db
     restart: unless-stopped
-    env_file: litellm.env
     environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       POSTGRES_DB: litellm
       POSTGRES_USER: litellm
     volumes:

@@ -19,9 +19,8 @@ must not be: anyone who can reach `:11434` can run the model and pull or delete 
 chat UI in front of it is public (below). Its login is the only gate.
 
 ```sh
+# deploy: push to main -- see ../../README.md#deploying (Dokploy app `local-ai`)
 ssh homelab
-cd ~/local-ai
-docker compose up -d                      # start / apply compose changes
 docker logs -f searxng                    # web search backend
 docker exec -it ollama ollama run qwen3.6:35b-a3b-q4_K_M
 docker exec ollama ollama ps              # what is loaded, CPU vs GPU
@@ -54,7 +53,7 @@ with the reasoning collapsed, a model picker, search and a new chat button. Data
 | Users | one test user (role `user`, 2026-09-24). Credentials `OPEN_WEBUI_USER_*` in `../../.env` |
 | Picker | **Qwen3.6 35B-A3B** (`qwen3.6-fast`, `think: false`, default) and **Qwen3.6 35B-A3B (thinking)** (`qwen3.6:35b-a3b-q4_K_M`) |
 
-The admin was created on first boot from `WEBUI_ADMIN_*` in `~/local-ai/.env` on the box
+The admin was created on first boot from `WEBUI_ADMIN_*` (now in the Dokploy Environment tab)
 (mode 600, beside `WEBUI_SECRET_KEY`). Those lines do nothing once a user exists. If the
 password changes in the UI, update `../../.env` too.
 
@@ -106,7 +105,7 @@ Backend is **SearXNG** (`searxng` in `compose.yaml`, `searxng/searxng:2026.9.22-
 a self-hosted metasearch engine: free, no API key, no account. It queries Google, Brave,
 DuckDuckGo, Wikipedia and others from the box's home IP. No published port: only Open WebUI
 reaches it, at `http://searxng:8080`. Config in [`searxng.yml`](searxng.yml) (JSON output
-on, limiter off), secret in `~/local-ai/searxng.env` on the box (mode 600).
+on, limiter off), secret `SEARXNG_SECRET` in the Dokploy Environment tab.
 
 Set through the admin API, so on a fresh volume set them again:
 
@@ -147,7 +146,7 @@ Nothing is billed: prices are $0, so the spend pages count tokens.
 |---|---|
 | Public | `https://$LLM_HOST`, since 2026-09-24. **Not behind Access**: keys and the `/ui` login are the gate |
 | LAN | `http://$LAN_HOST:4000` (`/ui`, `/v1`) |
-| Config | [`litellm.yaml`](litellm.yaml), secrets in `~/local-ai/litellm.env` on the box (mode 600) |
+| Config | [`litellm.yaml`](litellm.yaml), secrets (`LITELLM_*`, `DATABASE_URL`, `POSTGRES_PASSWORD`) in the Dokploy Environment tab |
 | Storage | Postgres 17 (`litellm-db`, volume `litellm-db`): users, keys, usage |
 | Admin | UI: an admin user (`proxy_admin`), `LITELLM_UI_ADMIN_*`. API: `LITELLM_MASTER_KEY`. Both in [`../../.env`](../../.env) |
 | Users | one test user (`internal_user`), `LITELLM_USER_<NAME>_*` |
@@ -310,6 +309,6 @@ at q8_0. Resident with everything up: ollama ~23 GB with the model loaded, litel
 
 ## Upgrading
 
-Change the image tag in `compose.yaml`, `scp` it to `~/local-ai/`, `docker compose up -d`.
+Change the image tag in `compose.yaml` and push to `main`.
 Check `docker logs ollama | grep "inference compute"` still says `library=Vulkan` and `ollama ps`
 still says `100% GPU`.
