@@ -1,0 +1,37 @@
+/* Swarm -- the palette for the qBittorrent surface.
+ *
+ * A fifth palette in this homelab on purpose: cinema owns red, mediarr-dash
+ * blue, hub orange, tv cyan. Each surface reads as itself. Jade is unclaimed.
+ *
+ * Hex rather than oklch, matching cinema/packages/design-tokens, so the values
+ * stay greppable and comparable across apps. */
+:root {
+  --canvas: #0b0c0e;
+  --surface: #15171a;
+  --surface-2: #1e2126;
+  --surface-3: #282c32;
+
+  --foreground: #edeff2;
+  --muted-foreground: #868d96;
+
+  /* The one action colour. Deliberately not acid: desaturated enough to sit
+   * under white text without vibrating. */
+  --accent: #3fcf8e;
+  --accent-dim: #1f6b4a;
+
+  /* Status only, never decoration. Borrowed from cinema's Reel palette so a
+   * warning reads the same in both apps. */
+  --amber: #e5a00d;
+  --danger: #f0414e;
+
+  --hairline: rgb(255 255 255 / 0.07);
+
+  --rad-lg: 0.5rem;
+  --rad-xl: 0.75rem;
+  --rad-2xl: 1rem;
+  --rad-pill: 999px;
+
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+}

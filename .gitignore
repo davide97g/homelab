@@ -1,0 +1,15 @@
+# Credentials: the real values live in .env files next to each project, never in git.
+.env
+.env.*
+!.env.example
+.dokploy.env
+
+# Build output and caches
+node_modules/
+dist/
+__pycache__/
+*.tsbuildinfo
+
+# Editors and OS
+.cursor/
+.DS_Store
