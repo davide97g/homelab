@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
+  AudioLines,
+  Captions,
   Maximize,
   Minimize,
   Pause,
@@ -11,10 +13,11 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react'
-import { PlayMethod } from '@/lib/jellyfin/playback'
+import { PlayMethod, type AudioOption, type SubtitleOption } from '@/lib/jellyfin/playback'
 import { formatTimecode } from '@/lib/jellyfin/ticks'
 import { cn } from '@/lib/utils'
 import { Scrubber } from './Scrubber'
+import { TrackMenu } from './TrackMenu'
 
 type Props = {
   videoRef: React.RefObject<HTMLVideoElement | null>
@@ -23,7 +26,17 @@ type Props = {
   playMethod: PlayMethod
   visible: boolean
   onBack: () => void
+  audioOptions: AudioOption[]
+  audioIndex?: number
+  onSelectAudio: (index: number) => void
+  subtitleOptions: SubtitleOption[]
+  subtitleIndex: number | null
+  onSelectSubtitle: (index: number | null) => void
+  /** A track change is renegotiating; the old stream plays meanwhile. */
+  switching: boolean
 }
+
+type Menu = 'audio' | 'subtitles'
 
 const SKIP = 10
 
@@ -34,7 +47,17 @@ export function PlayerControls({
   playMethod,
   visible,
   onBack,
+  audioOptions,
+  audioIndex,
+  onSelectAudio,
+  subtitleOptions,
+  subtitleIndex,
+  onSelectSubtitle,
+  switching,
 }: Props) {
+  const [openMenu, setOpenMenu] = useState<Menu | null>(null)
+  const openMenuRef = useRef(openMenu)
+  openMenuRef.current = openMenu
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -123,7 +146,9 @@ export function PlayerControls({
           void toggleFullscreen()
           break
         case 'Escape':
-          if (!document.fullscreenElement) onBack()
+          // An open menu takes the first Escape; leaving the film is the second.
+          if (openMenuRef.current) setOpenMenu(null)
+          else if (!document.fullscreenElement) onBack()
           break
       }
     }
@@ -137,13 +162,14 @@ export function PlayerControls({
   }
 
   const video = videoRef.current
+  const shown = visible || openMenu !== null
   const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
 
   return (
     <div
       className={cn(
         'absolute inset-0 flex flex-col justify-between transition-opacity duration-300',
-        visible ? 'opacity-100' : 'pointer-events-none opacity-0',
+        shown ? 'opacity-100' : 'pointer-events-none opacity-0',
       )}
     >
       {/* Two washes rather than one overlay: the middle of the frame, which is
@@ -156,11 +182,18 @@ export function PlayerControls({
           <p className="truncate font-semibold">{title}</p>
           {subtitle && <p className="truncate text-sm text-white/60">{subtitle}</p>}
         </div>
-        {playMethod === PlayMethod.Transcode && (
-          <span className="ml-auto shrink-0 rounded-pill bg-white/10 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
-            Transcoding
-          </span>
-        )}
+        <div className="ml-auto flex shrink-0 gap-2">
+          {switching && (
+            <span className="rounded-pill bg-white/10 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+              Switching track…
+            </span>
+          )}
+          {playMethod === PlayMethod.Transcode && (
+            <span className="rounded-pill bg-white/10 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+              Transcoding
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2 bg-gradient-to-t from-black/85 to-transparent p-4 pt-20 md:p-6 md:pt-24">
@@ -231,10 +264,44 @@ export function PlayerControls({
             {formatTimecode(current)} <span className="text-white/40">/ {formatTimecode(duration)}</span>
           </span>
 
+          <div className="ml-auto flex items-center gap-1 md:gap-2">
+            {/* One audio track is no choice, so no button, as in Jellyfin's own player. */}
+            {audioOptions.length > 1 && (
+              <TrackMenu
+                label="Audio"
+                icon={<AudioLines className="size-5" />}
+                heading="Audio"
+                items={audioOptions.map((option) => ({ value: option.index, label: option.label }))}
+                selected={audioIndex ?? null}
+                open={openMenu === 'audio'}
+                onOpenChange={(open) => setOpenMenu(open ? 'audio' : null)}
+                onSelect={(value) => value !== null && onSelectAudio(value)}
+              />
+            )}
+            {subtitleOptions.length > 0 && (
+              <TrackMenu
+                label="Subtitles"
+                icon={<Captions className="size-5" />}
+                heading="Subtitles"
+                items={[
+                  { value: null, label: 'Off' },
+                  ...subtitleOptions.map((option) => ({
+                    value: option.index,
+                    label: option.label,
+                    ...(option.burnIn ? { hint: 'Burned into the picture: the server transcodes' } : {}),
+                  })),
+                ]}
+                selected={subtitleIndex}
+                open={openMenu === 'subtitles'}
+                onOpenChange={(open) => setOpenMenu(open ? 'subtitles' : null)}
+                onSelect={onSelectSubtitle}
+              />
+            )}
+          </div>
+
           <IconButton
             label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
             onClick={() => void toggleFullscreen()}
-            className="ml-auto"
           >
             {fullscreen ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
           </IconButton>

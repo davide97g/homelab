@@ -22,18 +22,19 @@ because the name no longer resolves. That includes Cinema for iOS on the phone, 
 
 **Working:** auth and session restore, home with feature band and carousels, sortable library grid,
 search, detail page with a technical media panel, direct-play/transcode negotiation, HLS via hls.js,
-external subtitles, custom controls with keyboard shortcuts, progress reporting and resume,
+external subtitles, audio and subtitle pickers mid-playback (Italian, then English, on by default;
+image subtitles burn in), custom controls with keyboard shortcuts, progress reporting and resume,
 offline-drive detection, a live viewer count in the header with who is watching what.
 
 **Next, in rough order of value:**
 
 1. **Series navigation.** `useNextUp` exists and episodes render, but there is no season/episode
    browser. Add `getSeasons` / `getEpisodes` from `getTvShowsApi`.
-2. **Audio and subtitle pickers mid-playback.** Means re-running `resolvePlaybackSource` and
-   resuming at the current position; the plumbing is already parameterised for it.
-3. **Quality selector.** Same mechanism — pass `maxStreamingBitrate` to `usePlaybackSession`.
-4. **Virtualised grid.** Fine to ~500 items; past that, TanStack Virtual.
-5. **Tests.** There is no test setup at all. `availability.ts` and the ticks/format helpers are
+2. **Quality selector.** Same mechanism as the track pickers — `usePlaybackSession`'s
+   `renegotiate`, with `maxStreamingBitrate`. Send `MediaSourceId` with it: without one the server
+   ignores the stream indexes in `PlaybackInfo` and silently answers with the defaults.
+3. **Virtualised grid.** Fine to ~500 items; past that, TanStack Virtual.
+4. **Tests.** There is no test setup at all. `availability.ts` and the ticks/format helpers are
    where a bug would be quiet rather than loud.
 
 Chunk sizes are settled: the SDK is one shared 165 kB chunk, `index` is 332 kB and `PlayerRoute`

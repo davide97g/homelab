@@ -19,7 +19,16 @@ export function PlayerRoute() {
 
   const startSeconds = Number(params.get('t') ?? 0) || 0
   const { data: item } = useItem(itemId)
-  const { videoRef, source, error } = usePlaybackSession({ itemId, startSeconds })
+  const {
+    videoRef,
+    source,
+    error,
+    resumeSeconds,
+    switching,
+    subtitleIndex,
+    selectAudio,
+    selectSubtitle,
+  } = usePlaybackSession({ itemId, startSeconds })
 
   const [playbackError, setPlaybackError] = useState<string | null>(null)
   const [controlsVisible, setControlsVisible] = useState(true)
@@ -71,8 +80,9 @@ export function PlayerRoute() {
         <>
           <VideoPlayer
             source={source}
-            startSeconds={startSeconds}
+            startSeconds={resumeSeconds}
             videoRef={videoRef}
+            subtitleIndex={subtitleIndex}
             onError={setPlaybackError}
           />
           <PlayerControls
@@ -82,6 +92,13 @@ export function PlayerRoute() {
             playMethod={source.playMethod}
             visible={controlsVisible || Boolean(message)}
             onBack={goBack}
+            audioOptions={source.audioOptions}
+            audioIndex={source.audioStreamIndex}
+            onSelectAudio={selectAudio}
+            subtitleOptions={source.subtitleOptions}
+            subtitleIndex={subtitleIndex}
+            onSelectSubtitle={selectSubtitle}
+            switching={switching}
           />
         </>
       ) : (

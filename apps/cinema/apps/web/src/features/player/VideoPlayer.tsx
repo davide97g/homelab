@@ -6,6 +6,8 @@ type Props = {
   source: PlaybackSource
   startSeconds: number
   videoRef: React.RefObject<HTMLVideoElement | null>
+  /** Stream index of the <track> to show; null shows none. */
+  subtitleIndex: number | null
   onReady?: () => void
   onError?: (message: string) => void
 }
@@ -15,7 +17,14 @@ type Props = {
  *   - progressive file  -> assign src directly
  *   - HLS               -> native on Safari, hls.js everywhere else
  */
-export function VideoPlayer({ source, startSeconds, videoRef, onReady, onError }: Props) {
+export function VideoPlayer({
+  source,
+  startSeconds,
+  videoRef,
+  subtitleIndex,
+  onReady,
+  onError,
+}: Props) {
   const hlsRef = useRef<Hls | null>(null)
 
   useEffect(() => {
@@ -49,6 +58,22 @@ export function VideoPlayer({ source, startSeconds, videoRef, onReady, onError }
     }
   }, [source, videoRef, onError])
 
+  // Set modes by hand rather than through `default`, which a browser reads
+  // once and never again. Reapplied on load, since a new src can re-run the
+  // browser's own automatic track selection.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const apply = () => {
+      video.querySelectorAll('track').forEach((element) => {
+        element.track.mode = Number(element.dataset.index) === subtitleIndex ? 'showing' : 'disabled'
+      })
+    }
+    apply()
+    video.addEventListener('loadedmetadata', apply)
+    return () => video.removeEventListener('loadedmetadata', apply)
+  }, [source, subtitleIndex, videoRef])
+
   return (
     <video
       ref={videoRef}
@@ -73,7 +98,7 @@ export function VideoPlayer({ source, startSeconds, videoRef, onReady, onError }
           src={track.url}
           label={track.label}
           srcLang={track.language ?? undefined}
-          default={track.isDefault}
+          data-index={track.index}
         />
       ))}
     </video>

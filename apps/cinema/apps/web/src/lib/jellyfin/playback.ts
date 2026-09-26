@@ -6,16 +6,37 @@ import { MediaStreamType } from '@jellyfin/sdk/lib/generated-client/models/media
 import { PlayMethod } from '@jellyfin/sdk/lib/generated-client/models/play-method'
 import { SubtitleDeliveryMethod } from '@jellyfin/sdk/lib/generated-client/models/subtitle-delivery-method'
 import type { MediaSourceInfo } from '@jellyfin/sdk/lib/generated-client/models/media-source-info'
+import type { MediaStream } from '@jellyfin/sdk/lib/generated-client/models/media-stream'
 import { getDeviceProfile } from './device-profile'
 
 export { PlayMethod }
+
+/**
+ * Subtitle languages in the order they are switched on by default. Jellyfin
+ * keeps a single preferred language per user, so the fallback lives here.
+ */
+const SUBTITLE_LANGUAGES = ['ita', 'eng']
 
 export type SubtitleTrack = {
   index: number
   label: string
   language?: string
   url: string
-  isDefault: boolean
+}
+
+export type AudioOption = {
+  index: number
+  label: string
+}
+
+export type SubtitleOption = {
+  index: number
+  label: string
+  /**
+   * Image subtitles (PGS, VobSub) cannot be a <track>: picking one means a new
+   * session with the server burning it into the picture, which is a transcode.
+   */
+  burnIn: boolean
 }
 
 export type PlaybackSource = {
@@ -30,6 +51,15 @@ export type PlaybackSource = {
   runTimeTicks?: number
   /** External (sidecar) subtitles, ready for <track>. */
   subtitleTracks: SubtitleTrack[]
+  /** Everything the pickers can offer, text and image alike. */
+  audioOptions: AudioOption[]
+  subtitleOptions: SubtitleOption[]
+  /** The audio stream actually coming out of the speakers in this session. */
+  audioStreamIndex?: number
+  /** Set when the server is painting an image subtitle into the video. */
+  burnedSubtitleIndex?: number
+  /** Italian, else English, else null: subtitles off. */
+  defaultSubtitleIndex: number | null
   mediaSource: MediaSourceInfo
 }
 
@@ -39,8 +69,16 @@ export type ResolveOptions = {
   startTimeTicks?: number
   /** Cap the bitrate to force a transcode -- useful for testing that path. */
   maxStreamingBitrate?: number
+  /**
+   * Required for the two stream indexes below to take effect: without it the
+   * server ignores them and quietly answers with the defaults.
+   */
+  mediaSourceId?: string
   audioStreamIndex?: number
+  /** Only for an image subtitle to burn in; text subtitles never need a new session. */
   subtitleStreamIndex?: number
+  /** Internal: set on the retry when direct play would play the wrong audio. */
+  enableDirectPlay?: boolean
 }
 
 /**
@@ -59,12 +97,15 @@ export async function resolvePlaybackSource(
     itemId: opts.itemId,
     playbackInfoDto: {
       UserId: opts.userId,
+      MediaSourceId: opts.mediaSourceId,
       DeviceProfile: getDeviceProfile(),
       StartTimeTicks: opts.startTimeTicks ?? 0,
       MaxStreamingBitrate: opts.maxStreamingBitrate,
       AudioStreamIndex: opts.audioStreamIndex,
-      SubtitleStreamIndex: opts.subtitleStreamIndex,
-      EnableDirectPlay: true,
+      // -1 is "none": left empty, the server applies the user's subtitle mode
+      // and may pick an image track, turning a direct play into a transcode.
+      SubtitleStreamIndex: opts.subtitleStreamIndex ?? -1,
+      EnableDirectPlay: opts.enableDirectPlay ?? true,
       EnableDirectStream: true,
       EnableTranscoding: true,
       AllowVideoStreamCopy: true,
@@ -79,20 +120,38 @@ export async function resolvePlaybackSource(
     throw new Error('No playable media source returned for this item')
   }
 
-  const subtitleTracks = (source.MediaStreams ?? [])
-    .filter(
-      (s) =>
-        s.Type === MediaStreamType.Subtitle &&
-        s.DeliveryMethod === SubtitleDeliveryMethod.External &&
-        Boolean(s.DeliveryUrl),
-    )
-    .map<SubtitleTrack>((s) => ({
-      index: s.Index ?? 0,
-      label: s.DisplayTitle ?? s.Language ?? `Track ${s.Index}`,
-      language: s.Language ?? undefined,
-      url: `${api.basePath}${s.DeliveryUrl}`,
-      isDefault: Boolean(s.IsDefault),
-    }))
+  const streams = source.MediaStreams ?? []
+  const audioStreams = streams.filter((s) => s.Type === MediaStreamType.Audio)
+  // What a browser plays from the raw file: the flagged track, else the first.
+  // It cannot switch tracks inside a container on its own.
+  const fileAudioIndex = (audioStreams.find((s) => s.IsDefault) ?? audioStreams[0])?.Index ?? undefined
+
+  if (
+    source.SupportsDirectPlay &&
+    opts.audioStreamIndex !== undefined &&
+    opts.audioStreamIndex !== fileAudioIndex
+  ) {
+    // Same answer jellyfin-web lands on: remux, so the chosen track is the one
+    // in the stream. Video is copied, so this stays cheap.
+    return resolvePlaybackSource(api, { ...opts, enableDirectPlay: false })
+  }
+
+  const subtitleStreams = streams.filter((s) => s.Type === MediaStreamType.Subtitle)
+  const isExternal = (s: MediaStream) =>
+    s.DeliveryMethod === SubtitleDeliveryMethod.External && Boolean(s.DeliveryUrl)
+
+  const subtitleTracks = subtitleStreams.filter(isExternal).map<SubtitleTrack>((s) => ({
+    index: s.Index ?? 0,
+    label: streamLabel(s),
+    language: s.Language ?? undefined,
+    url: `${api.basePath}${s.DeliveryUrl}`,
+  }))
+
+  const burnedSubtitleIndex = subtitleStreams.some(
+    (s) => s.Index === opts.subtitleStreamIndex && s.DeliveryMethod === SubtitleDeliveryMethod.Encode,
+  )
+    ? opts.subtitleStreamIndex
+    : undefined
 
   const shared = {
     playSessionId,
@@ -100,8 +159,25 @@ export async function resolvePlaybackSource(
     container: source.Container ?? undefined,
     runTimeTicks: source.RunTimeTicks ?? undefined,
     subtitleTracks,
+    audioOptions: audioStreams.map<AudioOption>((s) => ({
+      index: s.Index ?? 0,
+      label: streamLabel(s),
+    })),
+    subtitleOptions: subtitleStreams
+      .filter((s) => isExternal(s) || s.DeliveryMethod === SubtitleDeliveryMethod.Encode)
+      .map<SubtitleOption>((s) => ({
+        index: s.Index ?? 0,
+        label: streamLabel(s),
+        burnIn: !isExternal(s),
+      })),
+    burnedSubtitleIndex,
+    defaultSubtitleIndex: pickDefaultSubtitle(subtitleStreams.filter(isExternal)),
     mediaSource: source,
   }
+
+  // Direct play is always the file's own track. Anything the server touches
+  // carries its DefaultAudioStreamIndex -- the one asked for, when it listened.
+  const servedAudioIndex = source.DefaultAudioStreamIndex ?? fileAudioIndex
 
   const staticStreamUrl = () =>
     api.getUri(`/Videos/${opts.itemId}/stream.${source.Container}`, {
@@ -117,6 +193,7 @@ export async function resolvePlaybackSource(
   if (source.SupportsDirectPlay) {
     return {
       ...shared,
+      audioStreamIndex: fileAudioIndex,
       url: staticStreamUrl(),
       isHls: false,
       playMethod: PlayMethod.DirectPlay,
@@ -134,6 +211,7 @@ export async function resolvePlaybackSource(
   if (source.TranscodingUrl) {
     return {
       ...shared,
+      audioStreamIndex: servedAudioIndex,
       url: `${api.basePath}${source.TranscodingUrl}`,
       isHls: source.TranscodingSubProtocol === MediaStreamProtocol.Hls,
       playMethod: source.SupportsDirectStream ? PlayMethod.DirectStream : PlayMethod.Transcode,
@@ -144,6 +222,7 @@ export async function resolvePlaybackSource(
   if (source.SupportsDirectStream) {
     return {
       ...shared,
+      audioStreamIndex: fileAudioIndex,
       url: staticStreamUrl(),
       isHls: false,
       playMethod: PlayMethod.DirectStream,
@@ -151,6 +230,30 @@ export async function resolvePlaybackSource(
   }
 
   throw new Error('Media source is neither directly playable nor transcodable')
+}
+
+function streamLabel(stream: MediaStream) {
+  return stream.DisplayTitle ?? stream.Language ?? `Track ${stream.Index}`
+}
+
+function matchesLanguage(stream: MediaStream, language: string) {
+  // Jellyfin reports ISO 639-2 ("ita"), but a hand-named sidecar can say "it".
+  const code = stream.Language?.toLowerCase()
+  return code === language || code === language.slice(0, 2)
+}
+
+/**
+ * Full subtitles in the first preferred language present; forced tracks only
+ * cover foreign-language lines, so they never stand in for a language. The
+ * file's own default flag is ignored: on a French release of an anime it
+ * points at French.
+ */
+function pickDefaultSubtitle(streams: MediaStream[]): number | null {
+  for (const language of SUBTITLE_LANGUAGES) {
+    const match = streams.find((s) => !s.IsForced && matchesLanguage(s, language))
+    if (match) return match.Index ?? null
+  }
+  return null
 }
 
 /* ------------------------------------------------------------------ *
