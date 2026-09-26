@@ -65,6 +65,12 @@ def main():
         ("settings-general-serie_default_enabled", "true"),
         ("settings-general-serie_default_profile", "1"),
         ("settings-general-upgrade_subs", "true"),
+        # Image subtitles (PGS, VobSub) inside the file do not count as having
+        # that language: a browser cannot show them as a track, only the server
+        # can burn them in by transcoding. Without this Bazarr never fetches an
+        # .srt for a Blu-ray remux that carries Italian as PGS.
+        ("settings-general-ignore_pgs_subs", "true"),
+        ("settings-general-ignore_vobsub_subs", "true"),
         ("settings-general-enabled_providers", PROVIDERS),
     ]
 
