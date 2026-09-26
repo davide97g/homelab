@@ -33,6 +33,7 @@ jobs:
           MEDIA_ROOT: /tmp/media
           NAS_TAILNET_IP: 100.64.0.1
           WIREGUARD_PRIVATE_KEY: dummy
+          GLUETUN_API_KEY: dummy
         run: docker compose -f stacks/mediarr/compose.yml config --quiet
 
   deploy:

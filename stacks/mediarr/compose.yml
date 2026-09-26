@@ -246,11 +246,22 @@ services:
         /bin/sh -c 'wget -O- -nv --retry-connrefused --post-data
         "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}"
         http://127.0.0.1:8080/api/v2/app/setPreferences'
+    # The control API, which the hub's VPN card reads and its kill switch
+    # writes. One API key, four routes -- see gluetun-auth below. Not
+    # /v1/vpn/settings, which would hand the hub the WireGuard private key.
+    configs:
+      - source: gluetun-auth
+        target: /gluetun/auth/config.toml
     ports:
       # qBittorrent's WebUI (and Swarm, which it serves), published here because
       # this is the container that has the network. No torrent port: inbound
       # peers arrive through the VPN's forwarded port, not the router.
       - "8080:8080"
+      # The control API on the Docker bridge address only: the hub reaches it
+      # as homelab-host (host-gateway, 172.17.0.1), the LAN and the tailnet do
+      # not reach it at all -- Docker's published ports skip UFW, so a plain
+      # "8001:8000" would be open to both.
+      - "${GLUETUN_CONTROL_BIND:-172.17.0.1}:${GLUETUN_CONTROL_PORT:-8001}:8000"
 
   # Not `<<: *common`: the anchor carries `networks`, compose refuses it next to
   # network_mode, and `!reset` does not undo a merge key. Restart policy by hand.
@@ -273,10 +284,12 @@ services:
       - qbittorrent-config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/data
     healthcheck:
-      # tun0 first: after gluetun restarts, qBittorrent is left in the dead
+      # eth0 first: after gluetun restarts, qBittorrent is left in the dead
       # namespace with only loopback -- its WebUI still answers on localhost,
       # so the HTTP check alone would call it healthy. heal.sh restarts it.
-      test: ["CMD-SHELL", "test -e /sys/class/net/tun0 && curl -fsS http://localhost:8080/ >/dev/null || exit 1"]
+      # eth0 rather than tun0, because tun0 is also gone while the kill switch
+      # holds the tunnel down on purpose, and that is not a reason to restart.
+      test: ["CMD-SHELL", "test -e /sys/class/net/eth0 && curl -fsS http://localhost:8080/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -286,6 +299,15 @@ networks:
   mediarr:
 
 configs:
+  # gluetun's control-server roles. Everything not listed stays private.
+  gluetun-auth:
+    content: |
+      [[roles]]
+      name = "hub"
+      routes = ["GET /v1/vpn/status", "PUT /v1/vpn/status", "GET /v1/publicip/ip", "GET /v1/portforward"]
+      auth = "apikey"
+      apikey = "${GLUETUN_API_KEY:?set GLUETUN_API_KEY in .env}"
+
   jellyfin-proxy-conf:
     content: |
       server {
