@@ -4,9 +4,8 @@ import type { MediaActivity } from "../../wire.js";
 import { cap, Collected, down, unconfigured } from "./shape.js";
 
 type SystemStatus = { data?: { bazarr_version?: string } };
-// `providers` here is not the number configured — on a box with two throttled
-// providers it read 0 — so nothing uses it. The throttled list below is the
-// honest source for that, and it names them.
+// `providers` here is the throttled count. The provider list below says the
+// same and names them too, so this one goes unused.
 type Badges = {
   episodes?: number;
   movies?: number;
@@ -53,11 +52,12 @@ export async function collectBazarr(): Promise<Collected> {
       soft(getJson<WantedEpisodes>(`${url}/api/episodes/wanted?start=0&length=12`, { headers })),
     ]);
 
-    // `providers` lists only the ones currently throttled, so an empty list is
-    // the healthy case. A throttled provider stays throttled for 12 hours after
-    // the cause is fixed, which is why it is named rather than folded into a
-    // health count.
-    const throttled = providers?.data ?? [];
+    // `providers` lists every enabled provider, with status "Good" unless it is
+    // throttled, when status is the reason (DownloadLimitExceeded, ...). Counting
+    // the whole list showed every provider as throttled. A throttled provider
+    // stays out for hours after the cause is fixed, which is why it is named
+    // rather than folded into a health count.
+    const throttled = (providers?.data ?? []).filter((p) => p.status && p.status !== "Good");
     const wantedMovieCount = badges?.movies ?? 0;
     const wantedEpisodeCount = badges?.episodes ?? 0;
     const wanted = wantedMovieCount + wantedEpisodeCount;
