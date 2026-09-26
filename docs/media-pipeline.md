@@ -8,6 +8,11 @@ obvious from `compose.yml`: what talks to what, why each piece is there, and the
 that were quietly broken.
 
 ```
+                                              ProtonVPN (Zürich)
+                                                   ^  peers and trackers
+                                                   |  see only this exit
+                                          +--------+--------+
+                                          | gluetun tunnel  |
 Jellyseerr  ->  Radarr / Sonarr  ->  Prowlarr  ->  qBittorrent
   (asks)          (decides)          (searches)    (downloads)
                       |                                |
@@ -27,9 +32,14 @@ Jellyseerr  ->  Radarr / Sonarr  ->  Prowlarr  ->  qBittorrent
 | Jellyseerr | 5055 | Requests, availability, notifications |
 | Radarr / Sonarr | 7878 / 8989 | Decide, grab, file |
 | Prowlarr | 9696 | Indexers, synced to both |
-| qBittorrent | 8080 | Transfer |
+| qBittorrent | 8080 | Transfer, inside gluetun's network namespace |
+| gluetun | 172.17.0.1:8001 | ProtonVPN WireGuard tunnel, the kill switch, control API for the hub |
 | Bazarr | 6767 | Subtitles |
 | Jellyfin | 8096 | Library and playback |
+
+Only qBittorrent's traffic goes through the VPN. The indexer searches, Jellyfin and everything
+else stay on the home line. How the tunnel, port forwarding and kill switch work is in
+[`stacks/mediarr/README.md`](../stacks/mediarr/README.md#torrents-go-through-a-vpn).
 
 ## One Jellyfin, on the NAS
 
