@@ -344,7 +344,7 @@ export function TopologyFlat({
         // flats are the ones stating a number.
         const collapsed =
           (!active &&
-            ((marker.kind === "node" && marker.id !== "edge" && marker.id !== "cinema-edge" && marker.id !== "viewer") ||
+            ((marker.kind === "node" && marker.id !== "edge" && marker.id !== "cinema-edge" && marker.id !== "viewer" && marker.id !== "proton") ||
               (marker.kind === "link" && !marker.prominent))) ||
           (dense && !active && (marker.kind === "node" || !marker.prominent));
         const width = (collapsed ? 16 : text.length * 5.6 + (node ? 18 : 12)) * k;

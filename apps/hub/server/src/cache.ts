@@ -35,6 +35,12 @@ export class Cache {
     return (this.store.get(key) as Entry<T> | undefined)?.value;
   }
 
+  /** Forget one key, so the next read goes upstream. What an action that has
+   *  just changed the thing being cached wants. */
+  delete(key: string): void {
+    this.store.delete(key);
+  }
+
   clear(): void {
     this.store.clear();
   }

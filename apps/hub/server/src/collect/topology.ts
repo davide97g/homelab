@@ -5,6 +5,7 @@ import { soft } from "../http.js";
 import { nasLogPulse } from "../loki/query.js";
 import { scalar } from "../prom/client.js";
 import { jellyfinConfigured, jellyfinViewers, type CinemaViewer } from "../media/clients.js";
+import { vpnConfigured, vpnSnapshot } from "../media/vpn.js";
 import type { Alert, Metric, Status, TopoLink, TopoNode, TopoSite, Topology, Unit } from "../wire.js";
 import { netDevice } from "./host.js";
 import { summary } from "./summary.js";
@@ -69,11 +70,14 @@ const SITES: TopoSite[] = [
   },
   {
     id: "cloud",
-    label: "Cloudflare",
+    // Not "Cloudflare" any more: ProtonVPN sits in this column too, and it is
+    // nobody's CDN. What the three have in common is that each is a tunnel a
+    // machine here dialled outward.
+    label: "Tunnels out",
     note:
-      "Two separate tunnels, both outbound-dialled, and nothing in this estate has a port open to the internet. " +
-      `One fronts ${config.topology.lokiPush} with an Access policy in front of it; the other publishes ` +
-      `${config.topology.cinemaHost} from the NAS.`,
+      "Three separate tunnels, all outbound-dialled, and nothing in this estate has a port open to the internet. " +
+      `Cloudflare fronts ${config.topology.lokiPush} with an Access policy in front of it and publishes ` +
+      `${config.topology.cinemaHost} from the NAS; ProtonVPN carries the mini PC's torrents and nothing else.`,
   },
 ];
 
@@ -146,6 +150,7 @@ export async function collectTopology(): Promise<Topology> {
     soft(nasLogPulse()),
     jellyfinConfigured() ? soft(jellyfinViewers()) : Promise.resolve(null),
   ]);
+  const vpn = vpnConfigured() ? await soft(vpnSnapshot()) : null;
 
   const homelab = snapshot.hosts.homelab;
   const nas = snapshot.hosts.nas;
@@ -159,6 +164,10 @@ export async function collectTopology(): Promise<Topology> {
   const cinemaReachable = viewers !== null;
   const viewerCount = viewers?.length ?? null;
   const viewerLabel = viewerCount === null ? "viewers" : `${viewerCount} ${viewerCount === 1 ? "viewer" : "viewers"}`;
+
+  const vpnStatus: Status = vpn ? vpn.status : vpnConfigured() ? "down" : "unconfigured";
+  const vpnPlace = vpn?.exit ? [vpn.exit.city, vpn.exit.country].filter(Boolean).join(", ") : null;
+  const vpnRate = vpn?.torrent ? vpn.torrent.downBytesPerSec + vpn.torrent.upBytesPerSec : null;
 
   const nodes: TopoNode[] = [
     {
@@ -278,6 +287,37 @@ export async function collectTopology(): Promise<Topology> {
       alerts: [],
     },
     {
+      id: "proton",
+      label: "protonvpn",
+      kind: "edge",
+      site: "cloud",
+      role: vpn?.exit
+        ? `Torrent exit · ${vpnPlace} · ${vpn.exit.hostname || vpn.exit.ip}`
+        : vpn?.killSwitch
+          ? "Torrent exit · held down by the kill switch"
+          : "Torrent exit · WireGuard",
+      addresses: vpn?.exit ? [{ value: vpn.exit.ip, kind: "public" }] : [{ value: "no exit right now", kind: "none" }],
+      status: vpnStatus,
+      note: !vpn
+        ? vpnConfigured()
+          ? "gluetun's control API did not answer, so the tunnel cannot be confirmed either way."
+          : "Not monitored yet. Add GLUETUN_API_KEY to let the hub read the tunnel."
+        : vpn.killSwitch
+          ? "The kill switch is holding the tunnel down. gluetun's firewall is still up, so qBittorrent has no route out at all."
+          : `The only place qBittorrent's traffic leaves from. ${vpn.leak.detail}`,
+      metrics: [
+        // A port is an identifier, not a quantity: `count` would compact 37518
+        // to "38K", so the digits are written out as they are.
+        {
+          ...metric("proton.port", "Forwarded port", vpn?.forwardedPort ?? null, "count", "inbound peers arrive here"),
+          display: vpn?.forwardedPort ? String(vpn.forwardedPort) : "—",
+        },
+        metric("proton.rate", "Through the tunnel", vpnRate, "bytesPerSec", "qBittorrent, both directions"),
+      ],
+      alerts: [],
+      href: "/media",
+    },
+    {
       id: "viewer",
       label: viewerLabel,
       kind: "viewer",
@@ -366,6 +406,23 @@ export async function collectTopology(): Promise<Topology> {
       note: cinemaReachable
         ? "Jellyfin is answering through the NAS's Cloudflare tunnel. Playback count is a session count, not throughput, so this line remains still."
         : "Jellyfin on the NAS, published by the NAS's own Cloudflare tunnel over Ilario's uplink. Configure its API key to verify this path.",
+    },
+    {
+      id: "vpn-tunnel",
+      from: "homelab",
+      to: "proton",
+      // Bent through the FRITZ!Box because that is the wire it leaves by: one
+      // WireGuard flow, which is also why the router's NAT table stopped
+      // filling up once torrents moved into the tunnel.
+      via: "fritzbox",
+      transport: "tunnel",
+      carries: "torrents, WireGuard",
+      status: vpnStatus === "unconfigured" ? "unconfigured" : vpn?.tunnel === "running" ? vpnStatus : vpn ? "warn" : "down",
+      rate: vpn?.tunnel === "running" ? rateOf(vpnRate, "bytesPerSec") : null,
+      latencyMs: null,
+      note: vpn?.killSwitch
+        ? "Held down by the kill switch: no tunnel, and gluetun's firewall blocks every other way out."
+        : "qBittorrent lives in gluetun's network namespace, so this tunnel is its only interface. Nothing else on the box uses it: Jellyfin, Tailscale and the Cloudflare tunnels all leave on the home line.",
     },
     {
       id: "cinema-public",

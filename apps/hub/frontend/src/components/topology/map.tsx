@@ -91,7 +91,7 @@ export function TopologyMap({
           // is to show paths; the ledger is the dense index of devices.
           const collapsed =
             !active &&
-            ((marker.kind === "node" && marker.id !== "edge" && marker.id !== "cinema-edge" && marker.id !== "viewer") ||
+            ((marker.kind === "node" && marker.id !== "edge" && marker.id !== "cinema-edge" && marker.id !== "viewer" && marker.id !== "proton") ||
               (marker.kind === "link" && !marker.prominent));
 
           return (

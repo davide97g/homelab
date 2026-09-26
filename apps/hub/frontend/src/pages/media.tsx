@@ -1,15 +1,44 @@
-import type { MediaPipeline, Summary } from "@wire";
+import type { MediaPipeline, Summary, VpnSnapshot } from "@wire";
+import { Shield, ShieldAlert } from "lucide-react";
 import { lazy, Suspense, useCallback, useState } from "react";
 import { DetailDrawer } from "@/components/media/detail-drawer";
 import { FieldLabel, STATUS_LABEL, StatusDot } from "@/components/primitives";
 import { Booting } from "@/components/shell/trace";
 import { usePoll } from "@/hooks/use-poll";
 import { fetchMedia } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 // React Flow and its stylesheet are a page's worth of bundle for a page most
 // visits never open, so the canvas is a lazy chunk — the same bargain the
 // topology scene makes with three.
 const PipelineGraph = lazy(() => import("@/components/media/graph"));
+
+/** One line in the header that answers "are torrents hidden right now" without
+ *  finding the card: where peers think the box is, or that the tunnel is cut. */
+function VpnPill({ vpn }: { vpn: VpnSnapshot | null }) {
+  if (!vpn) return null;
+  const where = vpn.exit ? [vpn.exit.city, vpn.exit.country].filter(Boolean).join(", ") : null;
+  const leaking = vpn.leak.clean === false;
+  const tone = vpn.killSwitch || leaking ? "bad" : vpn.status === "up" ? "good" : "warn";
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px]",
+        tone === "bad" && "border-tone-bad/40 bg-tone-bad/10 text-tone-bad",
+        tone === "good" && "border-tone-good/35 bg-tone-good/10 text-tone-good",
+        tone === "warn" && "border-tone-warn/40 bg-tone-warn/10 text-tone-warn",
+      )}
+      title={vpn.leak.detail}
+    >
+      {vpn.killSwitch || leaking ? <ShieldAlert className="size-3" /> : <Shield className="size-3" />}
+      {vpn.killSwitch
+        ? "kill switch engaged · torrents offline"
+        : leaking
+          ? "VPN leak · peers see the home line"
+          : `torrents via ${vpn.provider}${where ? ` · ${where}` : ""}${vpn.forwardedPort ? ` · port ${vpn.forwardedPort}` : ""}`}
+    </span>
+  );
+}
 
 /** The media pipeline: how a request becomes a file with subtitles on it.
  *
@@ -27,7 +56,7 @@ const PipelineGraph = lazy(() => import("@/components/media/graph"));
  *  string, which stops working the day a label is reworded. */
 export function MediaPage({ data }: { data: Summary }) {
   const load = useCallback((signal: AbortSignal) => fetchMedia(signal), []);
-  const { data: media, error } = usePoll<MediaPipeline>(load, 5000);
+  const { data: media, error, refresh } = usePoll<MediaPipeline>(load, 5000);
   const [selected, setSelected] = useState<string | null>(null);
 
   if (error && !media) {
@@ -61,6 +90,7 @@ export function MediaPage({ data }: { data: Summary }) {
               </span>
             ))}
         </div>
+        <VpnPill vpn={media.vpn} />
         {media.stale && (
           <span className="text-tone-warn text-[11px]">
             something missed its budget — these are the last good numbers
@@ -81,10 +111,16 @@ export function MediaPage({ data }: { data: Summary }) {
             </div>
           }
         >
-          <PipelineGraph data={media} host={data.hosts.homelab} selected={selected} onSelect={setSelected} />
+          <PipelineGraph
+            data={media}
+            host={data.hosts.homelab}
+            selected={selected}
+            onSelect={setSelected}
+            onChanged={refresh}
+          />
         </Suspense>
 
-        <DetailDrawer node={node} onClose={() => setSelected(null)} />
+        <DetailDrawer node={node} vpn={media.vpn} onChanged={refresh} onClose={() => setSelected(null)} />
       </div>
 
       <ul className="text-muted-foreground grid shrink-0 gap-1 px-1 text-[10.5px] leading-snug">

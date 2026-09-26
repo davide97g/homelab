@@ -40,7 +40,7 @@ const TRANSPORT_LABEL: Record<Transport, string> = {
   lan: "LAN",
   tailnet: "Tailscale tailnet",
   internet: "public internet",
-  tunnel: "Cloudflare tunnel",
+  tunnel: "outbound tunnel",
   wifi: "Wi-Fi",
 };
 
@@ -339,7 +339,7 @@ export function Legend({ className }: { className?: string }) {
         </span>
         <span className="flex items-center gap-2">
           <span className={cn("h-[3px] w-5 rounded-full", TRANSPORT_SWATCH.tunnel)} aria-hidden />
-          Cloudflare — publishes both hostnames; no port is open anywhere
+          Tunnels — Cloudflare publishes both hostnames, ProtonVPN carries torrents; no port is open anywhere
         </span>
         <span className="flex items-center gap-2">
           <span className={cn("h-[3px] w-5 rounded-full", TRANSPORT_SWATCH.lan)} aria-hidden />

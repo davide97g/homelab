@@ -635,8 +635,10 @@ export type MediaActivity = {
 
 /** What a node is. `host` is the box itself: it carries the pipeline rather than
  *  taking part in it, and the page fills it from /api/summary rather than this
- *  payload, so the machine's numbers have exactly one source. */
-export type MediaNodeKind = "service" | "host";
+ *  payload, so the machine's numbers have exactly one source. `vpn` is the
+ *  ProtonVPN tunnel qBittorrent lives inside: a node like the others, drawn
+ *  with its own card because it carries a control, not just numbers. */
+export type MediaNodeKind = "service" | "host" | "vpn";
 
 export type MediaNode = {
   id: string;
@@ -669,8 +671,9 @@ export type MediaNode = {
 };
 
 /** `feedback` is the availability edge, which runs against the pipeline: it is
- *  Jellyfin telling Jellyseerr the file finally exists. */
-export type MediaEdgeKind = "forward" | "feedback" | "carries";
+ *  Jellyfin telling Jellyseerr the file finally exists. `tunnel` is qBittorrent's
+ *  traffic leaving through the VPN, drawn upward out of the row. */
+export type MediaEdgeKind = "forward" | "feedback" | "carries" | "tunnel";
 
 export type MediaEdge = {
   id: string;
@@ -696,6 +699,52 @@ export type MediaPipeline = {
   counts: { up: number; warn: number; down: number; unconfigured: number };
   /** Caveats that belong on the page rather than in a commit message. */
   notes: string[];
+  /** The tunnel under qBittorrent, typed, because the kill switch has to act on
+   *  its state and a stat string is not a state. Null when gluetun's key has
+   *  never been collected. */
+  vpn: VpnSnapshot | null;
+};
+
+/** gluetun's own word for the tunnel. `stopped` with the container up is the
+ *  kill switch holding: its firewall stays in place, so nothing leaves at all. */
+export type VpnTunnel = "running" | "stopped" | "unknown";
+
+export type VpnSnapshot = {
+  provider: string;
+  protocol: string;
+  status: Status;
+  tunnel: VpnTunnel;
+  /** True when the tunnel is down on purpose. Not the same as a broken one:
+   *  that is `tunnel: "unknown"` or a down container. */
+  killSwitch: boolean;
+  /** The Proton server peers see. Null while the tunnel is down. */
+  exit: {
+    ip: string;
+    city: string;
+    country: string;
+    org: string;
+    hostname: string;
+  } | null;
+  forwardedPort: number | null;
+  /** What qBittorrent itself reports, which is the evidence that matters: the
+   *  address trackers and peers told it they saw, and what it is bound to. */
+  torrent: {
+    externalIp: string | null;
+    listenPort: number | null;
+    iface: string | null;
+    bound: boolean;
+    portMatches: boolean;
+    /** Bytes per second through the tunnel right now, both directions. */
+    downBytesPerSec: number;
+    upBytesPerSec: number;
+  } | null;
+  /** Compared on the server against the box's own egress, which never reaches
+   *  the browser. `null` means it could not be checked, never "fine". */
+  leak: { checked: boolean; clean: boolean | null; detail: string };
+  /** When gluetun's container last started. Proton reconnects inside it do not
+   *  move this. */
+  since: string | null;
+  error?: string;
 };
 
 // ——— Ask ———————————————————————————————————————————————————————————————————

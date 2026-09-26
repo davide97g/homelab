@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { containerCommand, dockerConfigured } from "../docker/client.js";
 import { resolveManaged } from "../collect/containers.js";
 import { arrCommand, arrConfigured, dokployDeploy, qbitAll, qbitConfigured } from "../media/clients.js";
+import { setTunnel, vpnConfigured } from "../media/vpn.js";
 import type { ActionDef, ActionRisk, ActionTargetKind } from "../wire.js";
 import { Denied } from "./denied.js";
 
@@ -143,6 +144,41 @@ export const ACTIONS: Record<string, Definition> = {
         ? { ok: true }
         : { ok: false, why: "qBittorrent's login has not been collected on the box" },
     run: () => qbitAll("start"),
+  },
+
+  // The kill switch, as two actions rather than one toggle: a toggle's meaning
+  // depends on a state the caller may have read seconds ago, and "stop the
+  // tunnel" should never be the thing a stale page sends by accident. Both are
+  // idempotent upstream -- stopping a stopped tunnel is a no-op in gluetun.
+  "vpn.kill-switch": {
+    id: "vpn.kill-switch",
+    label: "Engage the VPN kill switch",
+    description:
+      "Takes the ProtonVPN tunnel down and leaves gluetun's firewall up: qBittorrent keeps running with no route out, so every torrent stops. Nothing else on the box is affected.",
+    risk: "high",
+    confirm: true,
+    target: "none",
+    replayable: false,
+    available: () =>
+      vpnConfigured()
+        ? { ok: true }
+        : { ok: false, why: "gluetun's API key has not been collected — set GLUETUN_API_KEY" },
+    run: () => setTunnel("stopped"),
+  },
+  "vpn.release": {
+    id: "vpn.release",
+    label: "Release the VPN kill switch",
+    description:
+      "Brings the ProtonVPN tunnel back up. gluetun reconnects, takes a new forwarded port and rebinds qBittorrent to it; torrents resume on their own.",
+    risk: "medium",
+    confirm: true,
+    target: "none",
+    replayable: false,
+    available: () =>
+      vpnConfigured()
+        ? { ok: true }
+        : { ok: false, why: "gluetun's API key has not been collected — set GLUETUN_API_KEY" },
+    run: () => setTunnel("running"),
   },
 
   "dokploy.redeploy": {

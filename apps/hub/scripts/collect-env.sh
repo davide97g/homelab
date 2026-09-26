@@ -129,6 +129,10 @@ refresh_from_container BAZARR_API_KEY bazarr awk '
   inauth && $1 == "apikey:" { gsub(/["\047]/, "", $2); print $2; exit }
 ' /config/config/config.yaml
 refresh_from_container JELLYSEERR_API_KEY jellyseerr node -p 'require("/app/config/settings.json").main.apiKey'
+# gluetun's control-server key, for the VPN card and the kill switch. mediarr
+# writes it into the role file from its own Dokploy env; this reads it back
+# rather than asking, so the two can never disagree.
+refresh_from_container GLUETUN_API_KEY gluetun sed -n 's/^apikey = "\(.*\)"$/\1/p' /gluetun/auth/config.toml
 
 echo
 echo "manga — Kavita's key is read out of its database, not typed"

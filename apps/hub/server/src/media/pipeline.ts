@@ -10,6 +10,7 @@ import { collectJellyfin } from "./collect/jellyfin.js";
 import { collectJellyseerr } from "./collect/jellyseerr.js";
 import { collectKavita, collectSuwayomi, collectYomu } from "./collect/manga.js";
 import { collectQbittorrent } from "./collect/qbittorrent.js";
+import { collectVpn } from "./collect/vpn.js";
 import type { Collected, Flow } from "./collect/shape.js";
 
 // The pipeline as a graph: one node per service, edges in the order a request
@@ -35,6 +36,11 @@ export const POSITIONS: Record<string, { x: number; y: number }> = {
   sonarr: { x: 380, y: 320 },
   prowlarr: { x: 760, y: 85 },
   qbittorrent: { x: 1140, y: 85 },
+  // The tunnel, straight above the one service that lives inside it. Above
+  // rather than beside, because right of qBittorrent is where the library
+  // side of the pipeline starts, and the tunnel is not a step in that: it is
+  // the only door qBittorrent has to the outside.
+  vpn: { x: 1120, y: -420 },
   bazarr: { x: 1520, y: -150 },
   jellyfin: { x: 1520, y: 320 },
   // The manga lane, its own row under the film one: a separate stack with
@@ -104,6 +110,16 @@ const EDGES: EdgeSpec[] = [
     kind: "forward",
     note: "Busy while bytes are actually arriving.",
     busy: (f) => n(f, "qbittorrent", "downBytesPerSec") > 0,
+  },
+  {
+    id: "qbit-vpn",
+    from: "qbittorrent",
+    to: "vpn",
+    label: "peers · trackers",
+    kind: "tunnel",
+    note: "Every byte qBittorrent sends leaves through the WireGuard tunnel; it has no other interface. Busy while bytes are moving either way, still while the kill switch holds it down.",
+    busy: (f) =>
+      n(f, "vpn", "running") > 0 && n(f, "qbittorrent", "downBytesPerSec") + n(f, "qbittorrent", "upBytesPerSec") > 0,
   },
   {
     id: "qbit-bazarr",
@@ -188,6 +204,7 @@ const CONTAINER_BY_NODE: Record<string, string> = {
   sonarr: "sonarr",
   prowlarr: "prowlarr",
   qbittorrent: "qbittorrent",
+  vpn: "gluetun",
   bazarr: "bazarr",
   suwayomi: "suwayomi",
   kavita: "kavita",
@@ -195,7 +212,7 @@ const CONTAINER_BY_NODE: Record<string, string> = {
 };
 
 async function assemble(): Promise<MediaPipeline> {
-  const [collected, load] = await Promise.all([
+  const [collected, tunnel, load] = await Promise.all([
     Promise.all([
       collectJellyseerr(),
       collectArr("radarr", () => cache.get("radarr:library", radarrLibrary, LIBRARY_TTL_MS)),
@@ -208,17 +225,18 @@ async function assemble(): Promise<MediaPipeline> {
       collectKavita(),
       collectYomu(),
     ]),
+    collectVpn(),
     soft(containerLoad()),
   ]);
 
   const flow: Record<string, Flow> = {};
-  const nodes: MediaNode[] = collected.map((c: Collected) => {
+  const nodes: MediaNode[] = [...collected, tunnel.collected].map((c: Collected) => {
     flow[c.node.id] = c.flow;
     const container = CONTAINER_BY_NODE[c.node.id];
     const row = container ? load?.get(container) : undefined;
     return {
       ...c.node,
-      kind: "service",
+      kind: c.node.id === "vpn" ? "vpn" : "service",
       position: POSITIONS[c.node.id] ?? { x: 0, y: 0 },
       load: row
         ? { cpuPercent: row.cpuPercent, rssBytes: row.rssBytes, rssDisplay: display(row.rssBytes, "bytes") }
@@ -248,6 +266,7 @@ async function assemble(): Promise<MediaPipeline> {
   for (const node of nodes) counts[node.status] += 1;
 
   const notes = [
+    "qBittorrent has no network of its own: it lives inside gluetun's, and gluetun holds a ProtonVPN WireGuard tunnel. The kill switch takes the tunnel down and leaves gluetun's firewall up, so torrents stop rather than falling back to the home line. A redeploy or a reboot of the box brings the tunnel back up.",
     "Everything except Jellyfin runs on the mini PC. Jellyfin is on the NAS, which is why its card has no CPU or memory line — cAdvisor there is a different scrape and the pipeline does not need it twice.",
     "The bottom row is the manga stack (~/manga): Suwayomi and Kavita are LAN only, and Yomu is the one public door, at manga.davideghiotto.it.",
     "A request is Processing from the moment it imports until the nightly copy lands on the NAS, not Available. The library is copied, not mounted: the NAS is on a different physical network.",
@@ -258,7 +277,7 @@ async function assemble(): Promise<MediaPipeline> {
     );
   }
 
-  return { at: new Date().toISOString(), stale: false, nodes, edges, counts, notes };
+  return { at: new Date().toISOString(), stale: false, nodes, edges, counts, notes, vpn: tunnel.vpn };
 }
 
 /** Ten services, each with its own timeout, run against a budget the way

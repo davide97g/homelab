@@ -33,6 +33,11 @@ export const NODE_AT: Record<string, Vec3> = {
   // outside both houses, which is the whole point of it.
   "cinema-edge": [4.7, 3.3, -0.5],
   viewer: [7.2, 2.55, 1.1],
+  // ProtonVPN, above the far left of Davide's flat: the torrent exit belongs to
+  // that flat's box and nothing else, so it floats over it rather than in the
+  // span between the flats where the shared paths are. The link to it bends
+  // through the FRITZ!Box, which is the wire it really leaves by.
+  proton: [-6.5, 3.05, -0.9],
 };
 
 /** Scale per node kind, so one set of world positions places geometry that was
@@ -46,6 +51,7 @@ export const NODE_SCALE: Record<string, number> = {
   edge: 1,
   "cinema-edge": 1,
   viewer: 1,
+  proton: 1,
 };
 
 /** A flat: where it is, how big it is, and the house drawn around it.
@@ -155,6 +161,7 @@ const LABEL_LIFT: Record<string, number> = {
   nas: 0.8,
   "nas-router": 0.55,
   edge: 0.45,
+  proton: 0.45,
 };
 
 /** A label, which is also the hit target.

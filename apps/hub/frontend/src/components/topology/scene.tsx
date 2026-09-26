@@ -725,6 +725,7 @@ export default function TopologyScene({
   const plug = byId.get("plug");
   const cinemaEdge = byId.get("cinema-edge");
   const viewer = byId.get("viewer");
+  const proton = byId.get("proton");
 
   return (
     <div ref={host} className={cn("relative h-full w-full", className)}>
@@ -797,6 +798,9 @@ export default function TopologyScene({
               and only one of them has any evidence behind it. */}
           {cinemaEdge && <Edge at={NODE_AT["cinema-edge"]!} colour={colors.transport.tunnel} />}
           {viewer && <Viewer at={NODE_AT.viewer!} colour={colors.transport.internet} />}
+          {/* The torrent exit. A ring like the other two tunnels, because that is
+              what it is -- one more outbound-dialled tunnel, this one WireGuard. */}
+          {proton && <Edge at={NODE_AT.proton!} colour={colors.transport.tunnel} />}
 
           <ContactShadow x={NODE_AT.homelab![0]} z={NODE_AT.homelab![2]} y={0.012} size={3} opacity={0.5} />
           <ContactShadow x={NODE_AT.nas![0]} z={NODE_AT.nas![2]} y={0.012} size={3} opacity={0.5} />

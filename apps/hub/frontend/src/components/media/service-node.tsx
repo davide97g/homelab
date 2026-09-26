@@ -76,6 +76,8 @@ function ServiceNodeImpl({ data }: NodeProps<ServiceFlowNode>) {
       <Handle type="source" position={Position.Right} className="!border-0 !bg-transparent" />
       <Handle type="source" position={Position.Bottom} id="under" className="!border-0 !bg-transparent" />
       <Handle type="target" position={Position.Bottom} id="under" className="!border-0 !bg-transparent" />
+      {/* Upward, for qBittorrent's traffic into the VPN card above it. */}
+      <Handle type="source" position={Position.Top} id="over" className="!border-0 !bg-transparent" />
 
       <header className="flex items-start gap-2 px-3 pt-3 pb-2">
         <Icon className="text-primary mt-px size-4 shrink-0" />

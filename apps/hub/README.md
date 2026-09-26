@@ -117,7 +117,7 @@ both inherited from mediarr-dash and both easy to be surprised by:
 
 | Route | State |
 |---|---|
-| `/` Topology | **Built.** The landing page: both flats on a ground plane, every device modelled, and the paths between them animating at their real cadence. WebGL with a flat SVG twin. |
+| `/` Topology | **Built.** The landing page: both flats on a ground plane, every device modelled, and the paths between them animating at their real cadence. WebGL with a flat SVG twin. The cloud column is now *Tunnels out*: the two Cloudflare tunnels plus **ProtonVPN**, reached from the mini PC through the FRITZ!Box and carrying qBittorrent's live rate. |
 | `/atlas` Atlas | **Built.** The same estate, read as what runs on it: media services and containers orbit the machine they belong to. Topology is unchanged. |
 | `/overview` Overview | **Built.** Hero, power dial, the mini PC's headline metrics, energy and cost, busiest containers, the NAS card, alerts, links out. |
 | `/compute` `/power` `/network` | **Built.** The series registry and the uPlot chart layer. |
@@ -127,11 +127,36 @@ both inherited from mediarr-dash and both easy to be surprised by:
 | `/logs` | **Built.** Loki behind structured filters, with a 5 s live tail. |
 | `/actions` | **Built.** The dispatcher, the media writes, Dokploy redeploy, and the audit. |
 | `/ask` Pinned answers | **Built.** Answers kept from the composer. Specs in `localStorage`, re-queried live on every visit. |
-| `/media` | **Built.** The pipeline as a graph: seven services, live numbers on each card, the lists behind them in a drawer, and edges that animate only where something is moving. This is what mediarr-dash used to be — that app was retired on 2026-09-20. Since 2026-09-24 a second row carries the manga stack (`~/manga`): Suwayomi → Kavita → Yomu, collected in `server/src/media/collect/manga.ts`. Suwayomi needs no key; Kavita's is read out of `kavita.db` by `collect-env.sh`; Yomu is asked through `manga.davideghiotto.it`. |
+| `/media` | **Built.** The pipeline as a graph: seven services, live numbers on each card, the lists behind them in a drawer, and edges that animate only where something is moving. This is what mediarr-dash used to be — that app was retired on 2026-09-20. Since 2026-09-24 a second row carries the manga stack (`~/manga`): Suwayomi → Kavita → Yomu, collected in `server/src/media/collect/manga.ts`. Suwayomi needs no key; Kavita's is read out of `kavita.db` by `collect-env.sh`; Yomu is asked through `manga.davideghiotto.it`. Since 2026-09-26 qBittorrent sits in a dashed **WireGuard tunnel** frame with a **ProtonVPN** card above it: where peers see the box, forwarded port, what qBittorrent is bound to, and a leak check that compares what qBittorrent's peers report against the box's own egress on the server, so the home IP never reaches the browser. The card carries the **kill switch**, behind a confirmation dialog. See below. |
 
 Every route is built. A service whose key has never been collected still draws
 its node — it says which key is missing rather than showing an empty panel that
 looks broken.
+
+## The VPN kill switch
+
+qBittorrent lives in gluetun's network namespace (`stacks/mediarr`), so gluetun's tunnel is its
+only way out. The switch on `/media` is two actions in the registry, `vpn.kill-switch` and
+`vpn.release`, rather than one toggle. The dialog decides which one to send from the state it
+opened on, so a stale page can at worst repeat what is already true, and gluetun treats that as
+a no-op. Both go through the dispatcher like every other write: confirmation, idempotency key,
+audit line.
+
+- **Engage:** `PUT /v1/vpn/status {"status":"stopped"}`. The tunnel goes down and gluetun's
+  firewall stays up, so torrents stop dead. gluetun stays healthy, so the box's `heal.sh` does not
+  undo it. A redeploy of mediarr or a reboot does.
+- **Release:** `{"status":"running"}`. It reconnects in about 5 s, and gluetun's own
+  port-forward hook rebinds qBittorrent to the new port.
+- **Reaching it:** gluetun's control API is published on `172.17.0.1:8001` only, which is
+  `homelab-host` from here. `GLUETUN_API_KEY` is scoped by gluetun's role file to four routes,
+  never `/v1/vpn/settings`, which holds the WireGuard private key. `collect-env.sh` reads it from
+  `/gluetun/auth/config.toml`.
+- **Tested end to end on 2026-09-26** from this page, against the real tunnel: cut, held, released,
+  both lines in the audit.
+
+`server/src/media/vpn.ts` is the one place the snapshot is built. `/api/media` and
+`/api/topology` both read it, so the two pages cannot disagree about whether torrents are in
+the tunnel.
 
 ## Asking for a chart
 

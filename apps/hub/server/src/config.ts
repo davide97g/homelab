@@ -110,6 +110,14 @@ export const config = {
     user: process.env.QBITTORRENT_USER ?? "",
     pass: process.env.QBITTORRENT_PASS ?? "",
   },
+  /** gluetun's control API, the ProtonVPN tunnel qBittorrent lives inside.
+   *  Published on the Docker bridge address only (172.17.0.1:8001), which is
+   *  what homelab-host resolves to, so the LAN and the tailnet cannot reach it.
+   *  The key is scoped by gluetun to four routes: tunnel status read and write,
+   *  exit IP, forwarded port -- never the settings route, which carries the
+   *  WireGuard private key. Blank means the VPN card says which key is missing
+   *  and the kill switch is unavailable. */
+  gluetun: { url: boxUrl("GLUETUN_URL", 8001), key: process.env.GLUETUN_API_KEY ?? "" },
   /** Jellyfin is read only. The default reaches it through its public
    * Cloudflare hostname, so a successful sessions query proves the same path a
    * viewer uses; set JELLYFIN_URL only when a private route is intentional. */
@@ -184,6 +192,8 @@ export const config = {
     prowlarr: publicUrl("PROWLARR_PUBLIC_URL", 9696),
     bazarr: publicUrl("BAZARR_PUBLIC_URL", 6767),
     qbittorrent: publicUrl("QBITTORRENT_PUBLIC_URL", 8080),
+    // Proton's own dashboard: the tunnel has no UI of its own worth opening.
+    vpn: process.env.VPN_PUBLIC_URL ?? "https://account.protonvpn.com",
     // LAN only, both of them: Suwayomi has no login and Kavita's admin UI is not
     // on the tunnel. Yomu, the public half, links to its own hostname.
     suwayomi: publicUrl("SUWAYOMI_PUBLIC_URL", 4567),

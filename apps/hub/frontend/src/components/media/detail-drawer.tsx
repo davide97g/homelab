@@ -1,5 +1,6 @@
-import type { MediaNode } from "@wire";
+import type { MediaNode, VpnSnapshot } from "@wire";
 import { ArrowUpRight, X } from "lucide-react";
+import { KillSwitch } from "@/components/media/kill-switch";
 import { FieldLabel, MiniBar, STATUS_LABEL, StatusDot, TONE_TEXT } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,17 @@ import { cn } from "@/lib/utils";
  *  torrents, which requests, who is watching what. Rendered generically, like
  *  the stats: an `activity` row is a title, a subtitle, a state and a bar, and
  *  no collector gets a branch of its own here. */
-export function DetailDrawer({ node, onClose }: { node: MediaNode | null; onClose: () => void }) {
+export function DetailDrawer({
+  node,
+  vpn,
+  onChanged,
+  onClose,
+}: {
+  node: MediaNode | null;
+  vpn: VpnSnapshot | null;
+  onChanged: () => void;
+  onClose: () => void;
+}) {
   const open = node !== null;
 
   return (
@@ -55,6 +66,14 @@ export function DetailDrawer({ node, onClose }: { node: MediaNode | null; onClos
               </a>
             </Button>
           </div>
+
+          {/* The one node with a control of its own. Offered here too, so the
+              drawer is never a dead end for the thing you opened it to do. */}
+          {node.kind === "vpn" && vpn && (
+            <div className="px-4 pb-3">
+              <KillSwitch vpn={vpn} onChanged={onChanged} />
+            </div>
+          )}
 
           {node.error && (
             <p className="text-tone-bad border-tone-bad/30 bg-tone-bad/10 mx-4 mb-3 rounded-md border px-3 py-2 font-mono text-[11px] break-words">
