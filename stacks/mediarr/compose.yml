@@ -75,7 +75,7 @@ services:
   # when they say it. Two servers, two ports, nothing repointed.
   jellyfin:
     <<: *common
-    image: jellyfin/jellyfin:10.11.11
+    image: jellyfin/jellyfin:12.1
     container_name: jellyfin
     user: "${PUID:-1000}:${PGID:-1000}"
     group_add:
