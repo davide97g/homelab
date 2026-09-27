@@ -97,10 +97,10 @@ applications. Indexers and the Jellyseerr wizard need a human.
 
 Live since 2026-09-26. qBittorrent has no network of its own. It runs in `gluetun`'s network
 namespace (`network_mode: service:gluetun`), and gluetun holds a ProtonVPN Plus WireGuard tunnel.
-Peers and trackers see a Proton exit IP, never the home line. Only torrents go through it:
-Jellyfin, Tailscale, the Cloudflare tunnels and the \*arrs' indexer searches all stay on the home
-line, on purpose. Proxying the indexers was considered and dropped: they share nothing with a
-swarm, and Nyaa and TPB sit behind Cloudflare, which challenges VPN exits far more often.
+Peers and trackers see a Proton exit IP, never the home line. Torrents and, since 2026-09-27,
+Prowlarr's indexer traffic go through it; Jellyfin, Tailscale and the Cloudflare tunnels stay on
+the home line. The indexers were left out at first, because Cloudflare challenges VPN exits more
+often, but a search and a `.torrent` download tie the home IP to a release in the site's logs.
 
 - **Firewall.** gluetun's firewall allows nothing out except the tunnel. If the VPN drops,
   torrents stop; they do not fall back to the real IP. qBittorrent is also bound to `tun0`.
@@ -114,6 +114,11 @@ swarm, and Nyaa and TPB sit behind Cloudflare, which challenges VPN exits far mo
   network alias `qbittorrent`, so Radarr and Sonarr keep `qbittorrent:8080`. 6881 is no longer
   published, and its FRITZ!Box rules were deleted. The `debian` device entry stays there, with
   *Abilitazione porte automatica* ticked: its one mapping is most likely Tailscale's.
+- **Indexer traffic rides the tunnel too.** gluetun runs its HTTP proxy (`HTTPPROXY=on`, port 8888,
+  not published). Prowlarr has an indexer proxy, `gluetun-vpn`, on the tag `vpn`, and both indexers
+  carry that tag: searches and `.torrent` downloads reach Nyaa and TPB from the VPN exit. Radarr and
+  Sonarr only ever talk to Prowlarr, so they need nothing. A new indexer needs the `vpn` tag, or it
+  searches from the home IP.
 - **The router's NAT table stops mattering.** Every peer connection is inside one WireGuard flow,
   so the FRITZ!Box tracks one session, not one per peer. The low `ConnectionSpeed=5` can go up.
 - **After gluetun restarts**, qBittorrent is stuck in the old namespace with only loopback. Its
@@ -222,8 +227,10 @@ The Jellyfin that serves it is on the **NAS**, which is not on this LAN — it a
 192.168.15.x address but sits on another network, reachable only over Tailscale. So the library
 is *copied* rather than mounted: `~/ops/xfer-nas/xfer-nas-auto.sh`, on a ten-minute user timer, hands every
 new folder to `~/ops/xfer-nas/xfer-nas.sh`, which copies it resumably and verifies it by md5, then the NAS
-Jellyfin picks it up from `/volume1/test/{movies,tv}`. Nothing is deleted from this box, so a
-finished download keeps seeding here while it plays from there.
+Jellyfin picks it up from `/volume1/test/{movies,tv}`. Nothing is deleted from this box, but a
+finished download does not seed: since 2026-09-27 qBittorrent stops every torrent the moment it
+completes (`max_ratio` 0 and `max_seeding_time` 0, action Stop, set over the WebUI API). The
+torrent stays listed, stopped, and the file stays on disk.
 
 The NAS is the constraint: 63 GB free against a 543 GB library. The timer logs `FULL` and skips
 rather than overfilling it.
