@@ -8,7 +8,7 @@
 #                                                          |
 #                                                  Jellyfin (on the NAS)
 #
-# Jellyfin is not in this stack. It runs on the NAS, and `~/xfer-nas-auto.sh`
+# Jellyfin is not in this stack. It runs on the NAS, and `~/ops/xfer-nas/xfer-nas-auto.sh`
 # copies each finished folder there; `jellyfin-proxy` below is only a header
 # shim so Jellyseerr can reach it.
 #

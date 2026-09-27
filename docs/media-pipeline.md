@@ -58,8 +58,8 @@ same subnet. Mini PC to NAS over `192.168.15.x` is `No route to host`; Tailscale
 (`${NAS_TAILNET_IP}`) is the only path. Everything that crosses between the boxes goes through the
 `nas` SSH alias or that address.
 
-So the library is **copied, not mounted**: `~/xfer-nas-auto.sh` on a ten-minute user timer hands
-each new folder to `~/xfer-nas.sh`, which sends it resumably and verifies it by md5 into
+So the library is **copied, not mounted**: `~/ops/xfer-nas/xfer-nas-auto.sh` on a ten-minute user timer hands
+each new folder to `~/ops/xfer-nas/xfer-nas.sh`, which sends it resumably and verifies it by md5 into
 `/volume1/test/{movies,tv}`. Nothing is deleted on the mini PC, so a finished download keeps
 seeding there while it plays from the NAS. The practical consequence: a request is *Processing*
 from the moment it imports until the copy lands, not *Available*.

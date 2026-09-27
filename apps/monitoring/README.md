@@ -80,7 +80,7 @@ Settings → API/CLI if it is ever shared or copied elsewhere.
    The compose file refuses to start without the first three, on purpose — `${VAR:?}` fails the whole
    file rather than starting the stack with a broken exporter. The corollary is that adding a
    `${VAR:?}` and deploying before the variable exists takes the stack down, so set them first.
-   The qBittorrent pair is the same one already in `/home/davide/mediarr-dash/.env`.
+   The qBittorrent pair is the same one already in `/home/davide/projects/mediarr-dash/.env`.
 4. Deploy.
 5. Copy the compose id out of the browser URL into `.dokploy.env` and into the repository
    secret `DOKPLOY_COMPOSE_ID_MONITORING`. From then on a push to `main` deploys.

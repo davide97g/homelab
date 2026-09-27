@@ -35,7 +35,7 @@ client pointed at it, the same image `cinema.davideghiotto.it` serves, built fro
 `~/cinema/services/web` with a `.env` naming `http://172.17.0.1:8097`.
 
 Nothing was repointed onto it: Jellyseerr, hub, mediarr-dash and jarvis all still mean the NAS
-when they say `8096`. The only one is on the NAS, and `~/xfer-nas-auto.sh` copies each
+when they say `8096`. The only one is on the NAS, and `~/ops/xfer-nas/xfer-nas-auto.sh` copies each
 finished folder to it; `debian:8096` is `jellyfin-proxy`, which forwards to
 `http://${NAS_TAILNET_IP}:8899` and rewrites one header on the way. The NAS runs Jellyfin 12, which
 dropped the Emby-era `X-Emby-Authorization` that Jellyseerr still sends and answers 401 to it —
@@ -220,8 +220,8 @@ videos; nothing else does.
 
 The Jellyfin that serves it is on the **NAS**, which is not on this LAN — it advertises a
 192.168.15.x address but sits on another network, reachable only over Tailscale. So the library
-is *copied* rather than mounted: `~/xfer-nas-auto.sh`, on a ten-minute user timer, hands every
-new folder to `~/xfer-nas.sh`, which copies it resumably and verifies it by md5, then the NAS
+is *copied* rather than mounted: `~/ops/xfer-nas/xfer-nas-auto.sh`, on a ten-minute user timer, hands every
+new folder to `~/ops/xfer-nas/xfer-nas.sh`, which copies it resumably and verifies it by md5, then the NAS
 Jellyfin picks it up from `/volume1/test/{movies,tv}`. Nothing is deleted from this box, so a
 finished download keeps seeding here while it plays from there.
 

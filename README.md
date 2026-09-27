@@ -15,6 +15,16 @@ history from before the merge, under `apps/`.
 | [`hardware/`](hardware/) | The 3D-printed [M6 stand](hardware/m6-stand/) |
 | `.env` | Credentials, gitignored. [`.env.example`](.env.example) lists the keys |
 
+On the box, `~` is laid out as:
+
+| Path | What |
+|---|---|
+| `~/projects/` | Checkouts: this repo, [riddle](../riddle), mediarr-dash |
+| `~/ops/` | Host scripts run by timers, e.g. `ops/xfer-nas/` (script, logs, status) |
+| `~/backups/` | One-off snapshots and rescues, one folder per app |
+| `~/media`, `~/manga/data`, `~/atlante` | Live data, bind-mounted by the Dokploy stacks. Do not move without updating the compose files |
+| `~/mediarr/heal.sh`, `~/finance-autodeploy` | Also live: run by a system timer and mounted into a container |
+
 ## Projects
 
 | Project | Path | Runs on | Public URL | Deploy |
@@ -129,13 +139,13 @@ Only Yomu is public, `manga.davideghiotto.it` -> `http://localhost:4571`, not be
 `:4567` and Kavita's admin UI `:5000` are LAN only. Its [README](apps/manga/README.md) is the runbook.
 
 [riddle](../riddle) runs here too, since 2026-09-21 — the reMarkable diary. Two
-**user** systemd units out of `~/riddle` (`riddle-voice`, `riddle-diary`) with
+**user** systemd units out of `~/projects/riddle` (`riddle-voice`, `riddle-diary`) with
 `uv` for the venv, not Dokploy and not a container: the loop's job is to hold an
 ssh pipe open to the tablet at `192.168.15.135` and a sqlite file beside the
 page, so a network to cross would only be in the way. The page is on the tunnel
 at `riddle.davideghiotto.it` -> `http://localhost:8765`; **the tablet is LAN
 only** and nothing about it is published. Not behind Access — it carries its own
-password (`RIDDLE_WEB_PASSWORD` in `~/riddle/.env`), because Access would mean a
+password (`RIDDLE_WEB_PASSWORD` in `~/projects/riddle/.env`), because Access would mean a
 second login on every device for a page that is already one field. Its
 [`docs/deploy.md`](../riddle/docs/deploy.md) is the runbook. No CI: `git pull`,
 rebuild the client if it changed, `systemctl --user restart`. The only `sudo`
@@ -368,17 +378,17 @@ complete an Access login — only browsers can. The library it serves is Ilario'
 
 ### Transferring to it
 
-`~/xfer-nas.sh` on the box. Defaults to one film; point it anywhere with `SRC`.
+`~/ops/xfer-nas/xfer-nas.sh` on the box. Defaults to one film; point it anywhere with `SRC`.
 
 ```sh
-ssh -t homelab "NAS_DEST=/volume1/test/movies ~/xfer-nas.sh"
-ssh -t homelab "SRC='/path/to/folder' NAS_DEST=/volume1/test/movies ~/xfer-nas.sh"
+ssh -t homelab "NAS_DEST=/volume1/test/movies ~/ops/xfer-nas/xfer-nas.sh"
+ssh -t homelab "SRC='/path/to/folder' NAS_DEST=/volume1/test/movies ~/ops/xfer-nas/xfer-nas.sh"
 ```
 
 ```
-progress    tail -f ~/xfer-nas.log
-live rate   tail -c 200 ~/xfer-nas.log.raw
-last line   cat ~/xfer-nas.status
+progress    tail -f ~/ops/xfer-nas/xfer-nas.log
+live rate   tail -c 200 ~/ops/xfer-nas/xfer-nas.log.raw
+last line   cat ~/ops/xfer-nas/xfer-nas.status
 attach      tmux attach -t xfer-nas     (ctrl-b then d to detach)
 stop        tmux kill-session -t xfer-nas
 ```
