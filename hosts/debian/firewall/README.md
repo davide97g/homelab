@@ -40,7 +40,7 @@ The addresses live in `/etc/default/homelab-firewall` on the box, never in the r
 ```sh
 scp -r hosts/debian/firewall homelab:homelab-firewall
 # put the real values in ~/homelab-firewall/homelab-firewall.conf on the box, then:
-ssh -t homelab sudo ~/homelab-firewall/install.sh
+ssh -t homelab 'sudo ~/homelab-firewall/install.sh'   # quoted, or ~ expands on your laptop
 ```
 
 A new trusted device: add it to `/etc/default/homelab-firewall`, then
