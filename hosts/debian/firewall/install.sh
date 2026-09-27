@@ -3,8 +3,9 @@
 #   sudo ./install.sh
 # It takes the config from ./homelab-firewall.conf (not committed) or an existing
 # /etc/default/homelab-firewall, installs the script and its unit, applies the
-# DOCKER-USER allowlist, then narrows UFW's blanket "allow in on tailscale0" to the
-# trusted tailnet devices. Nothing here touches SSH over the LAN.
+# DOCKER-USER allowlist, puts Tailscale in nodivert mode so UFW governs tailscale0,
+# then narrows UFW's blanket "allow in on tailscale0" to the trusted tailnet
+# devices. Nothing here touches SSH over the LAN.
 set -euo pipefail
 
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo" >&2; exit 1; }
@@ -25,6 +26,14 @@ install -m 0644 "$here/homelab-firewall.service" /etc/systemd/system/homelab-fir
 systemctl daemon-reload
 systemctl enable homelab-firewall.service
 systemctl restart homelab-firewall.service
+
+# Tailscale puts its own ts-input first in INPUT, and that chain accepts every
+# packet on tailscale0 before UFW sees it -- so the UFW rules below would change
+# nothing for tailnet peers. nodivert keeps Tailscale's chains but drops the
+# jump, leaving UFW to decide. WireGuard's port, which ts-input also accepted,
+# is opened explicitly so direct peer connections do not fall back to DERP.
+tailscale set --netfilter-mode=nodivert
+ufw allow 41641/udp comment 'tailscale: wireguard'
 
 # Host services (SSH, Swarm's 2377/7946, and Docker's userland proxy on [::],
 # which is how IPv6 reaches published ports) go through INPUT, where UFW let the

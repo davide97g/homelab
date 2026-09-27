@@ -28,6 +28,9 @@ LAN reaches them directly.
   not come in from a Docker bridge. Its rules carry the comment `homelab-firewall`, so
   re-applying replaces them rather than stacking copies.
 - `homelab-firewall.service` runs that on every Docker start (`BindsTo=docker.service`).
+- Tailscale runs with `--netfilter-mode=nodivert`. In the default mode its `ts-input`
+  chain comes first in `INPUT` and accepts all of `tailscale0`, so no UFW rule ever
+  applied to tailnet peers. `41641/udp` (WireGuard) is allowed explicitly instead.
 - UFW's blanket `allow in on tailscale0` is replaced by one rule per trusted device.
   Besides SSH and Swarm, that also covers IPv6: Docker's userland proxy answers `[::]`
   on the host, so IPv6 reaches published ports through `INPUT`, not `FORWARD`.
@@ -52,6 +55,7 @@ A new trusted device: add it to `/etc/default/homelab-firewall`, then
 ```sh
 sudo systemctl disable --now homelab-firewall   # removes the DOCKER-USER rules
 sudo ufw allow in on tailscale0
+sudo tailscale set --netfilter-mode=on
 ```
 
 ## Check
