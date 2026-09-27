@@ -111,7 +111,7 @@ services:
   # despite advertising a 192.168.15.x one.
   jellyfin-proxy:
     <<: *common
-    image: nginx:1.27-alpine
+    image: nginx:1.30-alpine
     container_name: jellyfin-proxy
     # Published on the port the local Jellyfin used to hold: hub, mediarr-dash
     # and jarvis are separate compose projects that cannot resolve a name on
@@ -133,7 +133,7 @@ services:
 
   prowlarr:
     <<: *common
-    image: lscr.io/linuxserver/prowlarr:2.5.2
+    image: lscr.io/linuxserver/prowlarr:2.6.5
     container_name: prowlarr
     ports:
       - "9696:9696"
