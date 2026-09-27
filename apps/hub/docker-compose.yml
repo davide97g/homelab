@@ -71,7 +71,7 @@ services:
   # literal set of requests the hub can make. Everything else is 403, including
   # path traversal out of /containers.
   docker-proxy:
-    image: wollomatic/socket-proxy:1
+    image: wollomatic/socket-proxy:1.13.1
     container_name: hub-docker-proxy
     restart: unless-stopped
     # The image runs as nobody and cannot read the socket without the host's
