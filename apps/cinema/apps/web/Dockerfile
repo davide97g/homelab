@@ -16,7 +16,7 @@ COPY packages ./packages
 COPY apps/web ./apps/web
 RUN bun run packages/design-tokens/build.ts && cd apps/web && bun run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.30-alpine
 COPY services/web/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 # nginx:alpine renders /etc/nginx/templates/*.template with envsubst at boot,
