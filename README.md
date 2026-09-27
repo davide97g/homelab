@@ -126,7 +126,8 @@ credentials every step of it needs are in the gitignored [`.env`](.env) beside i
 
 Media requests and downloads live in the [`mediarr`](stacks/mediarr) project — Jellyseerr on
 `:5055`, Radarr `:7878`, Sonarr `:8989`, Prowlarr `:9696`, Bazarr `:6767`, qBittorrent
-`:8080` (inside a ProtonVPN tunnel since 2026-09-26, with a kill switch on the hub's `/media`),
+`:8080` (inside a ProtonVPN tunnel since 2026-09-26, with a kill switch on the hub's `/media`;
+Prowlarr's searches use the same tunnel through gluetun's proxy, and nothing seeds),
 the NAS Jellyfin shim `:8096`, and since 2026-09-19 a local Jellyfin on `:8097` with
 Cinema's web client on `:8898`, LAN only, for the library that never made it to the NAS. Plain `docker compose` over SSH in `~/mediarr`, not a Dokploy app.
 [`media-pipeline.md`](docs/media-pipeline.md) covers how those fit together — subtitles,

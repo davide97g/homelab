@@ -9,8 +9,9 @@ that were quietly broken.
 
 ```
                                               ProtonVPN (Zürich)
-                                                   ^  peers and trackers
-                                                   |  see only this exit
+                                                   ^  peers, trackers and
+                                                   |  indexers (via gluetun's
+                                                   |  proxy) see only this exit
                                           +--------+--------+
                                           | gluetun tunnel  |
 Jellyseerr  ->  Radarr / Sonarr  ->  Prowlarr  ->  qBittorrent
@@ -37,8 +38,10 @@ Jellyseerr  ->  Radarr / Sonarr  ->  Prowlarr  ->  qBittorrent
 | Bazarr | 6767 | Subtitles |
 | Jellyfin | 8096 | Library and playback |
 
-Only qBittorrent's traffic goes through the VPN. The indexer searches, Jellyfin and everything
-else stay on the home line. How the tunnel, port forwarding and kill switch work is in
+qBittorrent's traffic goes through the VPN, and since 2026-09-27 so do Prowlarr's indexer searches,
+over gluetun's HTTP proxy (indexers tagged `vpn`). Nothing seeds: qBittorrent stops each torrent
+the moment it completes. Jellyfin, Bazarr and the \*arrs' metadata lookups stay on the home line.
+How the tunnel, port forwarding and kill switch work is in
 [`stacks/mediarr/README.md`](../stacks/mediarr/README.md#torrents-go-through-a-vpn).
 
 ## One Jellyfin, on the NAS
@@ -60,8 +63,8 @@ same subnet. Mini PC to NAS over `192.168.15.x` is `No route to host`; Tailscale
 
 So the library is **copied, not mounted**: `~/ops/xfer-nas/xfer-nas-auto.sh` on a ten-minute user timer hands
 each new folder to `~/ops/xfer-nas/xfer-nas.sh`, which sends it resumably and verifies it by md5 into
-`/volume1/test/{movies,tv}`. Nothing is deleted on the mini PC, so a finished download keeps
-seeding there while it plays from the NAS. The practical consequence: a request is *Processing*
+`/volume1/test/{movies,tv}`. Nothing is deleted on the mini PC; the finished download stays
+there, stopped rather than seeding, while it plays from the NAS. The practical consequence: a request is *Processing*
 from the moment it imports until the copy lands, not *Available*.
 
 ### Jellyfin 12 speaks a different header
