@@ -22,6 +22,16 @@ type Torrent = {
   num_leechs?: number;
   category?: string;
 };
+/** The seeding limits. `max_ratio_act` 0 is Stop: with both limits at zero a
+ *  torrent stops the moment it completes, which is how the box runs (see
+ *  stacks/mediarr/README.md). */
+type Prefs = {
+  max_ratio_enabled?: boolean;
+  max_ratio?: number;
+  max_seeding_time_enabled?: boolean;
+  max_seeding_time?: number;
+  max_ratio_act?: number;
+};
 type MainData = {
   server_state?: { alltime_dl?: number; alltime_ul?: number; free_space_on_disk?: number; global_ratio?: string };
 };
@@ -41,12 +51,13 @@ export async function collectQbittorrent(): Promise<Collected> {
 
   const started = Date.now();
   try {
-    const [transfer, torrents, main] = await Promise.all([
+    const [transfer, torrents, main, prefs] = await Promise.all([
       qbitGet<Transfer>("/api/v2/transfer/info"),
       qbitGet<Torrent[]>("/api/v2/torrents/info?filter=all&sort=progress"),
       // Only the all-time totals come from here, and a sync call is the one
       // thing in this payload that is genuinely optional.
       qbitGet<MainData>("/api/v2/sync/maindata?rid=0").catch(() => ({}) as MainData),
+      qbitGet<Prefs>("/api/v2/app/preferences").catch(() => null),
     ]);
 
     const active = torrents.filter((t) => ACTIVE.has(t.state ?? ""));
@@ -57,7 +68,17 @@ export async function collectQbittorrent(): Promise<Collected> {
     const dl = transfer.dl_info_speed ?? 0;
     const up = transfer.up_info_speed ?? 0;
     const server = main.server_state ?? {};
-    const online = (transfer.connection_status ?? "").toLowerCase() === "connected";
+    const connection = (transfer.connection_status ?? "").toLowerCase();
+    const online = connection === "connected";
+    // qBittorrent says "firewalled" until a peer has dialled in, and with nothing
+    // running no peer has a reason to. That is only worth flagging while it is
+    // costing a download something; "disconnected" always is.
+    const unreachable = connection === "disconnected" || (connection === "firewalled" && active.length > 0);
+    const noSeed =
+      prefs !== null &&
+      prefs.max_ratio_act === 0 &&
+      ((prefs.max_ratio_enabled === true && prefs.max_ratio === 0) ||
+        (prefs.max_seeding_time_enabled === true && prefs.max_seeding_time === 0));
     const free = server.free_space_on_disk ?? 0;
 
     const activity: MediaActivity[] = cap(
@@ -100,9 +121,9 @@ export async function collectQbittorrent(): Promise<Collected> {
         label: "qBittorrent",
         role,
         link,
-        // Connected with a broken torrent is degraded; disconnected is degraded
+        // Connected with a broken torrent is degraded; unreachable is degraded
         // too — it answered, it simply has no peers to answer about.
-        status: errored.length || !online ? "warn" : "up",
+        status: errored.length || unreachable ? "warn" : "up",
         latencyMs: Date.now() - started,
         stats: [
           { id: "down", label: "Download", value: dl > 0 ? rate(dl) : "idle", tone: dl > 0 ? "accent" : "default" },
@@ -113,6 +134,13 @@ export async function collectQbittorrent(): Promise<Collected> {
             value: String(torrents.length),
             hint: `${active.length} active · ${seeding.length} seeding`,
             tone: errored.length ? "bad" : "default",
+          },
+          {
+            id: "seeding",
+            label: "Seeding",
+            value: prefs === null ? "—" : noSeed ? "off" : "on",
+            hint: prefs === null ? "preferences unreadable" : noSeed ? "stops on complete" : "no stop limit set",
+            tone: prefs === null ? "default" : noSeed ? "good" : "warn",
           },
           {
             id: "free",

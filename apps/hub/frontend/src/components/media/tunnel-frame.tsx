@@ -13,7 +13,8 @@ export type TunnelFrameNode = Node<TunnelFrameData, "tunnel">;
  *  pair is different in kind — qBittorrent has no network of its own, it lives
  *  in gluetun's — and a box drawn around both says that faster than any label
  *  on an edge could. Everything outside the frame reaches the internet on the
- *  home line; the only thing inside it does not.
+ *  home line, except Prowlarr's indexer searches, which come in through
+ *  gluetun's HTTP proxy — the edge into the frame from the left.
  *
  *  Purely a picture: no handles, not selectable, drawn behind its contents. */
 function TunnelFrameImpl({ data }: NodeProps<TunnelFrameNode>) {
@@ -44,7 +45,7 @@ function TunnelFrameImpl({ data }: NodeProps<TunnelFrameNode>) {
         {cut ? "tunnel cut · kill switch" : "WireGuard tunnel · gluetun"}
       </div>
       <p className="text-muted-foreground absolute right-3.5 bottom-2 left-3.5 truncate text-[9.5px]">
-        qBittorrent's only interface — everything outside this box uses the home line
+        qBittorrent's only interface, and Prowlarr's searches — everything else uses the home line
       </p>
     </div>
   );

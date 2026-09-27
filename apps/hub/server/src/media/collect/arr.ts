@@ -199,7 +199,14 @@ export async function collectArr(kind: ArrKind, library: () => Promise<MediaStat
   }
 }
 
-type Indexer = { id?: number; name?: string; enable?: boolean };
+type Indexer = { id?: number; name?: string; enable?: boolean; tags?: number[] };
+type IndexerProxy = { name?: string; tags?: number[]; fields?: { name?: string; value?: unknown }[] };
+
+/** Prowlarr's searches leave through gluetun's HTTP proxy, so Nyaa and TPB see
+ *  the VPN exit rather than the home line. Prowlarr applies an indexer proxy to
+ *  the indexers sharing one of its tags; this is the host that proxy must name
+ *  to count as the tunnel. An indexer added without the tag searches from home. */
+const VPN_PROXY_HOST = "gluetun";
 type IndexerStats = {
   indexers?: {
     indexerId?: number;
@@ -221,14 +228,22 @@ export async function collectProwlarr(): Promise<Collected> {
     const status = await api<SystemStatus>(url, key, "/system/status", "v1");
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
     const until = new Date().toISOString();
-    const [health, indexers, stats] = await Promise.all([
+    const [health, indexers, proxies, stats] = await Promise.all([
       soft(api<HealthItem[]>(url, key, "/health", "v1")),
       soft(api<Indexer[]>(url, key, "/indexer", "v1")),
+      soft(api<IndexerProxy[]>(url, key, "/indexerproxy", "v1")),
       soft(api<IndexerStats>(url, key, `/indexerstats?startDate=${since}&endDate=${until}`, "v1")),
     ]);
 
     const { errors, warnings } = tally(health);
     const enabled = indexers?.filter((i) => i.enable).length ?? 0;
+    const vpnTags = new Set(
+      (proxies ?? [])
+        .filter((p) => p.fields?.some((f) => f.name === "host" && f.value === VPN_PROXY_HOST))
+        .flatMap((p) => p.tags ?? []),
+    );
+    const live = indexers?.filter((i) => i.enable) ?? [];
+    const exposed = live.filter((i) => !(i.tags ?? []).some((t) => vpnTags.has(t)));
     const rows = stats?.indexers ?? [];
     const queries = rows.reduce((a, r) => a + (r.numberOfQueries ?? 0), 0);
     const grabs = rows.reduce((a, r) => a + (r.numberOfGrabs ?? 0), 0);
@@ -241,7 +256,8 @@ export async function collectProwlarr(): Promise<Collected> {
         label: "Prowlarr",
         role,
         link,
-        status: errors.length ? "warn" : "up",
+        // An indexer outside the tunnel is a leak, not an outage: degraded.
+        status: errors.length || (proxies && exposed.length) ? "warn" : "up",
         ...(status?.version ? { version: status.version } : {}),
         latencyMs: Date.now() - started,
         stats: [
@@ -252,6 +268,17 @@ export async function collectProwlarr(): Promise<Collected> {
             hint: "enabled",
             fraction: indexers?.length ? enabled / indexers.length : 0,
           },
+          proxies
+            ? {
+                id: "vpn",
+                label: "Via VPN",
+                value: `${live.length - exposed.length}/${live.length}`,
+                hint: exposed.length
+                  ? `home IP: ${exposed.map((i) => i.name ?? i.id).join(", ")} — tag vpn`
+                  : "searches exit through gluetun",
+                tone: exposed.length ? "bad" : "good",
+              }
+            : { id: "vpn", label: "Via VPN", value: "—", hint: "proxy list unreadable" },
           {
             id: "queries",
             label: "Queries 24h",

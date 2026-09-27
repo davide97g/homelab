@@ -122,6 +122,15 @@ const EDGES: EdgeSpec[] = [
       n(f, "vpn", "running") > 0 && n(f, "qbittorrent", "downBytesPerSec") + n(f, "qbittorrent", "upBytesPerSec") > 0,
   },
   {
+    id: "prowlarr-vpn",
+    from: "prowlarr",
+    to: "vpn",
+    label: "searches · proxy",
+    kind: "tunnel",
+    note: "Prowlarr's indexer searches go through gluetun's HTTP proxy, so Nyaa and TPB see the VPN exit too. Only indexers tagged vpn take it. Busy while Radarr or Sonarr is hunting for something.",
+    busy: (f) => n(f, "vpn", "running") > 0 && n(f, "radarr", "queue") + n(f, "sonarr", "queue") > 0,
+  },
+  {
     id: "qbit-bazarr",
     from: "qbittorrent",
     to: "bazarr",
@@ -267,6 +276,7 @@ async function assemble(): Promise<MediaPipeline> {
 
   const notes = [
     "qBittorrent has no network of its own: it lives inside gluetun's, and gluetun holds a ProtonVPN WireGuard tunnel. The kill switch takes the tunnel down and leaves gluetun's firewall up, so torrents stop rather than falling back to the home line. A redeploy or a reboot of the box brings the tunnel back up.",
+    "Prowlarr's indexer searches leave through gluetun's HTTP proxy too, so the sites see the VPN exit. Nothing seeds: every torrent stops the moment it completes. Jellyfin, Bazarr and the *arrs' metadata lookups stay on the home line.",
     "Everything except Jellyfin runs on the mini PC. Jellyfin is on the NAS, which is why its card has no CPU or memory line — cAdvisor there is a different scrape and the pipeline does not need it twice.",
     "The bottom row is the manga stack (~/manga): Suwayomi and Kavita are LAN only, and Yomu is the one public door, at manga.davideghiotto.it.",
     "A request is Processing from the moment it imports until the nightly copy lands on the NAS, not Available. The library is copied, not mounted: the NAS is on a different physical network.",
