@@ -95,7 +95,7 @@ services:
   # only, no published port: Open WebUI reaches it at http://searxng:8080 on the compose
   # network.
   searxng:
-    image: searxng/searxng:2026.9.22-2ed96e6fc
+    image: searxng/searxng:2026.9.25-d8ae3abd5
     container_name: searxng
     restart: unless-stopped
     volumes:
@@ -168,7 +168,7 @@ services:
     mem_limit: 128m
 
   litellm-db:
-    image: postgres:17.6-alpine
+    image: postgres:17.11-alpine
     container_name: litellm-db
     restart: unless-stopped
     environment:
