@@ -148,7 +148,7 @@ services:
 
   radarr:
     <<: *common
-    image: lscr.io/linuxserver/radarr:6.3.0
+    image: lscr.io/linuxserver/radarr:6.4.4
     container_name: radarr
     ports:
       - "7878:7878"
@@ -164,7 +164,7 @@ services:
 
   sonarr:
     <<: *common
-    image: lscr.io/linuxserver/sonarr:4.0.19
+    image: lscr.io/linuxserver/sonarr:4.0.20
     container_name: sonarr
     ports:
       - "8989:8989"
@@ -185,7 +185,7 @@ services:
   # them in. Same /data mount as the *arrs so the paths it is told about match.
   bazarr:
     <<: *common
-    image: lscr.io/linuxserver/bazarr:1.6.0
+    image: lscr.io/linuxserver/bazarr:1.6.2
     container_name: bazarr
     ports:
       - "6767:6767"
