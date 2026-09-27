@@ -153,6 +153,11 @@ rebuild the client if it changed, `systemctl --user restart`. The only `sudo`
 this box needed for it was `build-essential` and `cmake`, to build
 `parakeet-cli` (whisper.cpp v1.9.1, static) for the page's microphone —
 whisper.cpp ships no Linux binaries.
+Its landing page is the one part that *is* a Dokploy app: `get-riddle.davideghiotto.it`
+-> `http://localhost:80`, compose app `riddle-site-mtycqg` in project `riddle`, built from
+`apps/site/compose.yml` in the riddle repo (2026-09-27). Static nginx, no data, no CI yet,
+so a release is one `compose.deploy` call; its [README](../riddle/apps/site/README.md)
+has the rest.
 
 [`apps/local-ai/`](apps/local-ai/) — Ollama since 2026-09-24, `:11434`, LAN and tailnet only (no auth,
 never on the tunnel). Qwen3.6-35B-A3B on the 760M through Vulkan, ~24 tok/s. The Open WebUI
