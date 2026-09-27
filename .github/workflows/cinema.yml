@@ -44,7 +44,11 @@ jobs:
     uses: ./.github/workflows/dokploy-deploy.yml
     with:
       app: cinema
+      compose-file: apps/cinema/services/web/compose.yaml
     secrets:
       compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_CINEMA }}
       DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
       DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+      HUB_CHECKS_TOKEN: ${{ secrets.HUB_CHECKS_TOKEN }}
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}

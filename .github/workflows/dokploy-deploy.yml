@@ -15,6 +15,16 @@ on:
         description: Name shown in the logs
         required: true
         type: string
+      compose-file:
+        description: The app's compose file; its pinned images must be running after the deploy
+        required: false
+        type: string
+        default: ""
+      checks:
+        description: Comma-separated hub /api/checks ids that must not fail after the deploy
+        required: false
+        type: string
+        default: ""
     secrets:
       compose-id:
         required: true
@@ -22,6 +32,13 @@ on:
         required: true
       DOKPLOY_API_KEY:
         required: true
+      # Deploy verification. Optional: without them the verify step says so and passes.
+      HUB_CHECKS_TOKEN:
+        required: false
+      CF_ACCESS_CLIENT_ID:
+        required: false
+      CF_ACCESS_CLIENT_SECRET:
+        required: false
 
 jobs:
   deploy:
@@ -86,3 +103,20 @@ jobs:
           done
           echo "::error::deploy of ${{ inputs.app }} still running after 30 minutes"
           exit 1
+
+      - uses: actions/checkout@v5
+        if: inputs.compose-file != ''
+
+      # "done" from Dokploy means compose returned, not that the result works:
+      # Jellyfin 12.1 once came up healthy with transcoding reset to the CPU.
+      # This asks the hub's /api/checks, through the monitoring hostname, until
+      # the compose file's images are running and settled and the named checks
+      # pass. See .github/scripts/verify-deploy.py.
+      - name: Verify ${{ inputs.app }} on the box
+        if: inputs.compose-file != ''
+        env:
+          HUB_CHECKS_URL: ${{ vars.HUB_CHECKS_URL }}
+          HUB_CHECKS_TOKEN: ${{ secrets.HUB_CHECKS_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: python3 .github/scripts/verify-deploy.py "${{ inputs.compose-file }}" "${{ inputs.checks }}"

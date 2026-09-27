@@ -41,7 +41,11 @@ jobs:
     uses: ./.github/workflows/dokploy-deploy.yml
     with:
       app: jarvis-server
+      compose-file: apps/tv/jarvis-server/docker-compose.yml
     secrets:
       compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_JARVIS_SERVER }}
       DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
       DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+      HUB_CHECKS_TOKEN: ${{ secrets.HUB_CHECKS_TOKEN }}
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
