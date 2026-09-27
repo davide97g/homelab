@@ -128,6 +128,17 @@ export const config = {
     url: (process.env.JELLYFIN_URL ?? `${CINEMA_PUBLIC_URL}/jf`).replace(/\/+$/, ""),
     key: process.env.JELLYFIN_API_KEY ?? "",
   },
+  /** The mini PC's own Jellyfin on 8097, the local test copy. Only /api/checks
+   *  reads it; without a key that check is a warning, not a failure. */
+  jellyfinLocal: { url: boxUrl("JELLYFIN_LOCAL_URL", 8097), key: process.env.JELLYFIN_LOCAL_API_KEY ?? "" },
+  /** What both Jellyfins' hardware acceleration must be. 12.x meets one line of a
+   *  10.11 encoding.xml it cannot parse by rewriting the whole file with
+   *  defaults -- hwaccel "none" -- and stays healthy while every transcode moves
+   *  to the CPU. That happened on the 10.11 -> 12.1 upgrade; this is the check. */
+  jellyfinHwaccel: process.env.JELLYFIN_EXPECT_HWACCEL ?? "vaapi",
+  /** Lets CI read /api/checks, and nothing else, with a bearer token through the
+   *  monitoring hostname. Blank means only a signed-in browser can. */
+  checksToken: process.env.CHECKS_TOKEN ?? "",
 
   /** The manga lane, its own compose project in ~/manga. Suwayomi has no auth.
    *  Kavita's key is the admin's own auth key, read out of kavita.db by

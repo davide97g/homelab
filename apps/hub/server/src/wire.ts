@@ -811,3 +811,23 @@ export type AskResponse = {
 /** Advertised on /api/ask/status so the CTA can grey itself out with a sentence
  *  before anyone types, the same way an action reports itself unavailable. */
 export type AskStatus = { ok: true } | { ok: false; why: string };
+
+/** One post-deploy invariant, as /api/checks reports it. `fail` is what CI stops
+ *  a deploy on; `warn` is shown but does not block; `pending` means not settled
+ *  yet (a healthcheck still starting), so ask again rather than judge. */
+export type CheckLevel = "ok" | "warn" | "pending" | "fail";
+
+export type Check = { id: string; label: string; level: CheckLevel; detail: string };
+
+export type Checks = {
+  at: string;
+  /** The worst level among `checks`. */
+  level: CheckLevel;
+  checks: Check[];
+  /** Every container on the box with the image it runs, so CI can tell a deploy
+   *  that rolled out from one that only reported success, and judge just the
+   *  containers its own compose file names. */
+  containers: CheckContainer[];
+};
+
+export type CheckContainer = { name: string; image: string; state: string; status: string };

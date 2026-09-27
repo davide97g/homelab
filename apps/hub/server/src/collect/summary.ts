@@ -4,6 +4,7 @@ import { display } from "../format.js";
 import { soft } from "../http.js";
 import { alerts as promAlerts, scalar } from "../prom/client.js";
 import type { Alert, ContainerSummary, HostSummary, PowerSummary, Summary } from "../wire.js";
+import { checkAlerts } from "./checks.js";
 import { collectContainers, collectHost, HOSTS } from "./host.js";
 
 const cache = new Cache(config.cacheMs);
@@ -123,7 +124,7 @@ async function assemble(): Promise<Summary> {
         source: "model",
         costPerKwh: config.costPerKwh,
       },
-    alerts: alertList ?? [],
+    alerts: [...checkAlerts(), ...(alertList ?? [])],
     containers: containerSummary,
     links: config.links,
   };

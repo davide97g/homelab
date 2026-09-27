@@ -7,7 +7,8 @@ import { fileURLToPath } from "node:url";
 import { record, tail, writable } from "./actions/audit.js";
 import { dispatch } from "./actions/dispatch.js";
 import { catalog as actionCatalog } from "./actions/registry.js";
-import { checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
+import { checkBearer, checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
+import { checks } from "./collect/checks.js";
 import { containers } from "./collect/containers.js";
 import { nasDetail } from "./collect/nas.js";
 import { storageSummary } from "./collect/storage.js";
@@ -72,8 +73,19 @@ app.get("/api/session", (c) =>
  *  route and a standing invitation to forget the eleventh. The three routes
  *  above are registered before this and so stay open by construction. */
 app.use("/api/*", async (c, next) => {
-  if (!verify(readCookie(c.req.header("cookie")))) return c.json({ error: "unauthorized" }, 401);
+  // The one exception: CI's bearer token opens GET /api/checks and nothing else.
+  const ci = c.req.method === "GET" && c.req.path === "/api/checks" && checkBearer(c.req.header("authorization"));
+  if (!ci && !verify(readCookie(c.req.header("cookie")))) return c.json({ error: "unauthorized" }, 401);
   await next();
+});
+
+/** The post-deploy checks: each service's own verdict on what a deploy must
+ *  leave standing. CI polls this until nothing is pending, then fails the run on
+ *  any `fail`. */
+app.get("/api/checks", async (c) => {
+  const data = await checks();
+  c.header("Cache-Control", "no-store");
+  return c.json(data);
 });
 
 app.get("/api/summary", async (c) => {

@@ -32,6 +32,13 @@ export function checkPassword(candidate: string): boolean {
   return safeEqual(candidate, config.password);
 }
 
+/** The post-deploy checks' bearer token, for CI. Only ever compared against the
+ *  one route it opens; see the guard in index.ts. */
+export function checkBearer(header: string | undefined): boolean {
+  if (!config.checksToken || !header?.startsWith("Bearer ")) return false;
+  return safeEqual(header.slice(7), config.checksToken);
+}
+
 export function issue(): string {
   const expires = Date.now() + config.sessionDays * 86400_000;
   const payload = String(expires);
