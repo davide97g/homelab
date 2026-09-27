@@ -1,19 +1,11 @@
 import type { HostSummary, MediaPipeline, VpnSnapshot } from "@wire";
-import {
-  MarkerType,
-  Panel,
-  ReactFlow,
-  useReactFlow,
-  type Edge as FlowEdge,
-  type Node as FlowNode,
-} from "@xyflow/react";
-import { Maximize2, Minus, Plus } from "lucide-react";
+import { MarkerType, ReactFlow, type Edge as FlowEdge, type Node as FlowNode } from "@xyflow/react";
 import { useMemo } from "react";
 import { HostNode } from "@/components/media/host-node";
 import { ServiceNode } from "@/components/media/service-node";
 import { TunnelFrame } from "@/components/media/tunnel-frame";
+import { Viewport } from "@/components/media/viewport";
 import { VpnNode } from "@/components/media/vpn-node";
-import { Button } from "@/components/ui/button";
 
 // React Flow's own stylesheet. It is imported here rather than in index.css on
 // purpose: this module is loaded lazily, so a page that never opens /media never
@@ -61,32 +53,6 @@ function tunnelFrame(data: MediaPipeline, vpn: VpnSnapshot | null): FlowNode | n
     focusable: false,
     zIndex: -1,
   };
-}
-
-/** Zoom and fit, in the hub's own buttons rather than React Flow's `<Controls>`.
- *  That component ships its own light-mode styling and reads as a white brick in
- *  dark, and theming it means overriding its CSS from outside this lazy chunk —
- *  three buttons against the token set is less code and cannot drift. */
-function Viewport() {
-  const flow = useReactFlow();
-  return (
-    <Panel position="bottom-left" className="flex flex-col gap-1">
-      <Button variant="outline" size="icon-sm" aria-label="Zoom in" onClick={() => flow.zoomIn()}>
-        <Plus />
-      </Button>
-      <Button variant="outline" size="icon-sm" aria-label="Zoom out" onClick={() => flow.zoomOut()}>
-        <Minus />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon-sm"
-        aria-label="Fit the whole pipeline"
-        onClick={() => flow.fitView({ padding: 0.12, maxZoom: 1 })}
-      >
-        <Maximize2 />
-      </Button>
-    </Panel>
-  );
 }
 
 export default function PipelineGraph({
@@ -225,7 +191,7 @@ export default function PipelineGraph({
       onPaneClick={() => onSelect(null)}
       className="bg-transparent"
     >
-      <Viewport />
+      <Viewport fitLabel="Fit the whole pipeline" />
     </ReactFlow>
   );
 }

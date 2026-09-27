@@ -2,7 +2,7 @@ import type { MediaPipeline, Summary, VpnSnapshot } from "@wire";
 import { Shield, ShieldAlert } from "lucide-react";
 import { lazy, Suspense, useCallback, useState } from "react";
 import { DetailDrawer } from "@/components/media/detail-drawer";
-import { FieldLabel, STATUS_LABEL, StatusDot } from "@/components/primitives";
+import { FieldLabel, Segmented, STATUS_LABEL, StatusDot } from "@/components/primitives";
 import { Booting } from "@/components/shell/trace";
 import { usePoll } from "@/hooks/use-poll";
 import { fetchMedia } from "@/lib/api";
@@ -12,6 +12,24 @@ import { cn } from "@/lib/utils";
 // visits never open, so the canvas is a lazy chunk — the same bargain the
 // topology scene makes with three.
 const PipelineGraph = lazy(() => import("@/components/media/graph"));
+const NetworkGraph = lazy(() => import("@/components/media/network-graph"));
+
+type View = "pipeline" | "network";
+const VIEWS = [
+  { value: "pipeline", label: "Pipeline" },
+  { value: "network", label: "Network" },
+] as const;
+const VIEW_KEY = "hub.media.view";
+
+/** Which canvas was open last. A per-viewer convenience, so storage that
+ *  throws or comes back empty just means the pipeline. */
+function savedView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "network" ? "network" : "pipeline";
+  } catch {
+    return "pipeline";
+  }
+}
 
 /** One line in the header that answers "are torrents hidden right now" without
  *  finding the card: where peers think the box is, or that the tunnel is cut. */
@@ -58,6 +76,16 @@ export function MediaPage({ data }: { data: Summary }) {
   const load = useCallback((signal: AbortSignal) => fetchMedia(signal), []);
   const { data: media, error, refresh } = usePoll<MediaPipeline>(load, 5000);
   const [selected, setSelected] = useState<string | null>(null);
+  const [view, setView] = useState<View>(savedView);
+  const choose = useCallback((next: View) => {
+    setView(next);
+    setSelected(null);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Private window or blocked storage: the choice lasts until reload.
+    }
+  }, []);
 
   if (error && !media) {
     return (
@@ -79,6 +107,7 @@ export function MediaPage({ data }: { data: Summary }) {
     <div className="flex h-full min-h-0 flex-col gap-3 pt-1">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <FieldLabel>Media pipeline</FieldLabel>
+        <Segmented options={VIEWS} value={view} onChange={choose} label="What the canvas shows" />
         <div className="flex flex-wrap items-center gap-3">
           {(["up", "warn", "down", "unconfigured"] as const)
             .filter((status) => media.counts[status] > 0)
@@ -111,16 +140,22 @@ export function MediaPage({ data }: { data: Summary }) {
             </div>
           }
         >
-          <PipelineGraph
-            data={media}
-            host={data.hosts.homelab}
-            selected={selected}
-            onSelect={setSelected}
-            onChanged={refresh}
-          />
+          {view === "network" ? (
+            <NetworkGraph data={media} onChanged={refresh} />
+          ) : (
+            <PipelineGraph
+              data={media}
+              host={data.hosts.homelab}
+              selected={selected}
+              onSelect={setSelected}
+              onChanged={refresh}
+            />
+          )}
         </Suspense>
 
-        <DetailDrawer node={node} vpn={media.vpn} onChanged={refresh} onClose={() => setSelected(null)} />
+        {view === "pipeline" && (
+          <DetailDrawer node={node} vpn={media.vpn} onChanged={refresh} onClose={() => setSelected(null)} />
+        )}
       </div>
 
       <ul className="text-muted-foreground grid shrink-0 gap-1 px-1 text-[10.5px] leading-snug">
