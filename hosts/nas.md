@@ -55,7 +55,7 @@ uptime                      # load / uptime
 df -h                       # disk usage
 ps -eo pcpu,comm --sort=-pcpu | head   # top CPU processes
 docker ps                   # running containers (ilario is in docker group, no sudo needed)
-docker restart jellyfin-app-1   # restart Jellyfin (container name)
+docker restart jellyfin         # restart Jellyfin (container name)
 ```
 
 Apps installed via UGOS App Center: Docker, Jellyfin.
@@ -70,11 +70,10 @@ Apps installed via UGOS App Center: Docker, Jellyfin.
 | | |
 |---|---|
 | URL | http://192.168.15.129:8899 |
-| Container | `jellyfin-app-1` (ugreen/jellyfin 10.10.7), maps 8096 -> 8899 |
-| Config on NAS | `/volume1/@appstore/com.ugreen.docker.jellyfin/config` (root-owned) |
-| Media mount | `/home/ilario` on NAS -> `/data` in container |
-| Movies library | `/data/Movies` = `/home/ilario/Movies` on NAS |
+| Container | `jellyfin` (jellyfin/jellyfin:12.1), maps 8096 -> 8899; compose in `/volume1/docker/jellyfin-app` |
+| Config on NAS | `/volume2/docker/jellyfin/config` |
+| Media mounts | `/volume1/media/Movies` -> `/data/Movies`; `/volume1/test` at the same path (`Shared Movies` = `/volume1/test/movies`, `Shows` = `/volume1/test/tv`) |
 
 Drop movies in `/home/ilario/Movies`, then Dashboard > Libraries > Scan All Libraries (or wait, realtime monitor is on).
 
-Library/scan changes without UI: Jellyfin REST API with header `X-Emby-Token: <api key>` (create in Dashboard > API Keys). Config dir is root-owned, cannot edit from ssh as ilario.
+Library/scan changes without UI: Jellyfin REST API with header `Authorization: MediaBrowser Token="<api key>"` (12.x answers 401 to `X-Emby-Token`) (create in Dashboard > API Keys). Config dir is root-owned, cannot edit from ssh as ilario.

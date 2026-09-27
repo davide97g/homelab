@@ -79,7 +79,7 @@ services:
     container_name: jellyfin
     user: "${PUID:-1000}:${PGID:-1000}"
     group_add:
-      # The render group, for VAAPI on the Intel iGPU -- the old config already
+      # The render group, for VAAPI on the AMD iGPU (Radeon 760M) -- the old config already
       # says hwaccel vaapi, so without this every transcode falls back to CPU.
       - "${RENDER_GID:-992}"
     devices:
