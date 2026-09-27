@@ -1,0 +1,16 @@
+[Unit]
+Description=Allowlist for Docker-published ports (LAN + trusted tailnet devices)
+Documentation=https://github.com/davide97g/homelab/tree/main/hosts/debian/firewall
+# Docker creates DOCKER-USER on start; bound to it so a Docker restart re-applies.
+After=docker.service
+BindsTo=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/homelab-firewall apply
+ExecReload=/usr/local/sbin/homelab-firewall apply
+ExecStop=/usr/local/sbin/homelab-firewall remove
+
+[Install]
+WantedBy=docker.service

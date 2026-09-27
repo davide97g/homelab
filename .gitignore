@@ -13,3 +13,4 @@ __pycache__/
 # Editors and OS
 .cursor/
 .DS_Store
+hosts/debian/firewall/homelab-firewall.conf

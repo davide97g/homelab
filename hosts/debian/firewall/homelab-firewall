@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# homelab-firewall -- gate Docker-published ports on the mini PC.
+#
+# Docker's -p publishing DNATs traffic in PREROUTING, so it reaches containers
+# through FORWARD and never touches UFW's INPUT rules: UFW's default-deny looked
+# like it covered ~30 container ports and covered none of them. DOCKER-USER is the
+# one chain Docker leaves to us, and it runs before Docker's own. Everything that
+# does not come from a Docker bridge is sent through HOMELAB-EXT, which lets in
+# replies, the LAN, and the tailnet devices named in the config, and drops the rest.
+#
+# cloudflared runs on the host and dials localhost, which never crosses FORWARD,
+# so every public hostname keeps working whatever this allows.
+#
+#   homelab-firewall apply    install or refresh the rules (idempotent)
+#   homelab-firewall remove   take them out again
+#   homelab-firewall status   print what is loaded
+set -euo pipefail
+
+CONF=${HOMELAB_FIREWALL_CONF:-/etc/default/homelab-firewall}
+# shellcheck source=/dev/null
+[ -r "$CONF" ] && . "$CONF"
+
+CHAIN=HOMELAB-EXT
+TAG=homelab-firewall
+# Traffic entering FORWARD from these is container-to-container or a container's
+# own outbound connection, which Docker already handles.
+BRIDGES=(docker0 br-+ docker_gwbridge)
+
+ours() { # delete every DOCKER-USER rule carrying our comment
+  local ipt=$1 rule
+  while rule=$($ipt -w -S DOCKER-USER 2>/dev/null | grep -m1 -- "--comment $TAG"); do
+    # shellcheck disable=SC2086
+    eval "$ipt -w ${rule/-A DOCKER-USER/-D DOCKER-USER}"
+  done
+}
+
+apply_family() {
+  local ipt=$1 lan=$2 trusted=$3 net ifc
+  $ipt -w -N DOCKER-USER 2>/dev/null || true
+  $ipt -w -N $CHAIN 2>/dev/null || $ipt -w -F $CHAIN
+
+  $ipt -w -A $CHAIN -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+  for net in $lan; do
+    $ipt -w -A $CHAIN ! -i tailscale0 -s "$net" -j RETURN
+  done
+  for net in $trusted; do
+    $ipt -w -A $CHAIN -i tailscale0 -s "$net" -j RETURN
+  done
+  $ipt -w -A $CHAIN -j DROP
+
+  # Rebuild our part of DOCKER-USER at the top, in order, leaving anything else
+  # that lives there alone.
+  ours "$ipt"
+  $ipt -w -I DOCKER-USER 1 -m comment --comment $TAG -j $CHAIN
+  for ifc in "${BRIDGES[@]}"; do
+    $ipt -w -I DOCKER-USER 1 -i "$ifc" -m comment --comment $TAG -j RETURN
+  done
+}
+
+remove_family() {
+  local ipt=$1
+  ours "$ipt"
+  $ipt -w -F $CHAIN 2>/dev/null || true
+  $ipt -w -X $CHAIN 2>/dev/null || true
+}
+
+case "${1:-}" in
+  apply)
+    : "${LAN_V4:?set LAN_V4 in $CONF}" "${TRUSTED_V4:?set TRUSTED_V4 in $CONF}"
+    apply_family iptables "$LAN_V4" "$TRUSTED_V4"
+    apply_family ip6tables "${LAN_V6:-}" "${TRUSTED_V6:-}"
+    ;;
+  remove)
+    remove_family iptables
+    remove_family ip6tables
+    ;;
+  status)
+    for ipt in iptables ip6tables; do
+      echo "== $ipt"
+      $ipt -w -S DOCKER-USER
+      $ipt -w -S $CHAIN 2>/dev/null || echo "($CHAIN not loaded)"
+    done
+    ;;
+  *)
+    echo "usage: $0 apply|remove|status" >&2
+    exit 2
+    ;;
+esac

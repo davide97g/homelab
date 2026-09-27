@@ -1,5 +1,9 @@
-# Ollama on the mini PC. Plain `docker compose` in ~/local-ai, not a Dokploy app.
-# LAN + tailnet only — Ollama has no auth, so it is never put on the tunnel.
+# Ollama, LiteLLM and Open WebUI on the mini PC, deployed by Dokploy on push.
+# Every published port here is bound to 127.0.0.1: Ollama has no auth, and
+# Docker's published ports skip UFW, so a bare "11434:11434" was open to the
+# whole LAN and tailnet. The containers reach each other over the compose
+# network; the outside reaches LiteLLM and Open WebUI only through cloudflared
+# (llm. and openui.davideghiotto.it), which runs on the host and dials localhost.
 # Hostnames and IPs come from .env (see .env.example), which compose reads on its own.
 services:
   ollama:
@@ -7,7 +11,7 @@ services:
     container_name: ollama
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama:/root/.ollama
     # Radeon 760M (gfx1103) through Vulkan. The render group is 992 on the host.
@@ -54,7 +58,7 @@ services:
     depends_on:
       - ollama
     ports:
-      - "3080:8080"
+      - "127.0.0.1:3080:8080"
     volumes:
       - open-webui:/app/backend/data
       # UI tweaks. Open WebUI copies build/static into its static dir on boot, and every
@@ -124,7 +128,7 @@ services:
       ollama:
         condition: service_started
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
     volumes:
       - ./litellm.yaml:/app/config.yaml:ro
     # One worker: without Redis every worker keeps its own rate-limit counters, so two

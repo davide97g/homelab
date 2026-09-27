@@ -1,0 +1,13 @@
+# /etc/default/homelab-firewall -- who may reach the mini PC's published ports and,
+# through UFW, its host services over the tailnet. Space-separated lists.
+# The real file lives only on the box: tailnet addresses stay out of this repo.
+
+# The home LAN. Anything from here gets in, except over tailscale0.
+LAN_V4="192.168.15.0/24"
+# The FRITZ!Box's ULA prefix (see `ip -6 addr show enp3s0`) and link-local.
+LAN_V6="fdxx:xxxx:xxxx::/64 fe80::/10"
+
+# Tailnet devices that are yours (`tailscale status`). Every other tailnet peer
+# (the tailnet belongs to the NAS owner) is dropped.
+TRUSTED_V4="100.x.y.z"
+TRUSTED_V6="fd7a:115c:a1e0::xxxx:xxxx"
