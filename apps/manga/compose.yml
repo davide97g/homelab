@@ -22,7 +22,7 @@
 
 services:
   suwayomi:
-    image: ghcr.io/suwayomi/suwayomi-server:stable
+    image: ghcr.io/suwayomi/suwayomi-server:stable@sha256:e59f212ccf91b26de8676a063a2db90256c148c6261535c7c477d47a43d9751b
     container_name: suwayomi
     restart: unless-stopped
     environment:
@@ -45,7 +45,7 @@ services:
       - ${MANGA_ROOT:?set MANGA_ROOT}:/home/suwayomi/.local/share/Tachidesk/downloads
 
   kavita:
-    image: jvmilazz0/kavita:latest
+    image: jvmilazz0/kavita:0.9.1
     container_name: kavita
     restart: unless-stopped
     environment:
