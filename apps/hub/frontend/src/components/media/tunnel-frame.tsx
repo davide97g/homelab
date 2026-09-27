@@ -45,7 +45,7 @@ function TunnelFrameImpl({ data }: NodeProps<TunnelFrameNode>) {
         {cut ? "tunnel cut · kill switch" : "WireGuard tunnel · gluetun"}
       </div>
       <p className="text-muted-foreground absolute right-3.5 bottom-2 left-3.5 truncate text-[9.5px]">
-        qBittorrent's only interface, and Prowlarr's searches — everything else uses the home line
+        Only torrents and indexer searches leave through here
       </p>
     </div>
   );
