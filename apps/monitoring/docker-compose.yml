@@ -15,7 +15,7 @@
 
 services:
   prometheus:
-    image: prom/prometheus:v3.14.0
+    image: prom/prometheus:v3.15.0
     container_name: homelab-prometheus
     labels:
       homelab.configs-hash: "a9c0b213502f"
@@ -91,7 +91,7 @@ services:
       - /:/host:ro,rslave
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    image: ghcr.io/google/cadvisor:v0.60.6
     container_name: homelab-cadvisor
     restart: unless-stopped
     privileged: true
@@ -187,7 +187,7 @@ services:
     # dashboard.
 
   alloy:
-    image: grafana/alloy:v1.19.2
+    image: grafana/alloy:v1.20.0
     container_name: homelab-alloy
     labels:
       homelab.configs-hash: "0e4722591d96"
@@ -225,7 +225,7 @@ services:
   # docker group -- DOCKER_GID is that gid (`getent group docker | cut -d: -f3`,
   # 989 on this box); set it in the Dokploy Environment tab if it ever differs.
   docker-proxy:
-    image: wollomatic/socket-proxy:1
+    image: wollomatic/socket-proxy:1.13.1
     container_name: homelab-docker-proxy
     restart: unless-stopped
     user: "65534:${DOCKER_GID:-989}"
@@ -249,7 +249,7 @@ services:
     # where it matters -- container logs still arriving in Loki.
 
   grafana:
-    image: grafana/grafana:13.2.1
+    image: grafana/grafana:13.2.2
     container_name: homelab-grafana
     labels:
       homelab.configs-hash: "f095b2262083"
