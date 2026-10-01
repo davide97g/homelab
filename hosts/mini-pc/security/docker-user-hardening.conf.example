@@ -1,0 +1,8 @@
+# /etc/default/docker-user-hardening -- the tailnet devices docker-user-hardening.sh
+# drops at DOCKER-USER. Space-separated lists. The real file lives only on the box:
+# tailnet addresses stay out of this repo.
+
+# The NAS owner's devices (`tailscale status`): the NAS, then the iPhone.
+# Update when that user adds or removes a device.
+UNTRUSTED_V4="100.x.y.z 100.x.y.z"
+UNTRUSTED_V6="fd7a:115c:a1e0::xxxx:xxxx fd7a:115c:a1e0::xxxx:xxxx"

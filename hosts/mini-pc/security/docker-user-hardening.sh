@@ -9,23 +9,33 @@
 # The DOCKER-USER chain, however, IS evaluated for traffic forwarded to those ports,
 # so this is the correct place to filter them.
 #
-# The tailnet (tail740ca3.ts.net) has two users: ghiotto.davidenko@gmail.com (this box
-# + the Mac) and ilai5800@gmail.com (the NAS DXP4800PRO + an iPhone). All homelab flows
+# The tailnet has two users: the owner (this box + the Mac) and the NAS owner
+# (<nas-owner-email>: the NAS DXP4800PRO + an iPhone). All homelab flows
 # run debian -> NAS (xfer, Jellyfin, ssh), which is OUTBOUND from this box and NOT
 # affected here. This drops the other user's devices when they try to reach any
 # published container port ON this box, over the tailnet, while leaving the owner's Mac
-# (100.75.65.38) and the LAN untouched. Host SSH (:22) is not a container port, so the
+# and the LAN untouched. Host SSH (:22) is not a container port, so the
 # NAS can still SSH in.
+#
+# The addresses to drop come from /etc/default/docker-user-hardening (copy
+# docker-user-hardening.conf.example there): tailnet addresses stay out of this repo.
 #
 # Idempotent: safe to re-run. Run as root:  sudo bash docker-user-hardening.sh
 set -euo pipefail
 
+CONF=${DOCKER_USER_HARDENING_CONF:-/etc/default/docker-user-hardening}
+# shellcheck source=/dev/null
+. "$CONF"
+
 IFACE="tailscale0"
 
-# ilai5800@gmail.com devices. Update if that user adds/removes devices
-# (`tailscale status` shows current IPs).
-V4=(100.81.127.95 100.69.150.104)                                # NAS, iPhone
-V6=(fd7a:115c:a1e0::d131:7f60 fd7a:115c:a1e0::2631:9669)         # NAS, iPhone
+# The NAS owner's devices, space-separated in the config.
+read -r -a V4 <<<"${UNTRUSTED_V4:-}"
+read -r -a V6 <<<"${UNTRUSTED_V6:-}"
+if [ "${#V4[@]}" -eq 0 ] && [ "${#V6[@]}" -eq 0 ]; then
+  echo "No UNTRUSTED_V4/UNTRUSTED_V6 in $CONF, nothing to drop." >&2
+  exit 1
+fi
 
 ins() {  # $1=binary  $2=source-address
   # Insert at the top of DOCKER-USER, but only if an identical rule is not already there.

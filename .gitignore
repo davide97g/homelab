@@ -14,3 +14,6 @@ __pycache__/
 .cursor/
 .DS_Store
 hosts/debian/firewall/homelab-firewall.conf
+
+# Tailnet addresses for the old DOCKER-USER script; the real file lives on the box.
+hosts/mini-pc/security/docker-user-hardening.conf
