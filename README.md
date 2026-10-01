@@ -111,6 +111,10 @@ no CI yet, so it is released with one `compose.deploy` call. It carries an LLM A
 its own email/password login (Better Auth, self-hosted) and registration is invite-only —
 `SIGNUP_MODE`/`SIGNUP_CODE` in its Dokploy environment. It is not behind Access. All are **compose** apps except ral-gate, a Dockerfile **application**,
 which changes the API endpoints but nothing else.
+`buriko.davideghiotto.it` is the landing page for [buriko](https://github.com/davide97g/brick), added
+2026-09-30: a compose app (`buriko-pv8lun`, compose path `./site/compose.yml`) building an nginx
+image of the static `site/public/`. No CI and no deploy hostname; after a push to that repo's `main`
+it is released with one `compose.deploy` call.
 `atlante.davideghiotto.it` is the backend for [Atlante](https://github.com/davide97g/atlante),
 the self-hosted maps app, built here on 2026-09-19 rather than ported. A compose app: Fastify API,
 PostGIS with the Italy OSM index, Valhalla and Martin. The heavy artefacts — the PMTiles basemap
