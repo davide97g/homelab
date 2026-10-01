@@ -50,7 +50,7 @@ There used to be two Jellyfins on this LAN and they shared nothing, which broke 
 downstream: requests stayed *Requested* forever even for films already in the library, because
 Jellyseerr was asking the wrong server whether the file existed.
 
-That is settled now — there is one Jellyfin, `nasilario` (`c5dcde12661c4668acd640f2499b084f`),
+That is settled now — there is one Jellyfin, `nasilario` (`5507158da22a4b568fec59ecb9887109`),
 on the NAS, and it is the one `cinema.davideghiotto.it` serves. The mini PC's own Jellyfin was
 removed; `streaming.davideghiotto.it`, which served it, is retired.
 
@@ -63,7 +63,7 @@ same subnet. Mini PC to NAS over `192.168.15.x` is `No route to host`; Tailscale
 
 So the library is **copied, not mounted**: `~/ops/xfer-nas/xfer-nas-auto.sh` on a ten-minute user timer hands
 each new folder to `~/ops/xfer-nas/xfer-nas.sh`, which sends it resumably and verifies it by md5 into
-`/volume1/test/{movies,tv}`. Nothing is deleted on the mini PC; the finished download stays
+`/volume1/media/{Movies,tv}` (the NAS was rebuilt on 2026-10-01; `/volume1/test` is gone). Nothing is deleted on the mini PC; the finished download stays
 there, stopped rather than seeding, while it plays from the NAS. The practical consequence: a request is *Processing*
 from the moment it imports until the copy lands, not *Available*.
 

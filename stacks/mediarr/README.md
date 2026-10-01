@@ -29,8 +29,9 @@ There are two Jellyfins now, on two ports, and only one of them runs here.
 
 `debian:8097` is the local one, back on 2026-09-19 with the config volume it wrote before it
 was retired — same users, same watch state, same two libraries on `/data/library/{movies,tv}`.
-It exists because the NAS has ~45 GB free against a 543 GB library, so `xfer-nas-auto.timer`
-is off and most finished downloads are readable only on this box. `debian:8898` is Cinema's web
+It exists because the NAS had ~45 GB free against a 543 GB library, so `xfer-nas-auto.timer`
+was turned off and most finished downloads are readable only on this box. The NAS has had
+11 TB since 2026-10-01, but the timer is still off: copies are sent by hand for now. `debian:8898` is Cinema's web
 client pointed at it, the same image `cinema.davideghiotto.it` serves, built from
 `~/cinema/services/web` with a `.env` naming `http://172.17.0.1:8097`.
 
@@ -227,7 +228,7 @@ The Jellyfin that serves it is on the **NAS**, which is not on this LAN — it a
 192.168.15.x address but sits on another network, reachable only over Tailscale. So the library
 is *copied* rather than mounted: `~/ops/xfer-nas/xfer-nas-auto.sh`, on a ten-minute user timer, hands every
 new folder to `~/ops/xfer-nas/xfer-nas.sh`, which copies it resumably and verifies it by md5, then the NAS
-Jellyfin picks it up from `/volume1/test/{movies,tv}`. Nothing is deleted from this box, but a
+Jellyfin picks it up from `/volume1/media/{Movies,tv}`. Nothing is deleted from this box, but a
 finished download does not seed: since 2026-09-27 qBittorrent stops every torrent the moment it
 completes (`max_ratio` 0 and `max_seeding_time` 0, action Stop, set over the WebUI API). The
 torrent stays listed, stopped, and the file stays on disk.
@@ -251,7 +252,7 @@ rather than overfilling it.
 3. **Jellyseerr** (`:5055`). Sign in with **Use your Jellyfin account**:
    - Jellyfin URL: `http://192.168.15.126:8096` — the shim, which lands on the NAS. Going
      straight to `${NAS_TAILNET_IP}:8899` fails with 401: see the shim note above.
-   - Verify afterwards that the stored `serverId` is `c5dcde12661c4668acd640f2499b084f`, the
+   - Verify afterwards that the stored `serverId` is `5507158da22a4b568fec59ecb9887109`, the
      NAS's. `./scripts/on-box.sh jellyseerr-repoint.py <key> <url>` moves it if it is wrong.
    - Then *Settings → Services*: add Radarr at `radarr:7878` and Sonarr at `sonarr:8989` —
      service names, since all five share one compose network. API keys come from `wire.sh`, or:

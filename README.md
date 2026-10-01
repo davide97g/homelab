@@ -237,9 +237,9 @@ It is **at his house, not on this LAN**. There is no route to it except Tailscal
 | Tailscale IP | `${NAS_TAILNET_IP}` (node `dxp4800pro-21af`) |
 | Account there | `davide` |
 | Alias | `ssh nas`, on both the Mac and the box |
-| Storage | `/volume1` 278 G, ~240 G free |
+| Storage | `/volume1` 11 T (new pool, 2026-10-01); `/volume2` 939 G, docker configs only |
 | Home quota | `/home/davide` is capped at **25 G** — not a place to put a library |
-| Shares | `/volume1/docker`, `/volume1/test`. **There is no media share yet.** |
+| Shares | `/volume1/docker`, `/volume1/media/{Movies,tv}`, `/volume1/test` (empty). Owned by `ilario`; `davide` writes through an ACL (`setfacl u:davide:rwx`, default ACL too) |
 
 An older `Host nas` in the Mac's `~/.ssh/config` pointed at `192.168.15.129` as user
 `ilario`, from when the NAS was on this LAN. That address answers nothing now and the
@@ -305,8 +305,8 @@ native clients take it verbatim and the admin UI is at `/jf/web/`. On the LAN it
 To put the old hostname back: add an ingress rule `jellyfin.davideghiotto.it` ->
 `http://localhost:8899` (before the catch-all) and a proxied CNAME to the tunnel.
 
-**A second Cinema, on this box, at `https://home-cinema.davideghiotto.it`.** The NAS has ~45 GB
-free against a 543 GB library, so most finished downloads never got copied there; since
+**A second Cinema, on this box, at `https://home-cinema.davideghiotto.it`.** Until 2026-10-01 the NAS
+had ~45 GB free against a 543 GB library, so most finished downloads never got copied there; since
 2026-09-19 the mini PC plays its own library — Jellyfin on `:8097` (8096 is the shim onto the
 NAS) with `cinema-web` on `:8898` in front of it, published on *this* box's tunnel. It is
 **behind Access** (app `cinema (home)`), because that Jellyfin's admin account is deliberately
@@ -385,10 +385,12 @@ complete an Access login — only browsers can. The library it serves is Ilario'
 ### Transferring to it
 
 `~/ops/xfer-nas/xfer-nas.sh` on the box. Defaults to one film; point it anywhere with `SRC`.
+Films go to `/volume1/media/Movies` (capital M), series to `/volume1/media/tv`. Measured
+2026-10-01 over Tailscale: ~24 MB/s, so a 56 GB 4K film is ~40 min plus ~8 min of md5.
 
 ```sh
-ssh -t homelab "NAS_DEST=/volume1/test/movies ~/ops/xfer-nas/xfer-nas.sh"
-ssh -t homelab "SRC='/path/to/folder' NAS_DEST=/volume1/test/movies ~/ops/xfer-nas/xfer-nas.sh"
+ssh -t homelab "NAS_DEST=/volume1/media/Movies ~/ops/xfer-nas/xfer-nas.sh"
+ssh -t homelab "SRC='/path/to/folder' NAS_DEST=/volume1/media/Movies ~/ops/xfer-nas/xfer-nas.sh"
 ```
 
 ```

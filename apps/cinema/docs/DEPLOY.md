@@ -96,7 +96,8 @@ cf POST "zones/$CF_ZONE_ID/dns_records"   # proxied: true, or the CNAME points a
 ## A second copy, on the mini PC
 
 `cinema.davideghiotto.it` serves the NAS, and the NAS holds only what `xfer-nas` managed to copy
-before that timer was disabled for disk — ~45 GB free against a 543 GB library. The finished
+before that timer was disabled for disk — ~45 GB free against a 543 GB library. The NAS was rebuilt
+with 11 TB on 2026-10-01, which also emptied it; titles are being copied back by hand. The finished
 downloads therefore live on the mini PC, and since 2026-09-19 a second Jellyfin and a second
 `cinema-web` run there to play them, published on the mini PC's own tunnel as
 `home-cinema.davideghiotto.it`.

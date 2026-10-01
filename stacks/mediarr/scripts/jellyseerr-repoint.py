@@ -92,6 +92,11 @@ def main():
     con = sqlite3.connect("/tmp/js-db.sqlite3")
     for row_id, name in con.execute("select id, jellyfinUsername from user"):
         match = next((u for u in users if u["Name"].lower() == (name or "").lower()), None)
+        # Row 1 is Jellyseerr's owner. Its name need not exist on the new server --
+        # it was `davide` linked to the NAS's `root` -- and leaving it unlinked
+        # orphans every request, so it follows the Jellyfin admin instead.
+        if not match and row_id == 1:
+            match = admin
         if not match:
             print("no Jellyfin user named %r on the new server; leaving row %d alone" % (name, row_id))
             continue
