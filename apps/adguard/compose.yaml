@@ -1,0 +1,39 @@
+# AdGuard Home on the mini PC: the LAN's DNS server, blocking ads and trackers for every
+# device. The FRITZ!Box hands this box out as the DNS server over DHCP, so each device
+# queries it directly and shows up under its own address. See README.md.
+#
+# Port 53 is published on all addresses on purpose. Docker's DNAT keeps the client's
+# source IP for IPv4, which per-device stats and rules need, and homelab-firewall's
+# DOCKER-USER allowlist (hosts/debian/firewall) keeps it to the LAN and the trusted
+# tailnet devices. The FRITZ!Box never forwards 53 from the Internet: an open resolver
+# would be used for DDoS amplification.
+services:
+  adguard:
+    image: adguard/adguardhome:v0.107.79
+    container_name: adguard
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      # Web UI, LAN and tailnet only. 3000 is the setup wizard's port; in the wizard keep
+      # the admin interface on 3000 as well, so this one mapping serves both.
+      - "3053:3000/tcp"
+    volumes:
+      # conf holds AdGuardHome.yaml (settings, the admin's password hash), work the
+      # query log, stats and downloaded filter lists. Pinned so the Dokploy project's
+      # random suffix never decides where they live.
+      - conf:/opt/adguardhome/conf
+      - work:/opt/adguardhome/work
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # 53 is a privileged port. Nothing else is needed: DHCP stays on the FRITZ!Box.
+    cap_add:
+      - NET_BIND_SERVICE
+
+volumes:
+  conf:
+    name: adguard_conf
+  work:
+    name: adguard_work

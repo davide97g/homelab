@@ -8,7 +8,7 @@ history from before the merge, under `apps/`.
 
 | Path | What |
 |---|---|
-| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/) |
+| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/) |
 | [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
 | [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md) |
 | [`hosts/`](hosts/) | Per-host notes: [the NAS](hosts/nas.md) |
@@ -35,6 +35,7 @@ On the box, `~` is laid out as:
 | Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
 | JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | server: push to `main`. APK: `scripts/deploy-tv.sh` |
 | Local AI: Ollama, Open WebUI, LiteLLM | `apps/local-ai` | mini PC, `~/local-ai` | `openui.davideghiotto.it`, `llm.davideghiotto.it` | push to `main` |
+| AdGuard Home, DNS ad blocking for the house | `apps/adguard` | mini PC, Dokploy; the FRITZ!Box forwards to it | none, UI at `http://debian:3053` | push to `main` |
 | mediarr: the *arr stack, qBittorrent, Jellyseerr | `stacks/mediarr` | mini PC, `~/mediarr` | none, LAN only | push to `main` |
 | Swarm, qBittorrent WebUI | `stacks/swarm` | mini PC, inside qBittorrent | none, `http://debian:8080` | push to `main` |
 
@@ -59,6 +60,7 @@ history; rolling back is reverting the commit.
 | monitoring | `monitoring-frontend-fnhjyi` | `apps/monitoring/docker-compose.yml` | `monitoring.yml` |
 | manga | `manga-jwxcm5` | `apps/manga/compose.yml` | `manga.yml` |
 | local-ai | `local-ai-uurnqn` | `apps/local-ai/compose.yaml` | `local-ai.yml` |
+| adguard | `adguard-pmtl66` | `apps/adguard/compose.yaml` | `adguard.yml` |
 | cinema, mini PC copy | `web-1pwofz` | `apps/cinema/services/web/compose.yaml` | `cinema.yml` |
 | jarvis-server | `jarvis-server-b7bwor` | `apps/tv/jarvis-server/docker-compose.yml` | `jarvis-server.yml` |
 | mediarr | `mediarr-uvnh8c` | `stacks/mediarr/compose.yml` | `mediarr.yml` |
