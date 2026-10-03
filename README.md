@@ -117,6 +117,15 @@ which changes the API endpoints but nothing else.
 2026-09-30: a compose app (`buriko-pv8lun`, compose path `./site/compose.yml`) building an nginx
 image of the static `site/public/`. No CI and no deploy hostname; after a push to that repo's `main`
 it is released with one `compose.deploy` call.
+`autocratico.davideghiotto.it` is [autocratico](https://github.com/davide97g/autocratico), the
+personal paperwork register, added 2026-10-03: a compose app (`autocratico-3sar53`, compose path
+`./deploy/compose.homelab.yml`) bound to `127.0.0.1:8790` and published straight from the tunnel,
+no Traefik domain. **Behind Access** (app `autocratico`: `email-access` plus a service-token policy
+`autocratico-shortcut` for the iOS share-sheet shortcut), and the server also checks the Access JWT
+and its own paired-device tokens. Data is a bind mount of `~/autocratico/data` (plain files plus a
+local git history), nightly tarballs in `~/backups/autocratico`. The container runs headless
+Claude Code (`CLAUDE_CODE_OAUTH_TOKEN`) and the `@autocratico_bot` Telegram bot by long polling.
+No CI; released with one `compose.deploy` call. Runbook: that repo's `docs/deploy-homelab.md`.
 `atlante.davideghiotto.it` is the backend for [Atlante](https://github.com/davide97g/atlante),
 the self-hosted maps app, built here on 2026-09-19 rather than ported. A compose app: Fastify API,
 PostGIS with the Italy OSM index, Valhalla and Martin. The heavy artefacts — the PMTiles basemap
