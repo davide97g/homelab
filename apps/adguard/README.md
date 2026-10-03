@@ -65,9 +65,8 @@ When the box is off, nothing in the house resolves. Switch back by hand. This ta
    Internet service provider** › Apply.
 3. Once the mini PC is back, set it to AdGuard again as above, with the button press.
 
-The hub will do step 2 by itself while the box is up and only AdGuard has failed. Whether the
-FRITZ!Box asks for a confirmation when switching *to* the provider decides how much of that
-can be automatic. See [Hub switch](#hub-switch).
+The hub does step 2 by itself while the box is up and only AdGuard has failed. See
+[Hub switch](#hub-switch).
 
 ## Hub switch
 
@@ -77,9 +76,22 @@ same form the web UI posts (`data.lua`, page `dnsSrv`, each IPv4 address as four
 `~/.config/homelab/fritzbox-hub.env` on the box (mode 600). The same `FRITZ_*` values go into
 the hub's Dokploy Environment tab.
 
-Measured 2026-10-03: pointing the upstream at a custom server comes back with
-`"apply": "twofactor"` (button, authenticator or phone). The FRITZ!Box confirmation stays on.
-It protects every sensitive router setting, not just this one.
+Measured 2026-10-03. The two directions behave differently:
+
+- **AdGuard to provider** (`ipv4_use_user_dns=0`) answers `"apply": "ok"` with no confirmation. The hub
+  does this by itself: `server/src/dns/failover.ts` asks AdGuard a random, uncacheable name every
+  10 s. After 30 s without an answer, it first asks `9.9.9.9`. If that answers, the line is fine and
+  AdGuard is the problem, so the hub switches the FRITZ!Box to the provider. If `9.9.9.9` is silent too,
+  the line is down and DNS is left alone. Every switch, and every failed attempt, goes into the
+  hub's audit log as `dns.failover`. The **Bypass AdGuard** action on the hub's Actions page does
+  the same by hand.
+- **Provider to AdGuard** answers `"apply": "twofactor"`: button, authenticator or phone. The
+  FRITZ!Box confirmation stays on, because it protects every sensitive router setting, not just this
+  one. So switching back is always done by hand in the FRITZ!Box, as above. The hub's DNS card says
+  when it is due.
+
+`DNS_FAILOVER=off` in the hub's environment turns the automatic part off. `DNS_FAILOVER_AFTER_S`
+sets the 30 s threshold.
 
 ## Deploying
 

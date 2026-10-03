@@ -10,6 +10,7 @@ import { catalog as actionCatalog } from "./actions/registry.js";
 import { checkBearer, checkPassword, cookieHeader, issue, readCookie, verify } from "./auth.js";
 import { checks } from "./collect/checks.js";
 import { containers } from "./collect/containers.js";
+import { dnsSnapshot, startDnsWatcher } from "./dns/failover.js";
 import { nasDetail } from "./collect/nas.js";
 import { storageSummary } from "./collect/storage.js";
 import { summary } from "./collect/summary.js";
@@ -210,6 +211,10 @@ app.get("/api/series/stream", (c) => {
   );
 });
 
+/** The house's DNS path and the failover's state. Reads the FRITZ!Box at most
+ *  once a minute, on one reused session. */
+app.get("/api/dns", async (c) => c.json(await dnsSnapshot()));
+
 /** Every container on both machines. Docker's list for the mini PC -- which is
  *  the only way a *stopped* container is visible at all -- and cAdvisor's
  *  numbers on top of it. See server/src/collect/containers.ts. */
@@ -379,6 +384,8 @@ app.get("*", async (c) => {
     return c.text("frontend not built — run `pnpm build` in frontend/", 500);
   }
 });
+
+startDnsWatcher();
 
 serve({ fetch: app.fetch, port: config.port, hostname: "0.0.0.0" }, (info) => {
   console.log(`homelab hub listening on :${info.port}`);

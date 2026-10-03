@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { dockerConfigured, listContainers } from "../docker/client.js";
 import { getJson } from "../http.js";
 import { vpnConfigured, vpnSnapshot } from "../media/vpn.js";
+import { dnsCheck } from "../dns/failover.js";
 import type { Alert, Check, CheckContainer, CheckLevel, Checks } from "../wire.js";
 
 // The invariants a deploy has to leave standing, asked of the services
@@ -141,6 +142,7 @@ async function assemble(): Promise<Checks> {
     run("jellyfin", "Jellyfin (NAS) transcoding", () => jellyfinHwaccel(config.jellyfin)),
     run("jellyfin-local", "Jellyfin (mini PC) transcoding", () => jellyfinHwaccel(config.jellyfinLocal)),
     run("vpn", "Torrent VPN", vpn),
+    run("dns", "DNS ad blocking", dnsCheck),
   ];
   if (dockerConfigured()) pending.unshift(run("containers", "Containers", () => containers(seen)));
 

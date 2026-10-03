@@ -136,6 +136,28 @@ export const config = {
    *  defaults -- hwaccel "none" -- and stays healthy while every transcode moves
    *  to the CPU. That happened on the 10.11 -> 12.1 upgrade; this is the check. */
   jellyfinHwaccel: process.env.JELLYFIN_EXPECT_HWACCEL ?? "vaapi",
+  /** The FRITZ!Box, for the DNS failover (dns/). A dedicated user with
+   *  "FRITZ!Box settings" rights and no Internet access; its login lives in
+   *  ~/.config/homelab/fritzbox-hub.env on the box. `fritz.box` rather than an
+   *  address: the FRITZ!Box answers that name itself, so it resolves even while
+   *  AdGuard is the thing that is down. Blank user means the DNS card is
+   *  read-only and nothing fails over. */
+  fritz: {
+    url: (process.env.FRITZ_URL ?? "http://fritz.box").replace(/\/+$/, ""),
+    user: process.env.FRITZ_USER ?? "",
+    pass: process.env.FRITZ_PASS ?? "",
+  },
+  /** AdGuard (apps/adguard) as the failover watcher sees it. Port 53 is
+   *  published on every address of the box, so homelab-host reaches it. */
+  dns: {
+    adguardHost: process.env.ADGUARD_DNS_HOST ?? BOX,
+    /** Asked before failing over: if this is silent too, the line is down. */
+    reference: process.env.DNS_REFERENCE ?? "9.9.9.9",
+    auto: (process.env.DNS_FAILOVER ?? "on") !== "off",
+    probeMs: Number(process.env.DNS_PROBE_MS ?? 10_000),
+    afterMs: Number(process.env.DNS_FAILOVER_AFTER_S ?? 30) * 1000,
+    retryMs: 5 * 60_000,
+  },
   /** Lets CI read /api/checks, and nothing else, with a bearer token through the
    *  monitoring hostname. Blank means only a signed-in browser can. */
   checksToken: process.env.CHECKS_TOKEN ?? "",
@@ -213,5 +235,9 @@ export const config = {
     // hostnames, so there is no port fallback that would work.
     cinema: CINEMA_PUBLIC_URL,
     immich: process.env.IMMICH_PUBLIC_URL ?? "",
+    adguard: publicUrl("ADGUARD_PUBLIC_URL", 3053),
+    // A caption-grade address like topology's: the browser opens it, and on the
+    // LAN it works when nothing else resolves.
+    fritz: process.env.FRITZ_PUBLIC_URL ?? `http://${process.env.TOPO_ROUTER_LAN ?? "192.168.15.1"}`,
   },
 } as const;

@@ -6,6 +6,7 @@ import type {
   AuditResponse,
   CatalogEntry,
   ContainersResponse,
+  DnsSnapshot,
   LogOptions,
   LogsResponse,
   MediaPipeline,
@@ -190,6 +191,11 @@ export function fetchLogOptions(signal?: AbortSignal): Promise<LogOptions> {
 
 export function fetchContainers(signal?: AbortSignal): Promise<ContainersResponse> {
   return fetch("/api/containers", { ...same, signal }).then((r) => json<ContainersResponse>(r));
+}
+
+/** The house's DNS path: AdGuard's last probe and where the FRITZ!Box points. */
+export function fetchDns(signal?: AbortSignal): Promise<DnsSnapshot> {
+  return fetch("/api/dns", { ...same, signal }).then((r) => json<DnsSnapshot>(r));
 }
 
 export function fetchActions(signal?: AbortSignal): Promise<ActionCatalog> {

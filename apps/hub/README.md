@@ -158,6 +158,29 @@ audit line.
 `/api/topology` both read it, so the two pages cannot disagree about whether torrents are in
 the tunnel.
 
+## The DNS failover
+
+Since 2026-10-03 the FRITZ!Box forwards the house's DNS to AdGuard on the box
+([apps/adguard](../adguard/README.md)). `server/src/dns/` watches that path:
+
+- `probe.ts` asks AdGuard a random name under example.com every 10 s, over plain UDP.
+- `failover.ts` switches the FRITZ!Box to the provider's DNS after 30 s of silence. It only does so
+  when `9.9.9.9` still answers, because otherwise the line is down, not AdGuard. It makes one attempt
+  per 5 minutes, writes each attempt to the audit log as `dns.failover`, and keeps the state in
+  `/data/dns-failover.json`.
+- `fritz.ts` logs in as the FRITZ!Box user `hub-dns` and posts the web UI's own `dnsSrv` form.
+  TR-064 has no DNS setter on FRITZ!OS 8.25. The session is reused, so the FRITZ!Box event log
+  doesn't fill with logins.
+
+The FRITZ!Box confirms *custom* DNS servers with a button press, so the hub can only ever go
+AdGuard to provider. The way back is done by hand in the FRITZ!Box. The DNS card at the top of
+the Actions page shows where DNS goes right now, why it was switched, and the way back.
+**Bypass AdGuard** is the manual action. `/api/checks` has a `dns` row: it fails when AdGuard is silent
+and warns while it is bypassed.
+
+Environment: `FRITZ_USER` and `FRITZ_PASS` (from `~/.config/homelab/fritzbox-hub.env` on the box),
+optionally `FRITZ_URL` (default `http://fritz.box`), `DNS_FAILOVER=off`, `DNS_FAILOVER_AFTER_S`.
+
 ## Asking for a chart
 
 ⌘K, or the sparkle in the top bar, opens a composer at the bottom of the screen:

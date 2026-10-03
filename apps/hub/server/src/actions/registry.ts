@@ -3,6 +3,8 @@ import { containerCommand, dockerConfigured } from "../docker/client.js";
 import { resolveManaged } from "../collect/containers.js";
 import { arrCommand, arrConfigured, dokployDeploy, qbitAll, qbitConfigured } from "../media/clients.js";
 import { setTunnel, vpnConfigured } from "../media/vpn.js";
+import { bypassAdguard } from "../dns/failover.js";
+import { fritzConfigured } from "../dns/fritz.js";
 import type { ActionDef, ActionRisk, ActionTargetKind } from "../wire.js";
 import { Denied } from "./denied.js";
 
@@ -179,6 +181,24 @@ export const ACTIONS: Record<string, Definition> = {
         ? { ok: true }
         : { ok: false, why: "gluetun's API key has not been collected — set GLUETUN_API_KEY" },
     run: () => setTunnel("running"),
+  },
+
+  // One direction only, like the failover it mirrors. Pointing the FRITZ!Box
+  // back at AdGuard needs a button press on the box, which no action can do.
+  "dns.bypass": {
+    id: "dns.bypass",
+    label: "Bypass AdGuard",
+    description:
+      "Points the FRITZ!Box back at the provider's DNS: the house resolves without ad blocking until it is switched back. Switching back is done in the FRITZ!Box (Internet › Account Information › DNS Server) and needs its button.",
+    risk: "high",
+    confirm: true,
+    target: "none",
+    replayable: false,
+    available: () =>
+      fritzConfigured()
+        ? { ok: true }
+        : { ok: false, why: "the FRITZ!Box login is not set — FRITZ_USER and FRITZ_PASS in the Environment tab" },
+    run: () => bypassAdguard("bypassed by hand from the hub", "manual"),
   },
 
   "dokploy.redeploy": {

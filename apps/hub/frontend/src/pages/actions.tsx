@@ -2,6 +2,7 @@ import type { ActionCatalog, ActionDef, AuditResponse } from "@wire";
 import { Info, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/actions/action-button";
+import { DnsCard } from "@/components/actions/dns-card";
 import { FieldLabel, TONE_TEXT } from "@/components/primitives";
 import { usePoll } from "@/hooks/use-poll";
 import { fetchActions, fetchAudit } from "@/lib/api";
@@ -51,6 +52,8 @@ export function ActionsPage() {
           can be deployed.
         </span>
       </div>
+
+      <DnsCard tick={tick} />
 
       <section className="space-y-2">
         <FieldLabel>Actions</FieldLabel>

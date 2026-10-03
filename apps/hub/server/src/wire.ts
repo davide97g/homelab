@@ -831,3 +831,32 @@ export type Checks = {
 };
 
 export type CheckContainer = { name: string; image: string; state: string; status: string };
+
+// ——— DNS ———————————————————————————————————————————————————————————————————
+
+/** The house's DNS path: devices -> FRITZ!Box -> AdGuard on the box. See
+ *  server/src/dns/failover.ts for what switches it and when. */
+export type DnsSnapshot = {
+  /** Whether the hub will fail over by itself: DNS_FAILOVER on and a FRITZ!Box
+   *  login present. */
+  auto: boolean;
+  afterSeconds: number;
+  adguard: {
+    /** null until the first probe. */
+    ok: boolean | null;
+    detail: string;
+    checkedAt: string | null;
+    failingSince: string | null;
+  };
+  fritz: {
+    /** custom: forwarding to the servers listed (AdGuard). provider: AdGuard bypassed. */
+    mode: "custom" | "provider" | "unknown";
+    servers: string[];
+    error?: string;
+  };
+  /** Set while the FRITZ!Box is on the provider because the hub put it there. */
+  bypass: { at: string; reason: string; by: "auto" | "manual" } | null;
+  /** The last thing the watcher decided not to do, or could not do. */
+  note?: string;
+  links: { adguard: string; fritz: string };
+};
