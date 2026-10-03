@@ -45,7 +45,11 @@ Set through AdGuard's API on first install. The UI can change them afterwards, a
 - `[/fritz.box/]192.168.15.1`, in case something asks AdGuard for a local name directly.
   **Never** add the FRITZ!Box as a general upstream: the FRITZ!Box already forwards to AdGuard,
   so that would be a DNS loop.
-- Blocklists: AdGuard DNS filter and HaGeZi Multi Pro.
+- Blocklists: AdGuard DNS filter, AdAway Default Blocklist and HaGeZi Multi Pro.
+- Allowlist (custom rules): `@@||analytics.google.com^` and `@@||analytics-alv.google.com^`, its
+  CNAME target. HaGeZi blocks both, which breaks the Google Analytics console. The tracking
+  collector `google-analytics.com` stays blocked. To find which list blocks a name:
+  `curl -u … 'http://127.0.0.1:3053/control/filtering/check_host?name=<host>'` on the box.
 - Blocked answers carry a 10 s TTL, so unblocking something takes effect quickly.
 
 ## FRITZ!Box
