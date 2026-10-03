@@ -144,7 +144,7 @@ export async function resolvePlaybackSource(
     index: s.Index ?? 0,
     label: streamLabel(s),
     language: s.Language ?? undefined,
-    url: `${api.basePath}${s.DeliveryUrl}`,
+    url: `${api.basePath}${asWebVtt(s.DeliveryUrl ?? '')}`,
   }))
 
   const burnedSubtitleIndex = subtitleStreams.some(
@@ -230,6 +230,17 @@ export async function resolvePlaybackSource(
   }
 
   throw new Error('Media source is neither directly playable nor transcodable')
+}
+
+/**
+ * A <track> parses WebVTT and nothing else. The profile keeps SSA/ASS as
+ * External so the server does not burn them in, but then it hands back
+ * Stream.ass, which the browser silently drops: the track shows as selected
+ * and nothing is drawn. The subtitle endpoint converts to whatever extension
+ * it is asked for, so ask for .vtt. Styling and positioning are lost.
+ */
+function asWebVtt(deliveryUrl: string) {
+  return deliveryUrl.replace(/\/Stream\.(ass|ssa|srt|subrip)(?=\?|$)/i, '/Stream.vtt')
 }
 
 function streamLabel(stream: MediaStream) {
