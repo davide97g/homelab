@@ -26,11 +26,17 @@ services:
       - work:/opt/adguardhome/work
     security_opt:
       - no-new-privileges:true
+    # Root, because AdGuard refuses its first launch as anything else ("you must run it
+    # as administrator"), but with two capabilities instead of root's usual set. The
+    # image's conf/ and work/ belong to nobody (65534), so root needs DAC_OVERRIDE to
+    # write there: without it the first deploy crash-looped on "mkdir
+    # /opt/adguardhome/work/data: permission denied". DHCP stays on the FRITZ!Box, so
+    # no NET_RAW.
     cap_drop:
       - ALL
-    # 53 is a privileged port. Nothing else is needed: DHCP stays on the FRITZ!Box.
     cap_add:
       - NET_BIND_SERVICE
+      - DAC_OVERRIDE
 
 volumes:
   conf:
