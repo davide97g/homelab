@@ -90,6 +90,9 @@ export const config = {
    *  file, so it survives a redeploy -- an audit log that a deploy erases is a
    *  log of the last five minutes. */
   auditPath: process.env.AUDIT_PATH ?? "/data/actions.jsonl",
+  /** ~/ops/xfer-nas/control on the box, bind-mounted: the NAS sync's switch and
+   *  the state nas-sync.sh writes. See hosts/debian/nas-sync. */
+  nasSyncDir: process.env.NAS_SYNC_DIR ?? "/nas-sync",
 
   /** The *arr and qBittorrent endpoints the media pages read and the media
    *  actions write to. Every one of these is blank until scripts/collect-env.sh

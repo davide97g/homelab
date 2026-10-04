@@ -1,0 +1,10 @@
+[Unit]
+Description=Copy newly arrived library files to the NAS
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/ops/xfer-nas/nas-sync.sh
+# A 4K remux plus its checksum runs for hours; the flock in the script prevents
+# overlap, so systemd must not cut the run short.
+TimeoutStartSec=infinity

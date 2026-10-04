@@ -5,6 +5,7 @@ import { arrCommand, arrConfigured, dokployDeploy, qbitAll, qbitConfigured } fro
 import { setTunnel, vpnConfigured } from "../media/vpn.js";
 import { bypassAdguard } from "../dns/failover.js";
 import { fritzConfigured } from "../dns/fritz.js";
+import { nasSyncConfigured, setNasSync } from "../nas-sync.js";
 import type { ActionDef, ActionRisk, ActionTargetKind } from "../wire.js";
 import { Denied } from "./denied.js";
 
@@ -49,6 +50,14 @@ const arrAvailable = (app: "radarr" | "sonarr") => () =>
   arrConfigured(app)
     ? ({ ok: true } as const)
     : ({ ok: false, why: `${app}'s API key has not been collected on the box — run scripts/collect-env.sh there` } as const);
+
+const nasSyncAvailable = () =>
+  nasSyncConfigured()
+    ? ({ ok: true } as const)
+    : ({
+        ok: false,
+        why: "nas-sync is not installed on the box, or ~/ops/xfer-nas/control is not mounted — see hosts/debian/nas-sync",
+      } as const);
 
 async function container(target: string, command: "start" | "stop" | "restart"): Promise<string> {
   // Resolved against the live list, so a name the browser invented cannot reach
@@ -199,6 +208,35 @@ export const ACTIONS: Record<string, Definition> = {
         ? { ok: true }
         : { ok: false, why: "the FRITZ!Box login is not set — FRITZ_USER and FRITZ_PASS in the Environment tab" },
     run: () => bypassAdguard("bypassed by hand from the hub", "manual"),
+  },
+
+  // The NAS sync switch, two actions for the same reason as the kill switch:
+  // the card decides which to send from the state it read, so a stale page can
+  // only repeat what is already true. Both just write a file the box's timer
+  // reads, so both are idempotent.
+  "nas-sync.enable": {
+    id: "nas-sync.enable",
+    label: "Turn NAS sync on",
+    description:
+      "Copies library files that arrived after nas-sync was installed to the NAS, one at a time, md5-verified. Files that were already there are never sent. Anything that queued while it was off goes first.",
+    risk: "low",
+    confirm: true,
+    target: "none",
+    replayable: false,
+    available: nasSyncAvailable,
+    run: () => setNasSync(true),
+  },
+  "nas-sync.disable": {
+    id: "nas-sync.disable",
+    label: "Turn NAS sync off",
+    description:
+      "Stops copying to the NAS. A copy in progress stops within seconds and resumes from the same byte when sync is turned back on. New files keep queueing.",
+    risk: "low",
+    confirm: true,
+    target: "none",
+    replayable: false,
+    available: nasSyncAvailable,
+    run: () => setNasSync(false),
   },
 
   "dokploy.redeploy": {

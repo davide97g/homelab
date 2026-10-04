@@ -31,13 +31,15 @@ There are two Jellyfins now, on two ports, and only one of them runs here.
 was retired — same users, same watch state, same two libraries on `/data/library/{movies,tv}`.
 It exists because the NAS had ~45 GB free against a 543 GB library, so `xfer-nas-auto.timer`
 was turned off and most finished downloads are readable only on this box. The NAS has had
-11 TB since 2026-10-01, but the timer is still off: copies are sent by hand for now. `debian:8898` is Cinema's web
+11 TB since 2026-10-01. Since 2026-10-04 `nas-sync` copies newly arrived files, behind a switch
+on the hub ([hosts/debian/nas-sync](../../hosts/debian/nas-sync/README.md)); the older library is
+sent by hand. `debian:8898` is Cinema's web
 client pointed at it, the same image `cinema.davideghiotto.it` serves, built from
 `~/cinema/services/web` with a `.env` naming `http://172.17.0.1:8097`.
 
 Nothing was repointed onto it: Jellyseerr, hub, mediarr-dash and jarvis all still mean the NAS
-when they say `8096`. The only one is on the NAS, and `~/ops/xfer-nas/xfer-nas-auto.sh` copies each
-finished folder to it; `debian:8096` is `jellyfin-proxy`, which forwards to
+when they say `8096`. The only one is on the NAS, and `~/ops/xfer-nas/nas-sync.sh` copies each
+newly arrived file to it; `debian:8096` is `jellyfin-proxy`, which forwards to
 `http://${NAS_TAILNET_IP}:8899` and rewrites one header on the way. The NAS runs Jellyfin 12, which
 dropped the Emby-era `X-Emby-Authorization` that Jellyseerr still sends and answers 401 to it —
 so without the shim Jellyseerr cannot reach that server at all.
@@ -226,8 +228,8 @@ videos; nothing else does.
 
 The Jellyfin that serves it is on the **NAS**, which is not on this LAN — it advertises a
 192.168.15.x address but sits on another network, reachable only over Tailscale. So the library
-is *copied* rather than mounted: `~/ops/xfer-nas/xfer-nas-auto.sh`, on a ten-minute user timer, hands every
-new folder to `~/ops/xfer-nas/xfer-nas.sh`, which copies it resumably and verifies it by md5, then the NAS
+is *copied* rather than mounted: `~/ops/xfer-nas/nas-sync.sh`, on a two-minute user timer and behind a
+switch on the hub, copies every newly arrived file resumably and verifies it by md5, then the NAS
 Jellyfin picks it up from `/volume1/media/{Movies,tv}`. Nothing is deleted from this box, but a
 finished download does not seed: since 2026-09-27 qBittorrent stops every torrent the moment it
 completes (`max_ratio` 0 and `max_seeding_time` 0, action Stop, set over the WebUI API). The
@@ -261,8 +263,8 @@ rather than overfilling it.
        docker exec $s sh -c "grep -o \"<ApiKey>[^<]*\" /config/config.xml | cut -d\> -f2"; done'
      ```
    - Tick **Enable Scan** on each, so Jellyseerr flips a request to *Available* once Jellyfin
-     reports the file. Note that this now happens only after `xfer-nas-auto` has copied the
-     folder to the NAS — a finished download is *Processing* until then, not *Available*.
+     reports the file. Note that this now happens only after `nas-sync` has copied the
+     file to the NAS — a finished download is *Processing* until then, not *Available*.
 
 ## Not through Dokploy
 

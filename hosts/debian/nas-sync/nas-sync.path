@@ -1,0 +1,11 @@
+[Unit]
+Description=Run nas-sync the moment the hub flips its switch
+
+[Path]
+# The hub replaces this file by rename. Turning it off needs no run: the copy in
+# progress polls the file and stops on its own.
+PathChanged=%h/ops/xfer-nas/control/enabled
+Unit=nas-sync.service
+
+[Install]
+WantedBy=paths.target

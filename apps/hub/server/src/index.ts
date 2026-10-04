@@ -11,6 +11,7 @@ import { checkBearer, checkPassword, cookieHeader, issue, readCookie, verify } f
 import { checks } from "./collect/checks.js";
 import { containers } from "./collect/containers.js";
 import { dnsSnapshot, startDnsWatcher } from "./dns/failover.js";
+import { nasSyncSnapshot } from "./nas-sync.js";
 import { nasDetail } from "./collect/nas.js";
 import { storageSummary } from "./collect/storage.js";
 import { summary } from "./collect/summary.js";
@@ -214,6 +215,13 @@ app.get("/api/series/stream", (c) => {
 /** The house's DNS path and the failover's state. Reads the FRITZ!Box at most
  *  once a minute, on one reused session. */
 app.get("/api/dns", async (c) => c.json(await dnsSnapshot()));
+
+/** The NAS sync switch and what nas-sync.sh on the box last wrote: the file in
+ *  flight, the queue, the recent outcomes. Read from the mounted control dir. */
+app.get("/api/nas-sync", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await nasSyncSnapshot());
+});
 
 /** Every container on both machines. Docker's list for the mini PC -- which is
  *  the only way a *stopped* container is visible at all -- and cAdvisor's

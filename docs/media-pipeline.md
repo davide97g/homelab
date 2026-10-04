@@ -61,9 +61,10 @@ same subnet. Mini PC to NAS over `192.168.15.x` is `No route to host`; Tailscale
 (`${NAS_TAILNET_IP}`) is the only path. Everything that crosses between the boxes goes through the
 `nas` SSH alias or that address.
 
-So the library is **copied, not mounted**: `~/ops/xfer-nas/xfer-nas-auto.sh` on a ten-minute user timer hands
-each new folder to `~/ops/xfer-nas/xfer-nas.sh`, which sends it resumably and verifies it by md5 into
-`/volume1/media/{Movies,tv}` (the NAS was rebuilt on 2026-10-01; `/volume1/test` is gone). Nothing is deleted on the mini PC; the finished download stays
+So the library is **copied, not mounted**: since 2026-10-04 `~/ops/xfer-nas/nas-sync.sh`
+([hosts/debian/nas-sync](../hosts/debian/nas-sync/README.md)) copies each *newly arrived* file,
+resumably and md5-verified, into `/volume1/media/{Movies,tv}`, switched on and off from the hub's
+Actions page; files already in the library on that day are never sent automatically (the NAS was rebuilt on 2026-10-01; `/volume1/test` is gone). Nothing is deleted on the mini PC; the finished download stays
 there, stopped rather than seeding, while it plays from the NAS. The practical consequence: a request is *Processing*
 from the moment it imports until the copy lands, not *Available*.
 

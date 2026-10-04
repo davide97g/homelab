@@ -3,6 +3,7 @@ import { Info, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/actions/action-button";
 import { DnsCard } from "@/components/actions/dns-card";
+import { NasSyncCard } from "@/components/actions/nas-sync-card";
 import { FieldLabel, TONE_TEXT } from "@/components/primitives";
 import { usePoll } from "@/hooks/use-poll";
 import { fetchActions, fetchAudit } from "@/lib/api";
@@ -39,7 +40,8 @@ export function ActionsPage() {
   }, [tick]);
 
   const containerActions = catalog?.actions.filter((a) => a.target === "container") ?? [];
-  const other = catalog?.actions.filter((a) => a.target !== "container") ?? [];
+  // The NAS sync pair is driven by the switch on its own card.
+  const other = catalog?.actions.filter((a) => a.target !== "container" && !a.id.startsWith("nas-sync.")) ?? [];
 
   return (
     <div className="space-y-5">
@@ -54,6 +56,8 @@ export function ActionsPage() {
       </div>
 
       <DnsCard tick={tick} />
+
+      <NasSyncCard onChanged={() => setTick((n) => n + 1)} />
 
       <section className="space-y-2">
         <FieldLabel>Actions</FieldLabel>

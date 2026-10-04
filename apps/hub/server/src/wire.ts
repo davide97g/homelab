@@ -860,3 +860,35 @@ export type DnsSnapshot = {
   note?: string;
   links: { adguard: string; fritz: string };
 };
+
+// ——— NAS sync ——————————————————————————————————————————————————————————————
+
+/** New library files copied to the NAS by nas-sync.sh on the box
+ *  (hosts/debian/nas-sync). Files present when it was set up are never sent. */
+export type NasSyncSnapshot = {
+  /** False when the control directory is not mounted or nas-sync never ran. */
+  configured: boolean;
+  enabled: boolean;
+  /** The last run of the script: when, and what it said. */
+  lastRun: { at: string; note: string } | null;
+  /** True when the last run is older than the timer allows (~2 min). */
+  stale: boolean;
+  current: {
+    file: string;
+    phase: "send" | "verify";
+    bytes: number;
+    total: number;
+    startedAt: string;
+    /** "12.3 GB of 56.0 GB" */
+    display: string;
+  } | null;
+  /** Waiting, smallest first, excluding the file in `current`. */
+  queue: { file: string; bytes: number; size: string; settling: boolean }[];
+  queueSize: string;
+  recent: { at: string; outcome: "done" | "failed" | "paused" | "full"; file: string; message: string }[];
+  baselineCount: number;
+  doneCount: number;
+  /** "10.9 TB", or null before the first run that reached the NAS. */
+  nasFree: string | null;
+  error?: string;
+};

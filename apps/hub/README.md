@@ -181,6 +181,19 @@ and warns while it is bypassed.
 Environment: `FRITZ_USER` and `FRITZ_PASS` (from `~/.config/homelab/fritzbox-hub.env` on the box),
 optionally `FRITZ_URL` (default `http://fritz.box`), `DNS_FAILOVER=off`, `DNS_FAILOVER_AFTER_S`.
 
+## The NAS sync switch
+
+The **NAS sync** card on the Actions page turns `nas-sync.sh` on the box on and off
+([hosts/debian/nas-sync](../../hosts/debian/nas-sync/README.md)): newly arrived library files are
+copied to the NAS one at a time; files present when it was installed never are. Two actions,
+`nas-sync.enable` and `nas-sync.disable`, through the dispatcher like every other write.
+
+They only replace one file, `/nas-sync/enabled`, a bind mount of `~/ops/xfer-nas/control` on the
+box. A user `.path` unit starts the script the moment it changes; a copy in progress reads it every
+two seconds and stops when it says `off`, resuming from the same byte later. `server/src/nas-sync.ts`
+reads the rest of that directory for `/api/nas-sync`: the file in flight, the queue, the recent
+outcomes, NAS free space. `NAS_SYNC_HOST_DIR` overrides the host path.
+
 ## Asking for a chart
 
 ⌘K, or the sparkle in the top bar, opens a composer at the bottom of the screen:

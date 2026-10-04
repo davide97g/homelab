@@ -11,6 +11,7 @@ import type {
   LogsResponse,
   MediaPipeline,
   NasDetail,
+  NasSyncSnapshot,
   Range,
   SeriesFrame,
   SeriesResponse,
@@ -196,6 +197,10 @@ export function fetchContainers(signal?: AbortSignal): Promise<ContainersRespons
 /** The house's DNS path: AdGuard's last probe and where the FRITZ!Box points. */
 export function fetchDns(signal?: AbortSignal): Promise<DnsSnapshot> {
   return fetch("/api/dns", { ...same, signal }).then((r) => json<DnsSnapshot>(r));
+}
+
+export function fetchNasSync(signal?: AbortSignal): Promise<NasSyncSnapshot> {
+  return fetch("/api/nas-sync", { ...same, signal }).then((r) => json<NasSyncSnapshot>(r));
 }
 
 export function fetchActions(signal?: AbortSignal): Promise<ActionCatalog> {

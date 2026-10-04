@@ -44,6 +44,12 @@ services:
       # inside the source tree: deploy.py clears the directories it owns on every
       # sync, and an audit log a deploy erases is a log of the last five minutes.
       - hub-data:/data
+      # The NAS sync's switch and state (hosts/debian/nas-sync). A bind of the
+      # directory, not of the `enabled` file: the switch is replaced by rename,
+      # and a single-file bind would keep pointing at the old inode. install.sh
+      # creates it as davide (uid 1000, the same as `node` here) -- if Docker
+      # gets there first it makes it root-owned and neither side can write.
+      - ${NAS_SYNC_HOST_DIR:-/home/davide/ops/xfer-nas/control}:/nas-sync
     networks:
       - monitoring
       - docker-proxy
