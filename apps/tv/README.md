@@ -80,6 +80,25 @@ installed.
 adb connect 192.168.15.106:5555      # then accept the RSA prompt on the TV
 ```
 
+Three things that cost an evening on 2026-10-08, re-enabling it after a reboot:
+
+- **The network-debugging switch is not listed until USB debugging is on.** Turn on *Debug USB*
+  first and it appears below it. It is plain ADB on port 5555 — not Android 11's "Debug
+  wireless" with pairing codes. `nc -vz -G2 192.168.15.106 5555` says when it took.
+- **When JARVIS cannot open Settings, JointSpace can**, from any LAN machine (grep the creds
+  out of `.env` rather than sourcing it — one value there has an unquoted space):
+
+  ```sh
+  eval "$(grep -E '^JOINTSPACE_(ID|KEY)=' .env)"
+  curl -k --digest -u "$JOINTSPACE_ID:$JOINTSPACE_KEY" -X POST -H 'Content-Type: application/json' \
+    -d '{"intent":{"action":"android.settings.SETTINGS","component":{"packageName":"com.android.tv.settings","className":"com.android.tv.settings.MainSettings"}}}' \
+    https://192.168.15.106:1926/6/activities/launch
+  ```
+- **`No route to host` while `nc` succeeds is the Mac, not the TV.** An app without macOS
+  Local Network permission (Orca, here) gets that for every LAN address, and the adb *server*
+  it starts keeps failing for every later `adb` client too. `adb kill-server` from Terminal.app,
+  then connect again.
+
 ## Building and installing the launcher
 
 One script does everything: build, connect over ADB, install.
