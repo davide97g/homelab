@@ -5,7 +5,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const toggleVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 rounded-[calc(var(--radius)-0.75rem)] text-[11px] font-medium whitespace-nowrap transition-[color,background-color,box-shadow,transform] duration-150 outline-none focus-visible:ring-ring/60 focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-[color,background-color,box-shadow,transform] duration-150 outline-none focus-visible:ring-ring/60 focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -22,7 +22,7 @@ const toggleVariants = cva(
         // the most-tapped things on its page -- the range picker, the log
         // levels, the container scope -- so on a phone they grow to 44 and shrink
         // back from `sm` up, where the pointer is precise and the row is tight.
-        default: "h-11 px-3 sm:h-[26px] sm:px-2.5",
+        default: "h-11 px-3 sm:h-7 sm:px-3",
       },
     },
     defaultVariants: { variant: "segment", size: "default" },

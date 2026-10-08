@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Logo } from "@/components/shell/logo";
 import { cn } from "@/lib/utils";
 
 /** A stretch of telemetry, drawn once and reused.
@@ -88,7 +89,7 @@ export function Booting({ label }: { label: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-5 px-6">
       <div className="flex items-center gap-2.5">
-        <span className="bg-primary size-2.5 rounded-full" aria-hidden />
+        <Logo />
         <span className="text-[15px] font-semibold tracking-tight">homelab hub</span>
       </div>
 

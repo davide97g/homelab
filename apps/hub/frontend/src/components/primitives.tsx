@@ -82,7 +82,9 @@ export function MiniBar({ value, tone = "accent", className }: { value: number; 
 
 export function FieldLabel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn("text-muted-foreground text-[9.5px] font-medium tracking-[0.14em] uppercase", className)}>
+    // Sentence case from the first letter, whatever case the label was written
+    // in: most were written lowercase for the small-caps look this replaced.
+    <span className={cn("text-muted-foreground inline-block text-xs font-medium first-letter:uppercase", className)}>
       {children}
     </span>
   );
@@ -339,7 +341,7 @@ export function Segmented<T extends string>({
       {indicator && (
         <span
           aria-hidden
-          className="bg-chip absolute top-0.5 bottom-0.5 rounded-[calc(var(--radius)-0.75rem)] shadow-sm transition-[left,width] duration-200 ease-out motion-reduce:transition-none"
+          className="bg-chip absolute top-1 bottom-1 rounded-md shadow-sm transition-[left,width] duration-300 ease-(--ease-out-expo) motion-reduce:transition-none"
           style={{ left: indicator.left, width: indicator.width }}
         />
       )}
@@ -393,5 +395,30 @@ export function Toggles<T extends string>({
         );
       })}
     </ToggleGroup>
+  );
+}
+
+/** A card's heading, autocratico's: a title that reads as a sentence, a muted
+ *  line under it saying what the card is measured over, and an optional
+ *  control or figure on the right. */
+export function CardHeading({
+  title,
+  subtitle,
+  action,
+  className,
+}: {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex items-start justify-between gap-3", className)}>
+      <div className="min-w-0">
+        <h2 className="truncate text-lg font-medium tracking-tight">{title}</h2>
+        {subtitle && <p className="text-muted-foreground truncate text-sm">{subtitle}</p>}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
   );
 }

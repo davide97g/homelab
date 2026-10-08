@@ -21,7 +21,7 @@ function ToggleGroup({
     <ToggleGroupPrimitive.Root
       data-slot="toggle-group"
       data-variant={variant}
-      className={cn("neu-inset relative flex w-fit items-center gap-0.5 p-0.5", className)}
+      className={cn("neu-inset relative flex w-fit items-center gap-0.5 rounded-lg p-1", className)}
       {...props}
     >
       <ToggleGroupContext.Provider value={{ variant, size }}>{children}</ToggleGroupContext.Provider>

@@ -9,17 +9,17 @@ import { cn } from "@/lib/utils";
  *  gets the hero treatment. */
 export function HostCard({ host, to }: { host: HostSummary; to?: string }) {
   return (
-    <div className="neu flex flex-col gap-3 p-4">
+    <div className="neu flex flex-col gap-4 p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <StatusDot status={host.status} />
-            <span className="text-sm font-semibold">{host.name}</span>
+            <span className="text-lg font-medium tracking-tight">{host.name}</span>
             <span className={cn("text-[11px]", TONE_TEXT[host.status === "up" ? "good" : host.status === "warn" ? "warn" : "bad"])}>
               {STATUS_LABEL[host.status]}
             </span>
           </div>
-          <p className="text-muted-foreground mt-0.5 truncate text-[11px]" title={host.role}>
+          <p className="text-muted-foreground mt-0.5 truncate text-sm" title={host.role}>
             {host.role}
           </p>
         </div>
@@ -27,7 +27,7 @@ export function HostCard({ host, to }: { host: HostSummary; to?: string }) {
           <Link
             to={to}
             aria-label={`Open ${host.name}`}
-            className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+            className="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-md transition-transform hover:scale-105 active:scale-95"
           >
             <ArrowUpRight className="size-4" />
           </Link>

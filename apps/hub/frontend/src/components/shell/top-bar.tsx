@@ -1,7 +1,8 @@
 import type { Summary } from "@wire";
-import { LogOut, RefreshCw, Sparkles } from "lucide-react";
-import { useLocation } from "react-router-dom";
-import { StatusDot } from "@/components/primitives";
+import { Activity, LogOut, RefreshCw, Sparkles } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { StatusDot, STATUS_LABEL } from "@/components/primitives";
+import { activeRoute } from "@/components/shell/sidebar";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { Trace } from "@/components/shell/trace";
 import { Button } from "@/components/ui/button";
@@ -9,18 +10,35 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { refreshAll, useRefreshing } from "@/lib/activity";
 import { shortTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { activeRoute } from "@/components/shell/sidebar";
+
+/** The controls on the right are card-coloured tiles on the grey page, 44px
+ *  everywhere -- a comfortable thumb target and, on a desk, the same size as
+ *  the status pill beside them so the row reads as one strip. */
+const TILE = "size-11 rounded-lg border-transparent bg-card shadow-none hover:bg-card/70";
+
+/** One line for both machines: which of them is not fine, or that both are. */
+function estateLine(data: Summary): { text: string; worst: Summary["hosts"]["homelab"]["status"] } {
+  const hosts = [data.hosts.homelab, data.hosts.nas];
+  const order = ["down", "warn", "unconfigured", "up"] as const;
+  const worst = order.find((s) => hosts.some((h) => h.status === s)) ?? "up";
+  if (worst === "up") return { text: "Both machines healthy", worst };
+  const named = hosts.filter((h) => h.status === worst).map((h) => h.name);
+  return { text: `${named.join(" and ")} ${STATUS_LABEL[worst]}`, worst };
+}
 
 export function TopBar({
   data,
   refreshedAt,
   loading,
+  stuck,
   onSignOut,
   onAsk,
 }: {
   data: Summary | null;
   refreshedAt: number | null;
   loading: boolean;
+  /** The page has scrolled under the bar: it turns to glass. */
+  stuck: boolean;
   onSignOut: () => void;
   onAsk: () => void;
 }) {
@@ -28,88 +46,119 @@ export function TopBar({
   const route = activeRoute(pathname);
   const refreshing = useRefreshing();
   const firing = data?.alerts.filter((a) => a.state === "firing") ?? [];
+  const estate = data ? estateLine(data) : null;
+  const read = refreshedAt ? shortTime(new Date(refreshedAt).toISOString()) : null;
+  const title = route?.label ?? "Overview";
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 px-4 sm:gap-3 sm:px-6">
-      <h1 className="shrink-0 text-[15px] font-semibold tracking-tight">{route?.label ?? "Overview"}</h1>
+    <header
+      data-stuck={stuck || undefined}
+      className={cn(
+        "topbar relative z-20 flex shrink-0 items-center gap-2 sm:gap-3 transition-[background-color,box-shadow] duration-300",
+        "px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 lg:mx-3 lg:mt-3 lg:rounded-xl lg:px-3 lg:pt-3 lg:pb-3",
+      )}
+    >
+      <div className="mr-auto flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          {/* Phones: the status pill does not fit, so its essentials ride above the title. */}
+          {estate && (
+            <span className="text-muted-foreground flex items-center gap-2 text-xs sm:hidden">
+              <StatusDot status={estate.worst} className="size-2" />
+              <span className="truncate">{estate.text}</span>
+            </span>
+          )}
+          <h1
+            key={title}
+            className="animate-in fade-in-0 slide-in-from-bottom-1 truncate text-2xl font-medium tracking-tight duration-300 sm:text-3xl lg:text-4xl"
+          >
+            {title}
+          </h1>
+        </div>
+      </div>
 
-      {/* The header's dead space, put to work. Sitting beside the timestamp and
-          the button that triggers it is the whole reason it reads as this page
-          being re-read rather than as an ornament. */}
-      <div className="hidden min-w-0 flex-1 px-4 md:block">
+      {/* The header's dead space, put to work: the sweep runs while the page is
+          being re-read, beside the timestamp and the button that triggers it. */}
+      <div className="hidden min-w-24 flex-1 px-2 xl:block">
         <Trace active={refreshing} height={24} />
       </div>
 
-      {/* `icon-sm` is 28px, which is a comfortable mouse target and an
-          uncomfortable thumb one. The three controls grow to 44 on touch and the
-          row tightens its gaps to pay for it. */}
-      <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
-        {data && (
-          <div className="hidden items-center gap-3 sm:flex">
-            {(["homelab", "nas"] as const).map((id) => (
-              <span key={id} className="flex items-center gap-1.5 text-xs">
-                <StatusDot status={data.hosts[id].status} />
-                <span className="text-muted-foreground">{data.hosts[id].name}</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {firing.length > 0 && (
-          <span className="bg-tone-bad/12 text-tone-bad rounded-full px-2.5 py-1 text-[11px] font-medium">
-            {firing.length} firing
+      {estate && (
+        <Link
+          to="/overview"
+          className="bg-card hover:bg-card/70 hidden h-11 items-center gap-3 rounded-lg py-1 pr-4 pl-1 transition-colors sm:flex"
+        >
+          <span className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-md">
+            <Activity className="size-4" />
           </span>
-        )}
+          <span className="flex flex-col text-xs leading-tight">
+            <span className="font-medium">{estate.text}</span>
+            <span className="text-muted-foreground tnum">
+              {data?.stale ? "stale · " : ""}read {read ?? "—"}
+            </span>
+          </span>
+          <StatusDot status={estate.worst} />
+        </Link>
+      )}
 
-        {data?.stale && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="bg-tone-warn/15 text-tone-warn rounded-full px-2.5 py-1 text-[11px] font-medium">
-                stale
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>A source missed its budget; showing the last good numbers.</TooltipContent>
-          </Tooltip>
-        )}
+      {firing.length > 0 && (
+        <Link
+          to="/overview"
+          aria-label={`${firing.length} alerts firing`}
+          className="bg-card text-tone-bad pop flex h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-medium"
+        >
+          <span className="bg-tone-bad size-2 rounded-full" />
+          <span>
+            {firing.length}
+            <span className="hidden sm:inline"> firing</span>
+          </span>
+        </Link>
+      )}
 
-        <span className="text-muted-foreground tnum hidden text-[11px] sm:inline">
-          {refreshedAt ? shortTime(new Date(refreshedAt).toISOString()) : "—"}
-        </span>
-
-        {/* First of the controls, and the only one that is not grey: it is the
-            one thing here that does something the page cannot already do. */}
+      <div className="flex shrink-0 items-center gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-primary size-11 sm:size-7"
-              aria-label="Ask for a chart"
-              onClick={onAsk}
-            >
-              <Sparkles className="size-4" />
+            <Button size="icon-lg" className="size-11 rounded-lg" aria-label="Ask for a chart" onClick={onAsk}>
+              <Sparkles className="transition-transform duration-300 group-hover/button:scale-110" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Ask for a chart — ⌘K</TooltipContent>
         </Tooltip>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="size-11 sm:size-7"
-          aria-label="Refresh now"
-          aria-busy={refreshing}
-          disabled={refreshing}
-          onClick={() => void refreshAll()}
-        >
-          <RefreshCw
-            className={cn("size-4 transition-colors", (loading || refreshing) && "animate-spin", refreshing && "text-primary")}
-          />
-        </Button>
-        <ThemeToggle />
-        <Button variant="ghost" size="icon-sm" className="size-11 sm:size-7" aria-label="Sign out" onClick={onSignOut}>
-          <LogOut className="size-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-lg"
+              className={TILE}
+              aria-label="Refresh now"
+              aria-busy={refreshing}
+              disabled={refreshing}
+              onClick={() => void refreshAll()}
+            >
+              <RefreshCw className={cn("transition-colors", (loading || refreshing) && "animate-spin")} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Refresh now{read ? ` · last read ${read}` : ""}</TooltipContent>
+        </Tooltip>
+
+        <ThemeToggle className={TILE} />
+
+        {/* On a phone sign-out lives in the More sheet; it is the least
+            reached-for control and the row has no room to spare. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-lg"
+              className={cn(TILE, "hidden lg:inline-flex")}
+              aria-label="Sign out"
+              onClick={onSignOut}
+            >
+              <LogOut />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Sign out</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );

@@ -155,7 +155,7 @@ export function AtlasPage({ data }: { data: Summary }) {
 
       {firing.length > 0 && (
         <div className="shrink-0">
-          <AlertStrip alerts={data.alerts} />
+          <AlertStrip alerts={data.alerts} limit={3} />
         </div>
       )}
     </div>

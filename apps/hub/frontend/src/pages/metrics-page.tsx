@@ -61,7 +61,7 @@ export function MetricsPage({
           // Only the full metric pages pin their controls. On the NAS page this
           // grid is one section among several and a floating range picker would
           // be sticking to someone else's heading.
-          paired && "bg-background/88 sticky top-0 z-20 -mx-4 px-4 pt-1 backdrop-blur sm:-mx-6 sm:px-6",
+          paired && "bg-background/72 sticky top-0 z-20 -mx-2 rounded-xl px-2 py-2 backdrop-blur-xl backdrop-saturate-150",
         )}
       >
         <div className="flex flex-wrap items-center gap-3">

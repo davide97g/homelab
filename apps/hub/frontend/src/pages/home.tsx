@@ -1,11 +1,11 @@
 import type { Summary } from "@wire";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Zap } from "lucide-react";
 import { AlertStrip } from "@/components/cards/alert-strip";
 import { ContainerTile } from "@/components/cards/container-tile";
 import { HostCard } from "@/components/cards/host-card";
 import { MetricCard } from "@/components/cards/metric-card";
 import { MachineHero } from "@/components/hero/machine-hero";
-import { ArcGauge, FieldLabel } from "@/components/primitives";
+import { ArcGauge, CardHeading, FieldLabel, StatusDot } from "@/components/primitives";
 import { useCompact, useShortViewport } from "@/hooks/use-media-query";
 
 /** The mini PC is the hero and the NAS is a card, because that is the actual
@@ -25,70 +25,90 @@ export function HomePage({ data }: { data: Summary }) {
     .filter((m): m is NonNullable<typeof m> => m !== undefined);
 
   return (
-    <div className="space-y-5">
-      <section className="hero-glow grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        {/* Side by side from the first pixel rather than stacked below `sm`. The
-            hero and the dial stacked are ~520px of picture, which on a phone is
-            the entire first screen and pushes every number below the fold --
-            and the numbers are why the page was opened. Shoulder to shoulder
-            they are ~190px and the four headline metrics land above it. */}
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:gap-5">
-          <MachineHero machine="homelab" hotspots={box.hotspots} className="mx-auto max-w-[150px] sm:max-w-[420px] [@media(max-height:560px)]:max-w-[200px]" />
+    <div className="space-y-4">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* The machine, in a card of its own. Hero and featured numbers side by
+            side from `sm` up; on a phone the four numbers come first and the
+            picture under them, because the numbers are why the page was opened. */}
+        <div className="neu hero-glow flex flex-col gap-4 overflow-hidden p-5 sm:p-6">
+          <CardHeading
+            title={
+              <span className="flex items-center gap-2">
+                <StatusDot status={box.status} />
+                {box.name}
+              </span>
+            }
+            subtitle={box.role}
+          />
+          <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,240px)]">
+            <MachineHero
+              machine="homelab"
+              hotspots={box.hotspots}
+              className="mx-auto max-w-[200px] sm:max-w-[420px] [@media(max-height:560px)]:max-w-[200px]"
+            />
+            <div className="order-first grid grid-cols-2 gap-x-4 gap-y-5 sm:order-none sm:grid-cols-1">
+              {featured.map((m, i) => (
+                <div key={m.id} className="rise-in" style={{ "--i": i } as React.CSSProperties}>
+                  <MetricCard metric={m} surface="bare" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
+        {/* The black island: the one number this box is judged on. */}
+        <div className="ink relative flex flex-col overflow-hidden rounded-xl p-5 sm:p-6">
+          <span className="chrome-orb absolute -top-8 -right-8 size-28 opacity-90" aria-hidden />
+          <div className="relative flex items-center gap-2 text-sm font-medium">
+            <Zap className="size-4" />
+            Wall power
+            {power.wallW !== null && power.wallW > 45 && (
+              <span className="bg-tone-warn/20 text-tone-warn ml-auto rounded-full px-2 py-0.5 text-xs">high</span>
+            )}
+          </div>
           <ArcGauge
             value={power.wallW}
             max={60}
-            label="wall power"
-            caption={power.source === "plug" ? "measured at the plug" : "modelled — plug unreachable"}
+            label={power.source === "plug" ? "measured at the plug" : "modelled — plug unreachable"}
             tone={power.wallW !== null && power.wallW > 45 ? "warn" : "accent"}
             sweep={270}
-            size={compact ? 156 : short ? 150 : 196}
-            className="mx-auto"
+            size={compact ? 168 : short ? 150 : 196}
+            className="relative mx-auto my-auto py-4"
           >
-            <span className="tnum text-[28px] leading-none font-semibold sm:text-[34px]">
+            <span className="tnum text-[34px] leading-none font-medium tracking-tight sm:text-[40px]">
               {power.wallW === null ? "—" : `${power.wallW.toFixed(0)}`}
             </span>
             <span className="text-muted-foreground text-xs">watts</span>
           </ArcGauge>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-          {featured.map((m) => (
-            <MetricCard key={m.id} metric={m} />
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        <div className="neu flex flex-col justify-between gap-3 p-4">
-          <FieldLabel>Energy</FieldLabel>
-          <div className="grid gap-2">
-            <Figure label="per day" value={power.kwhPerDay === null ? "—" : `${power.kwhPerDay.toFixed(2)} kWh`} />
-            <Figure
-              label="per month"
+          <div className="relative grid grid-cols-3 gap-3 border-t pt-4">
+            <Stat label="Per day" value={power.kwhPerDay === null ? "—" : `${power.kwhPerDay.toFixed(2)} kWh`} />
+            <Stat
+              label="Per month"
               value={power.eurPerMonth === null ? "—" : `€${power.eurPerMonth.toFixed(2)}`}
               hint={`at €${power.costPerKwh.toFixed(2)}/kWh`}
             />
-            <Figure
-              label="APU package"
+            <Stat
+              label="APU"
               value={power.packageW === null ? "—" : `${power.packageW.toFixed(1)} W`}
-              hint="CPU and iGPU rail, averaged"
+              hint="CPU + iGPU rail"
             />
           </div>
         </div>
+      </section>
 
+      <section className="grid gap-4 md:grid-cols-2">
         <ContainerTile containers={data.containers} />
         <HostCard host={nas} to="/nas" />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="space-y-2">
-          <FieldLabel>Alerts</FieldLabel>
+          <FieldLabel className="px-1">Alerts</FieldLabel>
           <AlertStrip alerts={data.alerts} />
         </div>
 
         <div className="space-y-2">
-          <FieldLabel>Elsewhere</FieldLabel>
+          <FieldLabel className="px-1">Elsewhere</FieldLabel>
           <div className="neu grid gap-1 p-2">
             {(
               [
@@ -105,10 +125,10 @@ export function HomePage({ data }: { data: Summary }) {
                   href={href}
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:bg-muted flex items-center justify-between rounded-[10px] px-3 py-2 text-sm transition-colors"
+                  className="hover:bg-muted group/link flex h-11 items-center justify-between rounded-lg px-3 text-sm font-medium transition-colors"
                 >
                   {label}
-                  <ArrowUpRight className="text-muted-foreground size-3.5" />
+                  <ArrowUpRight className="text-muted-foreground size-4 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
                 </a>
               ))}
           </div>
@@ -118,14 +138,12 @@ export function HomePage({ data }: { data: Summary }) {
   );
 }
 
-function Figure({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <div className="min-w-0">
-        <div className="text-[12px]">{label}</div>
-        {hint && <div className="text-muted-foreground text-[10px]">{hint}</div>}
-      </div>
-      <span className="tnum shrink-0 text-[15px] font-semibold">{value}</span>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-muted-foreground truncate text-xs">{label}</span>
+      <span className="tnum truncate font-mono text-sm font-medium">{value}</span>
+      {hint && <span className="text-muted-foreground/80 truncate text-[11px]">{hint}</span>}
     </div>
   );
 }

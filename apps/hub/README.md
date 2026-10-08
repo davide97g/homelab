@@ -383,15 +383,26 @@ difference, so a metric page is two aligned columns rather than a toggle between
 them. Clicking a column header drops the other, gives this one the full width and
 stops querying Prometheus about the machine you are not looking at.
 
+**The look is autocratico's.** The paperwork register on the same box set the
+visual language and the hub follows it, so the two read as a pair: a grey studio
+backdrop, flat white cards with no shadow (`.neu` — the name is historical),
+Geist, black for the selected or primary thing and never for a state, colour
+kept for health tones only, and one black "ink" card per page at most (the wall
+power dial on `/overview`). The shell is the same too: a floating sidebar card
+with grouped sections and a sliding black pill from `lg` up, a floating tab bar
+with a **More** sheet below it, a large page title, and card-coloured 44px tiles
+for the controls. If autocratico's tokens move, `index.css` here is the copy.
+
 **A phone is a first-class reader, not a narrow desktop.** The palette note in
 `index.css` says the box gets looked at from a phone in a dark room as often as
 from a desk, and the layout now means it. Four things follow from that and none
 of them should be undone by a "just make it fit" edit later:
 
-- **The numbers come before the picture.** On `/overview` and `/nas` the machine
-  and its dial sit shoulder to shoulder below `sm` rather than stacked. Stacked
-  they are ~520px of hero, which is a whole phone screen, and every figure on
-  the page starts below the fold — on a page whose entire job is the figures.
+- **The numbers come before the picture.** On `/overview` the four headline
+  figures sit above the machine below `sm`, and on `/nas` the machine and its
+  dial sit shoulder to shoulder rather than stacked. Hero first is ~520px of
+  picture, which is a whole phone screen, and every figure on the page starts
+  below the fold — on a page whose entire job is the figures.
 - **Two lists stop being tables.** A containers row and a log line are both
   three columns whose right-hand column is a fixed ~270px and ~200px; at 390px
   that left the container's *name* about two characters wide and the log message
@@ -403,7 +414,7 @@ of them should be undone by a "just make it fit" edit later:
 - **`dvh`, never `vh`, and `env(safe-area-inset-*)` on the shell.** `vh` is the
   *large* viewport on mobile Safari, so a `62vh` pane is taller than the space it
   was given; and without `viewport-fit=cover` in `index.html` the insets are all
-  zero and the rail runs under the notch.
+  zero and the tab bar sits on the home indicator.
 
 The one interaction that changes shape rather than size: the log filter strip is
 six fields, which is a strip on a desktop and most of a phone screen before a

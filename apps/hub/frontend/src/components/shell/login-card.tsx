@@ -1,4 +1,6 @@
+import { LockKeyhole } from "lucide-react";
 import { useState } from "react";
+import { Logo } from "@/components/shell/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,15 +27,23 @@ export function LoginCard({ onAuthed }: { onAuthed: () => void }) {
   }
 
   return (
-    <div className="hero-glow flex h-full items-center justify-center p-6">
-      <form onSubmit={submit} className="neu w-full max-w-sm space-y-5 p-7">
-        <div className="space-y-1">
-          <h1 className="text-lg font-semibold tracking-tight">homelab</h1>
+    <div className="flex h-full items-center justify-center px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <form onSubmit={submit} className="neu rise-in w-full max-w-sm space-y-5 p-6">
+        <div className="space-y-1.5">
+          <div className="mb-4 flex items-center justify-between">
+            <Logo className="size-10" />
+            <span className="bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-md">
+              <LockKeyhole className="size-4" />
+            </span>
+          </div>
+          <h1 className="text-xl font-medium tracking-tight">homelab hub</h1>
           <p className="text-muted-foreground text-sm">Monitoring for the mini PC and the NAS.</p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password" className="text-muted-foreground font-normal">
+            Password
+          </Label>
           <Input
             id="password"
             type="password"

@@ -52,7 +52,7 @@ export default function HeroScene({
   const view = VIEW[machine];
 
   return (
-    <div ref={host} className={cn("aspect-[7/5] w-full max-w-[420px]", className)}>
+    <div ref={host} className={cn("fade-edges aspect-[7/5] w-full max-w-[420px]", className)}>
       <Canvas
         frameloop="never"
         dpr={[1, 1.75]}

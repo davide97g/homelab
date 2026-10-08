@@ -1,9 +1,9 @@
 import type { AskStatus } from "@wire";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { AskComposer } from "@/components/ask/composer";
 import { LoginCard } from "@/components/shell/login-card";
-import { initialExpanded, rememberSidebar, Sidebar } from "@/components/shell/sidebar";
+import { initialExpanded, rememberSidebar, Sidebar, TabBar } from "@/components/shell/sidebar";
 import { Booting } from "@/components/shell/trace";
 import { TopBar } from "@/components/shell/top-bar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -38,6 +38,11 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
   const { data, error, loading, expired, refreshedAt } = usePoll(load, 5000);
   const [expanded, setExpanded] = useState(initialExpanded);
   const [asking, setAsking] = useState(false);
+  // A question typed somewhere other than the composer (the sidebar panel):
+  // the composer opens already answering it.
+  const [question, setQuestion] = useState<string | null>(null);
+  const [stuck, setStuck] = useState(false);
+  const scroller = useRef<HTMLElement>(null);
   const [askStatus, setAskStatus] = useState<AskStatus | null>(null);
   const location = useLocation();
 
@@ -67,6 +72,24 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
     };
   }, []);
 
+  useSpotlight();
+
+  // The page scrolls inside <main>, not the window, so the top bar is told
+  // when something has slid under it. Only the crossing re-renders.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    setStuck(el.scrollTop > 4);
+    const onScroll = () => setStuck(el.scrollTop > 4);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [location.pathname]);
+
+  function ask(q?: string) {
+    setQuestion(q ?? null);
+    setAsking(true);
+  }
+
   useEffect(() => {
     if (expired) onSignedOut();
   }, [expired, onSignedOut]);
@@ -86,24 +109,28 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
   return (
     // The left/right safe-area insets live on the shell rather than on each
     // child: in landscape on a notched phone every one of them would otherwise
-    // need the same pair, and the rail would still run under the cutout.
-    <div className="flex h-full flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:flex-row">
-      <Sidebar expanded={expanded} onToggle={toggleSidebar} />
+    // need the same pair.
+    <div className="flex h-full pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
+      <div className="hidden shrink-0 py-6 pl-6 lg:block">
+        <Sidebar data={data} expanded={expanded} onToggle={toggleSidebar} onAsk={ask} />
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
           data={data}
           refreshedAt={refreshedAt}
           loading={loading}
+          stuck={stuck}
           onSignOut={() => void signOut()}
-          onAsk={() => setAsking(true)}
+          onAsk={() => ask()}
         />
 
-        {/* The bottom padding carries the home-indicator inset on top of its own
-            8, so the last card on a page is never half under the gesture bar. */}
+        {/* The bottom padding clears the phone tab bar and the home indicator,
+            so the last card on a page is never under either. */}
         <main
+          ref={scroller}
           key={location.pathname}
-          className="animate-in fade-in-0 min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] duration-200 sm:px-6"
+          className="animate-in fade-in-0 pb-tabbar min-h-0 flex-1 overflow-y-auto px-4 pt-1 duration-300 lg:px-6 lg:pb-8"
         >
           {error && !data && (
             <div className="neu text-tone-bad mx-auto mt-6 max-w-lg p-5 text-sm">
@@ -129,13 +156,46 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }) {
         </main>
       </div>
 
+      <TabBar onSignOut={() => void signOut()} />
+
       {/* Outside <main>, so it is not remounted by the route key and an answer
           survives navigating underneath it. */}
       <AskComposer
         open={asking}
-        onClose={() => setAsking(false)}
+        question={question}
+        onClose={() => {
+          setAsking(false);
+          setQuestion(null);
+        }}
         unavailable={askStatus && !askStatus.ok ? askStatus.why : null}
       />
     </div>
   );
+}
+
+/** Cards light up under the pointer (`.neu::after` in index.css): one listener
+ *  for the whole page, at most once a frame. */
+function useSpotlight() {
+  useEffect(() => {
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    let frame = 0;
+    let last: PointerEvent | null = null;
+    const onMove = (e: PointerEvent) => {
+      last = e;
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const card = (last?.target as Element | null)?.closest?.<HTMLElement>(".neu");
+        if (!card || !last) return;
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", `${last.clientX - r.left}px`);
+        card.style.setProperty("--my", `${last.clientY - r.top}px`);
+      });
+    };
+    document.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
 }

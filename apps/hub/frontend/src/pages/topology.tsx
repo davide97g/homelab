@@ -115,7 +115,7 @@ export function TopologyPage({ data }: { data: Summary }) {
           that lived in one browser and looked like the alert was handled. */}
       {firing.length > 0 && (
         <div className="shrink-0">
-          <AlertStrip alerts={data.alerts} />
+          <AlertStrip alerts={data.alerts} limit={3} />
         </div>
       )}
     </div>

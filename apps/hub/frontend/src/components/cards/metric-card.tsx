@@ -15,13 +15,14 @@ export function MetricCard({
   className,
 }: {
   metric: Metric;
-  surface?: "glass" | "neu";
+  /** `bare` sits inside another card: no surface of its own, no padding. */
+  surface?: "glass" | "neu" | "bare";
   className?: string;
 }) {
   const tone = HEALTH_TONE[metric.health];
 
   return (
-    <div className={cn(surface === "glass" ? "glass" : "neu", "flex flex-col gap-2 p-4", className)}>
+    <div className={cn(surface === "bare" ? "flex flex-col gap-2.5" : [surface, "flex flex-col gap-2.5 p-5"], className)}>
       <div className="flex items-baseline justify-between gap-2">
         <FieldLabel>{metric.label}</FieldLabel>
         {metric.health !== "ok" && metric.health !== "unknown" && (
@@ -31,12 +32,12 @@ export function MetricCard({
         )}
       </div>
 
-      <div className="tnum text-[26px] leading-none font-semibold">{metric.display}</div>
+      <div className="tnum text-3xl leading-none font-medium tracking-tight">{metric.display}</div>
 
       {metric.fraction !== undefined && <MiniBar value={metric.fraction} tone={tone} />}
 
       {metric.hint && (
-        <p className="text-muted-foreground truncate text-[11px] leading-tight" title={metric.hint}>
+        <p className="text-muted-foreground truncate text-xs leading-tight" title={metric.hint}>
           {metric.hint}
         </p>
       )}

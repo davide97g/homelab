@@ -26,10 +26,13 @@ const EXAMPLES = [
 
 export function AskComposer({
   open,
+  question,
   onClose,
   unavailable,
 }: {
   open: boolean;
+  /** Asked from elsewhere (the sidebar panel): answered as soon as it opens. */
+  question?: string | null;
   onClose: () => void;
   /** Set when the box has no key. The composer still opens and says so, rather
    *  than the CTA silently doing nothing. */
@@ -56,6 +59,15 @@ export function AskComposer({
   useEffect(() => {
     if (open) input.current?.focus();
   }, [open]);
+
+  // `submit` is declared below the early return, so the effect reaches it
+  // through a ref that every render refreshes.
+  const submitRef = useRef<(text: string) => Promise<void>>(async () => undefined);
+  useEffect(() => {
+    if (!open || !question) return;
+    setPrompt(question);
+    void submitRef.current(question);
+  }, [open, question]);
 
   useEffect(() => {
     if (!open) return;
@@ -84,6 +96,8 @@ export function AskComposer({
       setAsking(false);
     }
   }
+
+  submitRef.current = submit;
 
   function keep(spec: ChartSpec) {
     pin({ prompt: answer?.prompt ?? prompt, spec, at: new Date().toISOString() });
