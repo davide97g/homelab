@@ -102,15 +102,15 @@ async function bazarrHealth(): Promise<Omit<Check, "id" | "label">> {
 
 /** Jellyfin's encoding settings, which a healthy /System/Info will not tell you
  *  about. */
-async function jellyfinHwaccel(target: { url: string; key: string }): Promise<Omit<Check, "id" | "label">> {
+async function jellyfinHwaccel(target: { url: string; key: string; hwaccel: string }): Promise<Omit<Check, "id" | "label">> {
   if (!target.key) return { level: "warn", detail: "API key not collected on the box" };
   const enc = await getJson<{ HardwareAccelerationType?: string }>(`${target.url}/System/Configuration/encoding`, {
     headers: { authorization: `MediaBrowser Token="${target.key}"` },
     timeoutMs: 10_000,
   });
   const actual = enc?.HardwareAccelerationType ?? "unknown";
-  if (actual !== config.jellyfinHwaccel) {
-    return { level: "fail", detail: `hardware acceleration is ${actual}, expected ${config.jellyfinHwaccel}` };
+  if (actual !== target.hwaccel) {
+    return { level: "fail", detail: `hardware acceleration is ${actual}, expected ${target.hwaccel}` };
   }
   return { level: "ok", detail: `hardware acceleration ${actual}` };
 }
@@ -140,7 +140,6 @@ async function assemble(): Promise<Checks> {
     run("bazarr", "Bazarr health", bazarrHealth),
     run("seerr", "Seerr", seerr),
     run("jellyfin", "Jellyfin (NAS) transcoding", () => jellyfinHwaccel(config.jellyfin)),
-    run("jellyfin-local", "Jellyfin (mini PC) transcoding", () => jellyfinHwaccel(config.jellyfinLocal)),
     run("vpn", "Torrent VPN", vpn),
     run("dns", "DNS ad blocking", dnsCheck),
   ];

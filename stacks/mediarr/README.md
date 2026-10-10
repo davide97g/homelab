@@ -21,24 +21,13 @@ plays it and reports back, which is what flips a request to *Available*.
 | qBittorrent | http://debian:8080 | Download client, torrenting through ProtonVPN (gluetun) |
 | gluetun | `172.17.0.1:8001`, bridge only | The ProtonVPN tunnel qBittorrent lives in; control API for the hub |
 | Bazarr | http://debian:6767 | Subtitles, `.srt` next to the video |
-| Jellyfin | http://debian:8097 | Local server, plays this box's library |
-| Cinema | http://debian:8898 | Cinema's web client in front of it, `/jf` proxied |
 | Jellyfin (NAS) | http://debian:8096 | **Not a Jellyfin** — an nginx shim onto the NAS's |
 
-There are two Jellyfins now, on two ports, and only one of them runs here.
+No Jellyfin runs here. The mini PC had its own on `debian:8097`, with Cinema's web client on
+`debian:8898`, from 2026-09-19 until both were removed for good on 2026-10-10.
 
-`debian:8097` is the local one, back on 2026-09-19 with the config volume it wrote before it
-was retired — same users, same watch state, same two libraries on `/data/library/{movies,tv}`.
-It exists because the NAS had ~45 GB free against a 543 GB library, so `xfer-nas-auto.timer`
-was turned off and most finished downloads are readable only on this box. The NAS has had
-11 TB since 2026-10-01. Since 2026-10-04 `nas-sync` copies newly arrived files, behind a switch
-on the hub ([hosts/debian/nas-sync](../../hosts/debian/nas-sync/README.md)); the older library is
-sent by hand. `debian:8898` is Cinema's web
-client pointed at it, the same image `cinema.davideghiotto.it` serves, built from
-`~/cinema/services/web` with a `.env` naming `http://172.17.0.1:8097`.
-
-Nothing was repointed onto it: Jellyseerr, hub, mediarr-dash and jarvis all still mean the NAS
-when they say `8096`. The only one is on the NAS, and `~/ops/xfer-nas/nas-sync.sh` copies each
+Jellyseerr, hub, mediarr-dash and jarvis all mean the NAS when they say `8096`. The only
+Jellyfin is on the NAS, and `~/ops/xfer-nas/nas-sync.sh` copies each
 newly arrived file to it; `debian:8096` is `jellyfin-proxy`, which forwards to
 `http://${NAS_TAILNET_IP}:8899` and rewrites one header on the way. The NAS runs Jellyfin 12, which
 dropped the Emby-era `X-Emby-Authorization` that Jellyseerr still sends and answers 401 to it —
@@ -71,7 +60,7 @@ Nothing is installed on the box beyond a folder of two files — `~/mediarr/comp
 **Push to `main`** — see [Deploying](../../README.md#deploying). Dokploy's `mediarr` app
 (`mediarr-uvnh8c`; every `mediarr_*` volume is pinned by name, so all config carried over) runs
 compose from its checkout in `/etc/dokploy/compose/mediarr-uvnh8c/code/stacks/mediarr`, with `MEDIA_ROOT`, `PUID`/`PGID`, `TZ`,
-`RENDER_GID` and `NAS_TAILNET_IP` from its Environment tab. The local `.env` only tells the helper
+and `NAS_TAILNET_IP` from its Environment tab. The local `.env` only tells the helper
 scripts which host to ssh to.
 
 ```sh

@@ -29,7 +29,7 @@ On the box, `~` is laid out as:
 
 | Project | Path | Runs on | Public URL | Deploy |
 |---|---|---|---|---|
-| Cinema, Jellyfin front end | `apps/cinema` | NAS, plus a second copy on the mini PC | `cinema.davideghiotto.it`, `home-cinema.davideghiotto.it` (Access) | mini PC: push to `main`. NAS: tar over ssh, [`DEPLOY.md`](apps/cinema/docs/DEPLOY.md) |
+| Cinema, Jellyfin front end | `apps/cinema` | NAS | `cinema.davideghiotto.it` | tar over ssh, [`DEPLOY.md`](apps/cinema/docs/DEPLOY.md) |
 | Hub, the homelab's front door | `apps/hub` | mini PC, Dokploy | `monitoring.davideghiotto.it` | push to `main` |
 | Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
 | Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
@@ -61,7 +61,6 @@ history; rolling back is reverting the commit.
 | manga | `manga-jwxcm5` | `apps/manga/compose.yml` | `manga.yml` |
 | local-ai | `local-ai-uurnqn` | `apps/local-ai/compose.yaml` | `local-ai.yml` |
 | adguard | `adguard-pmtl66` | `apps/adguard/compose.yaml` | `adguard.yml` |
-| cinema, mini PC copy | `web-1pwofz` | `apps/cinema/services/web/compose.yaml` | `cinema.yml` |
 | jarvis-server | `jarvis-server-b7bwor` | `apps/tv/jarvis-server/docker-compose.yml` | `jarvis-server.yml` |
 | mediarr | `mediarr-uvnh8c` | `stacks/mediarr/compose.yml` | `mediarr.yml` |
 | swarm | `swarm-xxmn65` | `stacks/swarm/compose.yml` | `swarm.yml` |
@@ -143,8 +142,8 @@ Media requests and downloads live in the [`mediarr`](stacks/mediarr) project —
 `:5055`, Radarr `:7878`, Sonarr `:8989`, Prowlarr `:9696`, Bazarr `:6767`, qBittorrent
 `:8080` (inside a ProtonVPN tunnel since 2026-09-26, with a kill switch on the hub's `/media`;
 Prowlarr's searches use the same tunnel through gluetun's proxy, and nothing seeds),
-the NAS Jellyfin shim `:8096`, and since 2026-09-19 a local Jellyfin on `:8097` with
-Cinema's web client on `:8898`, LAN only, for the library that never made it to the NAS. Plain `docker compose` over SSH in `~/mediarr`, not a Dokploy app.
+and the NAS Jellyfin shim `:8096`. The mini PC's own Jellyfin (`:8097`) and its Cinema copy
+(`:8898`, `home-cinema.davideghiotto.it`) were removed for good on 2026-10-10. Plain `docker compose` over SSH in `~/mediarr`, not a Dokploy app.
 [`media-pipeline.md`](docs/media-pipeline.md) covers how those fit together — subtitles,
 availability, Telegram, and the traps found along the way.
 
@@ -320,14 +319,10 @@ native clients take it verbatim and the admin UI is at `/jf/web/`. On the LAN it
 To put the old hostname back: add an ingress rule `jellyfin.davideghiotto.it` ->
 `http://localhost:8899` (before the catch-all) and a proxied CNAME to the tunnel.
 
-**A second Cinema, on this box, at `https://home-cinema.davideghiotto.it`.** Until 2026-10-01 the NAS
-had ~45 GB free against a 543 GB library, so most finished downloads never got copied there; since
-2026-09-19 the mini PC plays its own library — Jellyfin on `:8097` (8096 is the shim onto the
-NAS) with `cinema-web` on `:8898` in front of it, published on *this* box's tunnel. It is
-**behind Access** (app `cinema (home)`), because that Jellyfin's admin account is deliberately
-trivial for LAN use; the edge is the real gate, which also means native clients cannot use this
-hostname and stay on `http://debian:8097`. One label, not `home.cinema.…`: Universal SSL does
-not cover a second level. Details in [`cinema/docs/DEPLOY.md`](apps/cinema/docs/DEPLOY.md).
+**There is no second Cinema any more.** From 2026-09-19 the mini PC ran its own Jellyfin (`:8097`)
+and `cinema-web` (`:8898`) as `home-cinema.davideghiotto.it`, for the library the then-full NAS
+could not hold. All of it — containers, volumes, the Dokploy app, the tunnel route and the DNS
+record — was removed on 2026-10-10; the NAS is the only Jellyfin.
 
 | | |
 |---|---|

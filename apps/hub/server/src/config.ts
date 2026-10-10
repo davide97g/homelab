@@ -130,15 +130,13 @@ export const config = {
      * on the Cinema SPA, which answers 200 text/html to anything. */
     url: (process.env.JELLYFIN_URL ?? `${CINEMA_PUBLIC_URL}/jf`).replace(/\/+$/, ""),
     key: process.env.JELLYFIN_API_KEY ?? "",
+    /* What its hardware acceleration must be: the NAS's Intel i3-1315U, Quick
+     * Sync since the 2026-10-01 rebuild. 12.x meets one line of a
+     * 10.11 encoding.xml it cannot parse by rewriting the whole file with
+     * defaults -- hwaccel "none" -- and stays healthy while every transcode moves
+     * to the CPU. That happened on the 10.11 -> 12.1 upgrade; this is the check. */
+    hwaccel: process.env.JELLYFIN_EXPECT_HWACCEL ?? "qsv",
   },
-  /** The mini PC's own Jellyfin on 8097, the local test copy. Only /api/checks
-   *  reads it; without a key that check is a warning, not a failure. */
-  jellyfinLocal: { url: boxUrl("JELLYFIN_LOCAL_URL", 8097), key: process.env.JELLYFIN_LOCAL_API_KEY ?? "" },
-  /** What both Jellyfins' hardware acceleration must be. 12.x meets one line of a
-   *  10.11 encoding.xml it cannot parse by rewriting the whole file with
-   *  defaults -- hwaccel "none" -- and stays healthy while every transcode moves
-   *  to the CPU. That happened on the 10.11 -> 12.1 upgrade; this is the check. */
-  jellyfinHwaccel: process.env.JELLYFIN_EXPECT_HWACCEL ?? "vaapi",
   /** The FRITZ!Box, for the DNS failover (dns/). A dedicated user with
    *  "FRITZ!Box settings" rights and no Internet access; its login lives in
    *  ~/.config/homelab/fritzbox-hub.env on the box. `fritz.box` rather than an

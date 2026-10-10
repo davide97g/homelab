@@ -60,44 +60,7 @@ services:
       retries: 3
       start_period: 60s
 
-  # Local Jellyfin, back on this box since 2026-09-19. It plays the library that
-  # is already here -- the NAS holds only what xfer-nas managed to copy before
-  # that timer was disabled for disk, so the full set of finished downloads is
-  # readable only here.
-  #
-  # It keeps the config and cache volumes the old local server wrote, so its
-  # users, watch state and the two libraries (/data/library/movies and
-  # /data/library/tv) come back as they were. Same /data mount as the *arrs,
-  # so those recorded paths still resolve.
-  #
-  # Published on 8097, not 8096: jellyfin-proxy below still holds 8096, and
-  # hub, mediarr-dash, jarvis and Jellyseerr all mean "the NAS's Jellyfin"
-  # when they say it. Two servers, two ports, nothing repointed.
-  jellyfin:
-    <<: *common
-    image: jellyfin/jellyfin:12.1
-    container_name: jellyfin
-    user: "${PUID:-1000}:${PGID:-1000}"
-    group_add:
-      # The render group, for VAAPI on the AMD iGPU (Radeon 760M) -- the old config already
-      # says hwaccel vaapi, so without this every transcode falls back to CPU.
-      - "${RENDER_GID:-992}"
-    devices:
-      - /dev/dri:/dev/dri
-    ports:
-      - "8097:8096"
-    volumes:
-      - jellyfin-config:/config
-      - jellyfin-cache:/cache
-      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8096/System/Info/Public >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # The NAS's Jellyfin is still the one Jellyseerr and the public
+  # The NAS's Jellyfin is the one Jellyseerr and the public
   # cinema.davideghiotto.it talk to; this is the shim in front of it.
   #
   # This is a header shim, not a media server. Jellyseerr authenticates with
@@ -348,12 +311,6 @@ configs:
 volumes:
   jellyseerr-config:
     name: mediarr_jellyseerr-config
-  # The local Jellyfin's config and cache, written before it was retired and
-  # read again now that it is back.
-  jellyfin-config:
-    name: mediarr_jellyfin-config
-  jellyfin-cache:
-    name: mediarr_jellyfin-cache
   prowlarr-config:
     name: mediarr_prowlarr-config
   radarr-config:

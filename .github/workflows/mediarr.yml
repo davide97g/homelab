@@ -43,7 +43,7 @@ jobs:
     with:
       app: mediarr
       compose-file: stacks/mediarr/compose.yml
-      checks: radarr,sonarr,prowlarr,bazarr,seerr,jellyfin,jellyfin-local,vpn
+      checks: radarr,sonarr,prowlarr,bazarr,seerr,jellyfin,vpn
     secrets:
       compose-id: ${{ secrets.DOKPLOY_COMPOSE_ID_MEDIARR }}
       DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
