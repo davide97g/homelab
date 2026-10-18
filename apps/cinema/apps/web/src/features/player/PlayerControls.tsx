@@ -9,6 +9,7 @@ import {
   Play,
   RotateCcw,
   RotateCw,
+  SkipForward,
   Volume1,
   Volume2,
   VolumeX,
@@ -34,6 +35,9 @@ type Props = {
   onSelectSubtitle: (index: number | null) => void
   /** A track change is renegotiating; the old stream plays meanwhile. */
   switching: boolean
+  /** Present when there is a next episode to go to. */
+  onNext?: () => void
+  nextLabel?: string
 }
 
 type Menu = 'audio' | 'subtitles'
@@ -54,6 +58,8 @@ export function PlayerControls({
   subtitleIndex,
   onSelectSubtitle,
   switching,
+  onNext,
+  nextLabel,
 }: Props) {
   const [openMenu, setOpenMenu] = useState<Menu | null>(null)
   const openMenuRef = useRef(openMenu)
@@ -145,6 +151,9 @@ export function PlayerControls({
         case 'f':
           void toggleFullscreen()
           break
+        case 'N':
+          onNext?.()
+          break
         case 'Escape':
           // An open menu takes the first Escape; leaving the film is the second.
           if (openMenuRef.current) setOpenMenu(null)
@@ -154,7 +163,7 @@ export function PlayerControls({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [videoRef, onBack])
+  }, [videoRef, onBack, onNext])
 
   async function toggleFullscreen() {
     if (document.fullscreenElement) await document.exitFullscreen()
@@ -298,6 +307,12 @@ export function PlayerControls({
               />
             )}
           </div>
+
+          {onNext && (
+            <IconButton label={nextLabel ? `Next episode: ${nextLabel}` : 'Next episode'} onClick={onNext}>
+              <SkipForward className="size-5" />
+            </IconButton>
+          )}
 
           <IconButton
             label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}

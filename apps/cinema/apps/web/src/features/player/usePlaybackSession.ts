@@ -142,6 +142,9 @@ export function usePlaybackSession({ itemId, startSeconds, maxStreamingBitrate }
       }).finally(() => {
         void queryClient.invalidateQueries({ queryKey: ['resume'] })
         void queryClient.invalidateQueries({ queryKey: ['item'] })
+        // Watched ticks and progress bars in the episode list.
+        void queryClient.invalidateQueries({ queryKey: ['episodes'] })
+        void queryClient.invalidateQueries({ queryKey: ['playTarget'] })
       })
     }
   }, [api, itemId, source, queryClient])

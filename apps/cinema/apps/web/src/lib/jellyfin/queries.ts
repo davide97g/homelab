@@ -37,6 +37,11 @@ export const queryKeys = {
   suggestions: (userId: string) => ['suggestions', userId] as const,
   item: (userId: string, itemId: string) => ['item', userId, itemId] as const,
   playTarget: (userId: string, itemId: string) => ['playTarget', userId, itemId] as const,
+  seasons: (userId: string, seriesId: string) => ['seasons', userId, seriesId] as const,
+  episodes: (userId: string, seriesId: string, seasonId: string) =>
+    ['episodes', userId, seriesId, seasonId] as const,
+  adjacentEpisodes: (userId: string, episodeId: string) =>
+    ['episodes', userId, 'adjacent', episodeId] as const,
   viewers: () => ['viewers'] as const,
 }
 
@@ -228,6 +233,76 @@ export function usePlayTarget(item: BaseItemDto | undefined) {
 
   if (!seriesId) return { target: item, isLoading: false }
   return { target: query.data ?? undefined, isLoading: query.isLoading }
+}
+
+/** A series' seasons, in the server's order (specials first, when there are any). */
+export function useSeasons(seriesId: string | undefined) {
+  const { api, userId } = useSession()
+  return useQuery({
+    queryKey: queryKeys.seasons(userId, seriesId ?? ''),
+    enabled: Boolean(seriesId),
+    queryFn: async () => {
+      const { data } = await getTvShowsApi(api).getSeasons({
+        seriesId: seriesId as string,
+        userId,
+        // Jellyfin can invent rows for episodes it knows of but has no file
+        // for. Nothing here can play them.
+        isMissing: false,
+      })
+      return data.Items ?? []
+    },
+  })
+}
+
+/** One season's episodes, in order. */
+export function useEpisodes(seriesId: string | undefined, seasonId: string | undefined) {
+  const { api, userId } = useSession()
+  return useQuery({
+    queryKey: queryKeys.episodes(userId, seriesId ?? '', seasonId ?? ''),
+    enabled: Boolean(seriesId && seasonId),
+    queryFn: async () => {
+      const { data } = await getTvShowsApi(api).getEpisodes({
+        seriesId: seriesId as string,
+        seasonId,
+        userId,
+        isMissing: false,
+        fields: [ItemFields.Overview],
+      })
+      return data.Items ?? []
+    },
+  })
+}
+
+/**
+ * The episodes either side of this one, across season boundaries.
+ *
+ * `adjacentTo` makes the server answer with up to three rows -- previous,
+ * this one, next -- so finding this one in the answer is what says which of
+ * the others is which. The first episode has no previous and the last no next.
+ */
+export function useAdjacentEpisodes(item: BaseItemDto | undefined) {
+  const { api, userId } = useSession()
+  const episodeId = item?.Type === BaseItemKind.Episode ? (item.Id ?? undefined) : undefined
+  const seriesId = item?.SeriesId ?? undefined
+
+  const query = useQuery({
+    queryKey: queryKeys.adjacentEpisodes(userId, episodeId ?? ''),
+    enabled: Boolean(episodeId && seriesId),
+    queryFn: async () => {
+      const { data } = await getTvShowsApi(api).getEpisodes({
+        seriesId: seriesId as string,
+        userId,
+        adjacentTo: episodeId,
+        isMissing: false,
+      })
+      const items = data.Items ?? []
+      const here = items.findIndex((episode) => episode.Id === episodeId)
+      if (here < 0) return { previous: undefined, next: undefined }
+      return { previous: items[here - 1], next: items[here + 1] }
+    },
+  })
+
+  return { previous: query.data?.previous, next: query.data?.next }
 }
 
 /** One person, one screen, one thing playing on it. */

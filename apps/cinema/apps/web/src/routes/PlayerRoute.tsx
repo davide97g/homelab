@@ -1,18 +1,28 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CircleAlert, HardDriveDownload } from 'lucide-react'
 import { useQuackToast } from '@/components/ui/quack-toast'
-import { useItem } from '@/lib/jellyfin/queries'
+import { useAdjacentEpisodes, useItem } from '@/lib/jellyfin/queries'
 import { useAvailability } from '@/lib/jellyfin/availability'
 import { PlayMethod } from '@/lib/jellyfin/playback'
+import { ticksToSeconds } from '@/lib/jellyfin/ticks'
 import { PlayerControls } from '@/features/player/PlayerControls'
 import { VideoPlayer } from '@/features/player/VideoPlayer'
+import { UpNext } from '@/features/player/UpNext'
 import { usePlaybackSession } from '@/features/player/usePlaybackSession'
 
 const IDLE_MS = 3000
 
+/**
+ * Keyed by the item, so going on to the next episode is a fresh player --
+ * error, countdown and chrome state all belong to the episode they were for.
+ */
 export function PlayerRoute() {
   const { itemId } = useParams<{ itemId: string }>()
+  return <PlayerScreen key={itemId} itemId={itemId} />
+}
+
+function PlayerScreen({ itemId }: { itemId: string | undefined }) {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useQuackToast()
@@ -71,6 +81,17 @@ export function PlayerRoute() {
 
   const goBack = () => navigate(itemId ? `/item/${itemId}` : '/')
 
+  const { next } = useAdjacentEpisodes(item)
+  const [ended, setEnded] = useState(false)
+  const [upNextDismissed, setUpNextDismissed] = useState(false)
+  // Replace, not push: Back from the next episode should leave the player,
+  // not walk back through every episode watched tonight.
+  const playNext = useCallback(() => {
+    if (!next?.Id) return
+    const resume = Math.floor(ticksToSeconds(next.UserData?.PlaybackPositionTicks ?? 0))
+    navigate(`/play/${next.Id}${resume > 0 ? `?t=${resume}` : ''}`, { replace: true })
+  }, [navigate, next])
+
   return (
     <div
       className="relative h-dvh w-full overflow-hidden bg-black"
@@ -83,6 +104,7 @@ export function PlayerRoute() {
             startSeconds={resumeSeconds}
             videoRef={videoRef}
             subtitleIndex={subtitleIndex}
+            onEnded={() => setEnded(true)}
             onError={setPlaybackError}
           />
           <PlayerControls
@@ -99,7 +121,12 @@ export function PlayerRoute() {
             subtitleIndex={subtitleIndex}
             onSelectSubtitle={selectSubtitle}
             switching={switching}
+            onNext={next ? playNext : undefined}
+            nextLabel={next?.Name ?? undefined}
           />
+          {ended && next && !upNextDismissed && !message && (
+            <UpNext episode={next} onPlay={playNext} onCancel={() => setUpNextDismissed(true)} />
+          )}
         </>
       ) : (
         !message && (

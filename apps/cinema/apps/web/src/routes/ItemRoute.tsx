@@ -1,13 +1,14 @@
 import { Link, useParams } from 'react-router-dom'
-import { HardDriveDownload, Info, Play, RotateCcw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, HardDriveDownload, Info, Play, RotateCcw } from 'lucide-react'
 import { MediaStreamType } from '@jellyfin/sdk/lib/generated-client/models/media-stream-type'
 import { StickerSkeleton, StickerSkeletonText } from '@/components/ui/sticker-skeleton'
+import { EpisodeList } from '@/components/media/EpisodeList'
 import { matchPercent } from '@/components/media/item-facts'
 import { DotList, KindTag } from '@/components/media/item-meta'
 import { useAuth } from '@/lib/jellyfin/auth'
 import { useAvailability } from '@/lib/jellyfin/availability'
 import { ImageType, itemBackdropUrl, itemImageUrl } from '@/lib/jellyfin/images'
-import { useItem, usePlayTarget } from '@/lib/jellyfin/queries'
+import { useAdjacentEpisodes, useItem, usePlayTarget } from '@/lib/jellyfin/queries'
 import { formatRuntime, formatTimecode, ticksToSeconds } from '@/lib/jellyfin/ticks'
 
 export function ItemRoute() {
@@ -16,6 +17,8 @@ export function ItemRoute() {
   const { data: item, isLoading } = useItem(itemId)
   // A Series cannot be played directly -- this is the episode the buttons open.
   const { target: playTarget } = usePlayTarget(item)
+  // Disabled for anything that is not an episode.
+  const { previous, next } = useAdjacentEpisodes(item)
   // Called before the loading return, so it keeps its hook slot; it stays
   // disabled until there is an item to probe.
   const { data: availability, refetch: recheck, isFetching: rechecking } = useAvailability(item)
@@ -52,6 +55,9 @@ export function ItemRoute() {
   // Jellyfin happily serves metadata for a film whose disk is unplugged, so
   // the page has to find that out for itself before offering a Play button.
   const offline = availability === 'offline'
+  const isEpisode = item.Type === 'Episode'
+  // The series a page belongs to, for the episode list: the item itself, or its parent.
+  const seriesId = item.Type === 'Series' ? item.Id : isEpisode ? item.SeriesId : undefined
 
   return (
     <article className="flex flex-col gap-8">
@@ -61,6 +67,22 @@ export function ItemRoute() {
 
         <div className="relative flex h-full max-w-2xl flex-col justify-end gap-3 p-5 md:p-8">
           <KindTag item={item} />
+
+          {isEpisode && item.SeriesId && (
+            <Link
+              to={`/item/${item.SeriesId}`}
+              className="flex w-fit items-center gap-2 text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
+            >
+              {item.SeriesName}
+              <DotList
+                parts={[
+                  item.ParentIndexNumber != null ? `Season ${item.ParentIndexNumber}` : null,
+                  item.IndexNumber != null ? `Episode ${item.IndexNumber}` : null,
+                ]}
+                className="font-normal"
+              />
+            </Link>
+          )}
 
           {logo ? (
             <img
@@ -107,6 +129,18 @@ export function ItemRoute() {
                 <Play className="size-4 fill-current" />
                 {episodeLabel ? `Play ${episodeLabel}` : 'Play'}
               </PrimaryAction>
+            )}
+            {previous && (
+              <SecondaryAction to={`/item/${previous.Id}`} label={`Previous: ${previous.Name ?? ''}`}>
+                <ChevronLeft className="size-4" />
+                Previous
+              </SecondaryAction>
+            )}
+            {next && (
+              <SecondaryAction to={`/item/${next.Id}`} label={`Next: ${next.Name ?? ''}`}>
+                Next
+                <ChevronRight className="size-4" />
+              </SecondaryAction>
             )}
           </div>
         </div>
@@ -167,6 +201,17 @@ export function ItemRoute() {
           )}
         </div>
       </div>
+
+      {/* Keyed by the item so moving to another episode opens its season,
+          not whichever one was picked on the page before. */}
+      {seriesId && (
+        <EpisodeList
+          key={item.Id}
+          seriesId={seriesId}
+          initialSeasonId={(isEpisode ? item.SeasonId : playTarget?.SeasonId) ?? undefined}
+          currentEpisodeId={isEpisode ? (item.Id ?? undefined) : undefined}
+        />
+      )}
     </article>
   )
 }
@@ -182,10 +227,19 @@ function PrimaryAction({ to, children }: { to: string; children: React.ReactNode
   )
 }
 
-function SecondaryAction({ to, children }: { to: string; children: React.ReactNode }) {
+function SecondaryAction({
+  to,
+  label,
+  children,
+}: {
+  to: string
+  label?: string
+  children: React.ReactNode
+}) {
   return (
     <Link
       to={to}
+      title={label}
       className="inline-flex h-10 items-center gap-2 rounded-md bg-white/10 px-5 text-sm font-semibold backdrop-blur-sm transition-colors hover:bg-white/20"
     >
       {children}

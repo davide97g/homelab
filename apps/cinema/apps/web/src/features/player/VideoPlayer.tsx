@@ -9,6 +9,7 @@ type Props = {
   /** Stream index of the <track> to show; null shows none. */
   subtitleIndex: number | null
   onReady?: () => void
+  onEnded?: () => void
   onError?: (message: string) => void
 }
 
@@ -23,6 +24,7 @@ export function VideoPlayer({
   videoRef,
   subtitleIndex,
   onReady,
+  onEnded,
   onError,
 }: Props) {
   const hlsRef = useRef<Hls | null>(null)
@@ -89,6 +91,7 @@ export function VideoPlayer({
         }
         onReady?.()
       }}
+      onEnded={onEnded}
       onError={() => onError?.('The browser could not decode this stream.')}
     >
       {source.subtitleTracks.map((track) => (
