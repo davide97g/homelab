@@ -37,13 +37,13 @@ x-common: &common
 services:
   jellyseerr:
     <<: *common
-    # Jellyseerr became Seerr and moved org; the box has been running v3.4.1
+    # Jellyseerr became Seerr and moved org; the box ran v3.4.1
     # for weeks while this file still said fallenbagel/jellyseerr:2.7.3. A
     # deploy therefore *downgraded* it, and 2.7.3 is older than its own
     # database -- it queries user_settings.discordId, a column that the
     # AddDiscordIdsColumn migration had already renamed to discordIds, so
     # every Jellyfin sync died with `no such column`.
-    image: ghcr.io/seerr-team/seerr:v3.4.1
+    image: ghcr.io/seerr-team/seerr:v3.5.0
     container_name: jellyseerr
     environment:
       TZ: ${TZ:-Europe/Rome}
