@@ -51,6 +51,7 @@ Keeping the shim on port 8096 means everything that already said "Jellyfin is at
 | `scripts/bazarr-setup.py` | Bazarr's \*arr connections, language profile, providers. Idempotent. |
 | `scripts/jellyseerr-repoint.py` | Move Jellyseerr to a different Jellyfin, relinking accounts. |
 | `scripts/jellyseerr-telegram.py` | Wire the Telegram agent, to a person or a group. |
+| `scripts/seerr-genre-sliders.py` | Category rows on Discover (Adventure, Anime, Drama, ...). Idempotent. |
 
 Nothing is installed on the box beyond a folder of two files — `~/mediarr/compose.yml` and
 `~/mediarr/.env`. Everything else is Docker volumes.
@@ -79,6 +80,7 @@ the repo stays the only copy and there is nothing installed to drift:
 ./scripts/on-box.sh bazarr-setup.py
 ./scripts/on-box.sh jellyseerr-repoint.py <jellyfin-api-key> http://$NAS_TAILNET_IP:8899
 ./scripts/on-box.sh jellyseerr-telegram.py <bot-token> [chat-id]
+./scripts/on-box.sh seerr-genre-sliders.py
 ```
 
 `wire.sh` skips whatever already exists, so re-running it after a rebuild is safe. It does the
