@@ -1,0 +1,11 @@
+{
+  "title": "GMKtec M6 stand",
+  "summary": {
+    "en": "Height-extension stand for the GMKtec NucBox M6 Ultra in the homelab. A parametric CadQuery rebuild of mintonette's K6 stand, sized for the 128.8 x 127 mm chassis.",
+    "it": "Rialzo per il GMKtec NucBox M6 Ultra dell'homelab. Ricostruzione parametrica in CadQuery dello stand K6 di mintonette, ridimensionata per lo chassis da 128,8 x 127 mm."
+  },
+  "paths": ["hardware/m6-stand"],
+  "models": {
+    "hardware/m6-stand/GMKtec_NucBox_M6_height_extension_stand.3mf": { "name": "M6 stand", "color": "#8E9089" }
+  }
+}
