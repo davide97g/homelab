@@ -34,7 +34,7 @@ On the box, `~` is laid out as:
 | Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
 | Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
 | JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | server: push to `main`. APK: `scripts/deploy-tv.sh` |
-| Local AI: Ollama, Open WebUI, LiteLLM | `apps/local-ai` | mini PC, `~/local-ai` | `openui.davideghiotto.it`, `llm.davideghiotto.it` | push to `main` |
+| Local AI: Ollama, LiteLLM (Open WebUI off since 2026-11-03) | `apps/local-ai` | mini PC, Dokploy | `llm.davideghiotto.it` | push to `main` |
 | AdGuard Home, DNS ad blocking for the house | `apps/adguard` | mini PC, Dokploy; the FRITZ!Box forwards to it | none, UI at `http://debian:3053` | push to `main` |
 | mediarr: the *arr stack, qBittorrent, Jellyseerr | `stacks/mediarr` | mini PC, `~/mediarr` | none, LAN only | push to `main` |
 | Swarm, qBittorrent WebUI | `stacks/swarm` | mini PC, inside qBittorrent | none, `http://debian:8080` | push to `main` |
@@ -82,8 +82,16 @@ agents (Dokploy has no root docker on the NAS), and the TV launcher APK (install
 | Hostname | `debian` |
 | mDNS | `debian.local` |
 | LAN IP | `192.168.15.126/24` — DHCP, held by a router reservation on `84:47:09:a3:57:a4` |
-| OS | Debian 13 (kernel 6.12.107+deb13-amd64, x86_64) |
+| OS | Debian 13 (kernel 6.12.115+deb13.1-amd64, x86_64) |
 | User | `davide` |
+
+Patching: `unattended-upgrades` installs Debian security updates every morning, but a new kernel
+still needs a reboot (`/var/run/reboot-required`), and the third-party repos (Docker, cloudflared,
+Chrome, Tailscale) are not covered: they come in with a manual `sudo apt full-upgrade`. Dokploy's
+installer `apt-mark hold`s `docker-ce`, `docker-ce-cli` and `docker-ce-rootless-extras`. The hold
+was lifted on 2026-11-03 for the 28.5 → 29.9 upgrade and not put back, so check Docker on every
+manual upgrade. `sudo` asks for a password, so those runs are done by hand over `ssh -t homelab`.
+The last full pass was 2026-11-03: kernel 6.12.115, Docker 29.9.2, Traefik 3.7.17, Dokploy 0.30.10.
 
 ## Hardware
 
@@ -97,7 +105,12 @@ agents (Dokploy has no root docker on the NAS), and the TV launcher APK (install
 
 ## Services
 
-Dokploy (`:3000`) with Traefik on `:80`/`:443`, Docker Swarm active.
+Dokploy (`:3000`, v0.30.10) with Traefik v3.7.17 on `:80`/`:443`, Docker 29 with Swarm active.
+Dokploy pins its own Traefik version in code (3.6.x, a branch that no longer gets fixes), so the
+`dokploy` service carries `TRAEFIK_VERSION=3.7.17`: every Traefik recreate from the Dokploy UI
+uses it. Traefik's `CF_DNS_API_TOKEN` (ACME DNS challenge, scoped to `davideghiotto.it`) lives only
+in the `dokploy-traefik` container's environment — change it from Dokploy (Web Server → Traefik →
+Environment), never by removing the container.
 Monitoring stack in [`apps/monitoring/`](apps/monitoring/) — Grafana on `:3001`, LAN only since
 `grafana.davideghiotto.it` was removed on 2026-09-19. The hub at `monitoring.davideghiotto.it`
 is the public entrance.
@@ -125,6 +138,31 @@ and its own paired-device tokens. Data is a bind mount of `~/autocratico/data` (
 local git history), nightly tarballs in `~/backups/autocratico`. The container runs headless
 Claude Code (`CLAUDE_CODE_OAUTH_TOKEN`) and the `@autocratico_bot` Telegram bot by long polling.
 No CI; released with one `compose.deploy` call. Runbook: that repo's `docs/deploy-homelab.md`.
+`get-autocratico.davideghiotto.it` is autocratico's public landing page, added 2026-10-03: a second
+compose app in the same project (`autocratico-site-msw6em`, compose path `./deploy/compose.site.yml`),
+nginx serving the static `apps/site` build on `127.0.0.1:8791`, tunnel straight to it, no Traefik
+domain, **not** behind Access. No CI; released with one `compose.deploy` call.
+`echo.davideghiotto.it` is the public voice-clone demo of [echo](https://github.com/davide97g/echo),
+added 2026-10-12: compose app `echo-demo-qxdnww` in project `echo`, compose path `./demo/compose.yml`,
+branch `demo-site`. One container (FastAPI + Qwen3-TTS 0.6B and Whisper on CPU, capped at 8 CPUs and
+6 GB) on `127.0.0.1:8795`, tunnel straight to it, no Traefik domain, **not** behind Access. Data is a
+bind mount of `~/echo-demo` (mode 700): Davide's reference clip (biometric, copied by hand, never in
+git), rendered lines and the ~3 GB model cache. Visitor recordings are never written to disk. No CI;
+released with one `compose.deploy` call (`DOKPLOY_COMPOSE_ID_ECHO_DEMO` in `.env`). Runbook: that
+repo's `demo/README.md`.
+`slowgram.davideghiotto.it` is the landing page (plus `/privacy/` and `/support/` for the App Store
+listing) of [Slowgram](https://github.com/davide97g/slowgram), added 2026-10-24: compose app
+`slowgram-site-a3rjn4` in project `slowgram`, compose path `./site/compose.yml`, built like buriko's —
+nginx image of the static `site/public/`, Dokploy domain on service `web` port 80, tunnel to
+`http://localhost:80`. Private repo, visible to the Dokploy GitHub app. Not behind Access. No CI; a
+release is one `compose.deploy` call (`DOKPLOY_COMPOSE_ID_SLOWGRAM_SITE` in `.env`).
+`aftergrowth.davideghiotto.it` is [Aftergrowth](https://github.com/davide97g/aftergrowth), the cozy
+sky-island witch game, added 2026-10-25: compose app `aftergrowth-wxf9t7` in project `aftergrowth`,
+compose path `./deploy/compose.yml`. One Node container (the built game plus the WebSocket island hub
+on `/net`), service `aftergrowth` port 8787 behind a Dokploy domain, tunnel to `http://localhost:80`.
+Public repo, not behind Access: players are anonymous browser identities. State is one JSON file on
+the `aftergrowth-data` volume. CI deploys through `deploy-aftergrowth.davideghiotto.it`
+(`api/compose\.(deploy|one)` only). Runbook: that repo's `deploy/README.md`.
 `atlante.davideghiotto.it` is the backend for [Atlante](https://github.com/davide97g/atlante),
 the self-hosted maps app, built here on 2026-09-19 rather than ported. A compose app: Fastify API,
 PostGIS with the Italy OSM index, Valhalla and Martin. The heavy artefacts — the PMTiles basemap
@@ -139,7 +177,7 @@ the order of operations, the Dokploy and Cloudflare API calls, and the traps. Th
 credentials every step of it needs are in the gitignored [`.env`](.env) beside it.
 
 Media requests and downloads live in the [`mediarr`](stacks/mediarr) project — Jellyseerr on
-`:5055`, Radarr `:7878`, Sonarr `:8989`, Prowlarr `:9696`, Bazarr `:6767`, qBittorrent
+`:5055`, Radarr `:7878`, Sonarr `:8989`, Prowlarr `:9696`, Bazarr `:6767` (Forms login since 2026-11-03), qBittorrent
 `:8080` (inside a ProtonVPN tunnel since 2026-09-26, with a kill switch on the hub's `/media`;
 Prowlarr's searches use the same tunnel through gluetun's proxy, and nothing seeds),
 and the NAS Jellyfin shim `:8096`. The mini PC's own Jellyfin (`:8097`) and its Cinema copy
@@ -175,12 +213,13 @@ has the rest.
 
 [`apps/local-ai/`](apps/local-ai/) — Ollama since 2026-09-24, `:11434`, LAN and tailnet only (no auth,
 never on the tunnel). Qwen3.6-35B-A3B on the 760M through Vulkan, ~24 tok/s. The Open WebUI
-chat in front of it is public at `openui.davideghiotto.it` -> `http://localhost:3080`, **not
-behind Access**. Its own login is the gate (`OPEN_WEBUI_*` in `.env`, sign-up off). A LiteLLM
-gateway gives friends their own API keys for their agents at `llm.davideghiotto.it`
-(`/ui` to sign in and mint keys, `/v1` OpenAI and Anthropic APIs, `LITELLM_*` in `.env`),
-also public, with no Access. Plain
-`docker compose` in `~/local-ai`. Its [README](apps/local-ai/README.md) is the runbook.
+chat was switched off on 2026-11-03: it sits in a `webui` compose profile no deploy starts, and
+`openui.davideghiotto.it` was removed from the tunnel and DNS. To bring it back, bump it past
+0.12.5 first. A LiteLLM gateway gives friends their own API keys for their agents at
+`llm.davideghiotto.it` (`/ui` to sign in and mint keys, `/v1` OpenAI and Anthropic APIs,
+`LITELLM_*` in `.env`), public, with no Access. LiteLLM is pinned to an exact release, never
+`latest`/`main-*`: those floating tags served the compromised v1.107.0 on 2026-10-21. A Dokploy
+compose app (`local-ai-uurnqn`). Its [README](apps/local-ai/README.md) is the runbook.
 
 mediarr-dash used to draw that chain as a live graph on `:3002`. It is retired, its
 container is gone from the box, and its code was deleted from the repo; it lives on at
