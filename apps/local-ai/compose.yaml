@@ -39,7 +39,11 @@ services:
 
   # Chat UI. LAN + tailnet only as well. It has its own login: the admin comes from
   # WEBUI_ADMIN_* in .env on first boot, which also turns public sign-up off.
+  # Switched off on 2026-11-03: not in use, and v0.11.4 is behind several unpublished
+  # security fixes (0.12.4/0.12.5). The `webui` profile keeps it out of every deploy;
+  # to bring it back, bump the image to the current release and drop the profile.
   open-webui:
+    profiles: ["webui"]
     image: ghcr.io/open-webui/open-webui:v0.11.4
     container_name: open-webui
     restart: unless-stopped
@@ -111,7 +115,7 @@ services:
   # API gateway: per-user keys, usage, limits. Public at $LLM_HOST — /ui is
   # the dashboard, /v1 the API.
   litellm:
-    image: ghcr.io/berriai/litellm:v1.102.1
+    image: ghcr.io/berriai/litellm:v1.106.6
     container_name: litellm
     restart: unless-stopped
     # Non-root: the proxy only reads its config (mounted ro) and talks to Postgres
@@ -151,7 +155,7 @@ services:
   # This answers 200 and writes SSE comments until LiteLLM's stream starts. See
   # keepalive/server.mjs. Localhost only: cloudflared runs on the host.
   llm-keepalive:
-    image: node:24.21.0-alpine
+    image: node:24.22.2-alpine
     container_name: llm-keepalive
     restart: unless-stopped
     user: "1000:1000"

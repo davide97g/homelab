@@ -43,7 +43,7 @@ services:
     # database -- it queries user_settings.discordId, a column that the
     # AddDiscordIdsColumn migration had already renamed to discordIds, so
     # every Jellyfin sync died with `no such column`.
-    image: ghcr.io/seerr-team/seerr:v3.5.0
+    image: ghcr.io/seerr-team/seerr:v3.5.1
     container_name: jellyseerr
     environment:
       TZ: ${TZ:-Europe/Rome}
@@ -234,7 +234,7 @@ services:
   # Not `<<: *common`: the anchor carries `networks`, compose refuses it next to
   # network_mode, and `!reset` does not undo a merge key. Restart policy by hand.
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:5.2.3
+    image: lscr.io/linuxserver/qbittorrent:5.3.0
     container_name: qbittorrent
     restart: unless-stopped
     # Joins gluetun's network namespace, so it has no interface except the
