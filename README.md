@@ -171,6 +171,15 @@ default `bridge` because creating a network failed with *all predefined address 
 subnetted* — worth fixing (`default-address-pools` in `daemon.json`) before the next stack needs one.
 The site is a read-only bind mount of `~/touchgrass/site`; a release is that repo's `deploy/deploy.sh`
 (build on the Mac, `rsync --delay-updates`, nginx reload). No CI.
+`lumii.davideghiotto.it` is LUMII Montecchio's restaurant app (`apps/lumii-*` in
+[zeroshot](https://github.com/davide97g/zeroshot)), added 2026-11-06: compose app `lumii-grjqvu`
+(composeId `uarKwudQqkZPe_cue7rqe`) in project `lumii`, compose path `./docker-compose.lumii.yml`,
+**branch `feat/lumii-app`** until it is merged. App + Postgres 18 + nightly `pg_dump` (volume
+`lumii-backups`, 14 days). Dokploy domain on service `lumii-app` port 3000, tunnel to
+`http://localhost:80`, not behind Access (customers sign in by email code). Its compose network
+has an explicit subnet (`LUMII_SUBNET`, default `10.213.0.0/24`) because Docker's address pools
+are used up here (see touchgrass above). Secrets in its Dokploy Environment tab. No CI; a release
+is one `compose.deploy` call.
 `atlante.davideghiotto.it` is the backend for [Atlante](https://github.com/davide97g/atlante),
 the self-hosted maps app, built here on 2026-09-19 rather than ported. A compose app: Fastify API,
 PostGIS with the Italy OSM index, Valhalla and Martin. The heavy artefacts — the PMTiles basemap
