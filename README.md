@@ -163,6 +163,14 @@ on `/net`), service `aftergrowth` port 8787 behind a Dokploy domain, tunnel to `
 Public repo, not behind Access: players are anonymous browser identities. State is one JSON file on
 the `aftergrowth-data` volume. CI deploys through `deploy-aftergrowth.davideghiotto.it`
 (`api/compose\.(deploy|one)` only). Runbook: that repo's `deploy/README.md`.
+`touchgrass.davideghiotto.it` is [touchgrass](../touchgrass), the anime grassland walk in WebGL,
+added 2026-11-06: **not** a Dokploy app — a static site needs no build pipeline here. Plain compose in
+`~/touchgrass` (project `touchgrass`, container `touchgrass-web`, `nginx:1.30.6-alpine`, read-only) bound
+to `127.0.0.1:8796`, tunnel straight to it, no Traefik domain, not behind Access. It sits on Docker's
+default `bridge` because creating a network failed with *all predefined address pools have been fully
+subnetted* — worth fixing (`default-address-pools` in `daemon.json`) before the next stack needs one.
+The site is a read-only bind mount of `~/touchgrass/site`; a release is that repo's `deploy/deploy.sh`
+(build on the Mac, `rsync --delay-updates`, nginx reload). No CI.
 `atlante.davideghiotto.it` is the backend for [Atlante](https://github.com/davide97g/atlante),
 the self-hosted maps app, built here on 2026-09-19 rather than ported. A compose app: Fastify API,
 PostGIS with the Italy OSM index, Valhalla and Martin. The heavy artefacts — the PMTiles basemap
