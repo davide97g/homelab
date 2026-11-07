@@ -174,7 +174,7 @@ The site is a read-only bind mount of `~/touchgrass/site`; a release is that rep
 `lumii.davideghiotto.it` is LUMII Montecchio's restaurant app (`apps/lumii-*` in
 [zeroshot](https://github.com/davide97g/zeroshot)), added 2026-11-06: compose app `lumii-grjqvu`
 (composeId `uarKwudQqkZPe_cue7rqe`) in project `lumii`, compose path `./docker-compose.lumii.yml`,
-**branch `feat/lumii-app`** until it is merged. App + Postgres 18 + nightly `pg_dump` (volume
+branch `main`. App + Postgres 18 + nightly `pg_dump` (volume
 `lumii-backups`, 14 days). Dokploy domain on service `lumii-app` port 3000, tunnel to
 `http://localhost:80`, not behind Access (customers sign in by email code). Its compose network
 has an explicit subnet (`LUMII_SUBNET`, default `10.213.0.0/24`) because Docker's address pools
