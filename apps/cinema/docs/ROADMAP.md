@@ -92,6 +92,11 @@ Views resolving `?attr/colorSurface`. The feature band on both home screens; pho
 Details, TV makes the whole card the control, because on a remote one focusable thing that plays
 beats two that need a sideways press.
 
+**On the real TV (2026-11-10).** `:app:tv` debug, `armeabi-v7a` split, runs on the Philips
+65PUS8505 (Android 12, 32-bit). `apps/android/scripts/tv.sh` builds, installs, launches and follows
+logcat; the TV app now actually logs (upstream never planted Timber there) to logcat and to
+`files/logs/cinema.log`. Not yet judged on the set: playback paths, focus, performance on 2 GB.
+
 **What the emulator caught, and the compiler could not:** TV's selected tab was white on white —
 upstream paints the pill `Color.White` and its label `colorScheme.onPrimary`, which under Reel is
 also white. A role can be right in the abstract and wrong at a use site that assumed something about

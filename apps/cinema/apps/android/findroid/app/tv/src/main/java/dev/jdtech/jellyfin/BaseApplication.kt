@@ -13,6 +13,7 @@ import coil3.request.crossfade
 import coil3.svg.SvgDecoder
 import dagger.hilt.android.HiltAndroidApp
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import it.davideghiotto.cinema.log.FileLogTree
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
 import okio.Path.Companion.toOkioPath
@@ -20,6 +21,15 @@ import okio.Path.Companion.toOkioPath
 @HiltAndroidApp
 class BaseApplication : Application(), SingletonImageLoader.Factory {
     @Inject lateinit var appPreferences: AppPreferences
+
+    override fun onCreate() {
+        super.onCreate()
+
+        // Cinema: upstream's TV app never planted a tree, so every Timber call was silent on the
+        // set. Log always -- this build is sideloaded for testing -- to logcat and to a file
+        // that survives without adb attached. See apps/android/README.md, "On the TV".
+        FileLogTree.install(this, BuildConfig.VERSION_NAME, BuildConfig.BUILD_TYPE)
+    }
 
     @OptIn(ExperimentalCoilApi::class, ExperimentalTime::class)
     override fun newImageLoader(context: PlatformContext): ImageLoader {

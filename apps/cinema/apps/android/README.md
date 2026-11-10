@@ -89,6 +89,30 @@ identity (application id `it.davideghiotto.cinema`, name Cinema, the mark).
 - Driving the TV emulator: `adb shell input keyevent 61` (TAB) traverses focus; DPAD_DOWN does not
   move focus out of a text field, and `adb shell input tap` does nothing on a TV AVD.
 
+## On the TV
+
+The living-room set is a Philips 65PUS8505 at `192.168.15.106`: Android 12 (SDK 31), 2 GB RAM,
+**32-bit userspace** — it needs the `armeabi-v7a` split, not `arm64-v8a`.
+
+```sh
+apps/android/scripts/tv.sh                     # build debug, install, launch, follow logcat
+apps/android/scripts/tv.sh deploy --no-build   # reinstall the last APK
+apps/android/scripts/tv.sh logs                # live logcat, follows the app across restarts
+apps/android/scripts/tv.sh logs --file         # the on-device log, readable after the fact
+apps/android/scripts/tv.sh logs --pull         # copy cinema.log(.1) into ./tv-logs/
+TV=emulator-5554 apps/android/scripts/tv.sh    # Android TV AVD (arm64-v8a)
+```
+
+It installs the **debug** build (`it.davideghiotto.cinema.debug`): it sits beside a release one,
+and being debuggable is what lets `run-as` read the log file back. Upstream's TV app never planted
+a Timber tree, so every log line was silent; `it.davideghiotto.cinema.log.FileLogTree` now plants
+logcat + a 2 MB rotated file (`files/logs/cinema.log`) and records uncaught exceptions to it before
+the process dies. The first line says version, model, SDK and ABI.
+
+Getting ADB onto the set at all (network debugging resets on reboot, the Local Network permission
+trap with adb servers started from Orca) is written up in
+`~/personal/projects/cassette/apps/tv/README.md`, "Getting ADB onto the TV".
+
 ## Distribution
 
 - **Sideload** — build a release APK, no program needed.
