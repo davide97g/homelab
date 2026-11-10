@@ -25,8 +25,10 @@ import sys
 
 HERE = pathlib.Path(__file__).parent
 SSH_HOST = "nas"
-# Absolute: modern scp speaks SFTP, which does not expand `~` on the remote.
-REMOTE_DIR = "/home/davide/nas-agents"
+# On a data volume, not in /home: a UGOS update resets the root overlay, and on
+# 2026-11-08 one wiped /home/davide with this directory (and its .env) in it.
+# /volume1/docker is world-writable with an ACL, hence the chmod/setfacl below.
+REMOTE_DIR = "/volume1/docker/nas-agents"
 FILES = ["compose.yml", "config.alloy", "jellyfin_exporter.py"]
 
 
@@ -46,14 +48,14 @@ def main() -> int:
         return 0
 
     # 700, and the .env inside it 600, enforced every deploy: UGOS puts a
-    # default ACL on /home/davide that makes everything world-writable, so a
+    # default ACL on its shares that makes everything world-writable, so a
     # umask alone silently leaves the Access token readable by anyone.
-    ssh(f"mkdir -p {REMOTE_DIR} && chmod 700 {REMOTE_DIR} && if [ -f {REMOTE_DIR}/.env ]; then chmod 600 {REMOTE_DIR}/.env; fi")
+    ssh(f"mkdir -p {REMOTE_DIR} && chmod 700 {REMOTE_DIR} && (setfacl -b {REMOTE_DIR} 2>/dev/null; true) && if [ -f {REMOTE_DIR}/.env ]; then chmod 600 {REMOTE_DIR}/.env; fi")
 
     # Piped through `cat`, not scp. UGOS chroots the SFTP subsystem that modern
     # scp speaks to a share-only root -- an `sftp` session shows just `docker`,
     # `home` and `test` at `/` -- so an absolute shell path like
-    # /home/davide/nas-agents resolves to nothing over SFTP and every upload
+    # /volume1/docker/nas-agents resolves to nothing over SFTP and every upload
     # fails with "No such file or directory" while `touch` on the same path
     # works fine over ssh. rsync is not installed there either.
     for name in FILES:

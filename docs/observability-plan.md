@@ -53,7 +53,7 @@ This trips people up, so it is first.
   independent layers in front of it: an Access application with no identity providers and one
   `non_identity` policy bound to the `nas-alloy` service token; a tunnel ingress rule restricted
   to `path: loki/api/v1/push`, so a leaked token can append but not read; and a loopback-bound
-  origin. The token lives only in `/home/davide/nas-agents/.env` on the NAS.
+  origin. The token lives only in `/volume1/docker/nas-agents/.env` on the NAS (moved out of `/home/davide` on 2026-11-10, after a UGOS update wiped it).
 
 Verified: 9/9 scrape targets up, and all four log streams flowing —
 `{host="homelab"}` and `{host="nas"}`, each with `job=docker` and `job=journal`.
