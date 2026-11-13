@@ -8,7 +8,7 @@ import android.view.ViewGroup
 import android.view.animation.PathInterpolator
 
 /**
- * The three screens — apps, JARVIS, homelab — stacked one above the next, with the
+ * The screens — apps, JARVIS — stacked one above the next, with the
  * whole column sliding. Each child is laid out at the full size of this view, so a
  * screen is always exactly the panel, and moving between them is one translation
  * rather than three visibility flips.

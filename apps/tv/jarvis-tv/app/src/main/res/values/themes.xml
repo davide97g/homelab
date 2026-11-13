@@ -23,4 +23,18 @@
         <item name="android:letterSpacing">0.18</item>
         <item name="android:textAllCaps">true</item>
     </style>
+
+    <style name="StudioTab">
+        <item name="android:fontFamily">@font/sora</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">@color/menubar_ink_2</item>
+        <item name="android:paddingStart">7dp</item>
+        <item name="android:paddingEnd">7dp</item>
+        <item name="android:paddingTop">3dp</item>
+        <item name="android:paddingBottom">3dp</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:shadowColor">#73000000</item>
+        <item name="android:shadowRadius">6</item>
+        <item name="android:shadowDy">1</item>
+    </style>
 </resources>

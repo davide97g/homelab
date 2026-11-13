@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sora (SIL Open Font License 1.1, https://github.com/sora-xor/sora-font), the
+     studio home's display face. Static instances, not the variable font: API 26-30
+     will not pick a wght instance from a variable file by android:fontWeight. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:font="@font/sora_light" android:fontStyle="normal" android:fontWeight="300" />
+    <font android:font="@font/sora_regular" android:fontStyle="normal" android:fontWeight="400" />
+    <font android:font="@font/sora_medium" android:fontStyle="normal" android:fontWeight="500" />
+</font-family>

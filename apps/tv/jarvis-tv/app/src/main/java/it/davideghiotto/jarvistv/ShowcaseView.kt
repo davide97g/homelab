@@ -17,16 +17,16 @@ import android.view.View
 import android.view.animation.PathInterpolator
 
 /**
- * The picture behind the app rail.
+ * The focused app's cover, filling the framed panel behind the drum.
  *
- * It is framed rather than full-bleed: inset from the bezel with a rounded corner, so
- * the dark margin gives the type a quiet edge to start from and the panel's backlight
- * bloom stays off the photograph. Two layers crossfade, and whatever is showing drifts
- * slowly, because a still image on a launcher that is open for hours reads as a frozen
- * screen.
+ * Framed rather than full-bleed: inset from the bezel with a rounded corner. Two layers
+ * crossfade, and whatever is showing drifts slowly, because a still image on a launcher
+ * that is open for hours reads as a frozen screen. The cover is drawn from a small copy
+ * scaled up, which is the blur: the sharp card in front is the object, this is its light.
+ * A veil over it keeps light type legible on any picture.
  *
- * An app with no artwork gets a gradient built from its own banner's dominant colour,
- * which is the fallback the whole design is drawn around.
+ * An app with no cover gets its own banner's dominant colour and its initial set huge
+ * and faint — the same fallback its card uses.
  */
 class ShowcaseView @JvmOverloads constructor(
     ctx: Context, attrs: AttributeSet? = null, defStyle: Int = 0,
@@ -58,6 +58,13 @@ class ShowcaseView @JvmOverloads constructor(
 
     private var current: Bitmap? = null
     private var previous: Bitmap? = null
+    private var currentMark = ""
+    private var previousMark = ""
+    private val softened = java.util.WeakHashMap<Bitmap, Bitmap>()
+    private val mark = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        typeface = androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.sora_light)
+    }
     private var currentColour = 0xFF14202C.toInt()
     private var previousColour = currentColour
     private var fade = 1f
@@ -81,15 +88,23 @@ class ShowcaseView @JvmOverloads constructor(
         addUpdateListener { drift = it.animatedValue as Float; invalidate() }
     }
 
-    fun show(bitmap: Bitmap?, colour: Int) {
-        if (bitmap === current && colour == currentColour) return
+    fun show(bitmap: Bitmap?, colour: Int, initial: String = "") {
+        val soft = bitmap?.let { soften(it) }
+        if (soft === current && colour == currentColour && initial == currentMark) return
         previous = current
         previousColour = currentColour
-        current = bitmap
+        previousMark = currentMark
+        current = soft
         currentColour = colour
+        currentMark = initial
         fade = 0f
         fader.cancel(); fader.start()
         if (!drifter.isStarted) drifter.start()
+    }
+
+    /** A 1/8 copy, drawn back up with bilinear filtering: a blur for the cost of a scale. */
+    private fun soften(src: Bitmap): Bitmap = softened.getOrPut(src) {
+        Bitmap.createScaledBitmap(src, (src.width / 8).coerceAtLeast(2), (src.height / 8).coerceAtLeast(2), true)
     }
 
     override fun onDetachedFromWindow() {
@@ -108,28 +123,28 @@ class ShowcaseView @JvmOverloads constructor(
         canvas.save()
         canvas.clipPath(clip)
 
-        drawLayer(canvas, previous, previousColour, (1f - fade).coerceIn(0f, 1f))
-        drawLayer(canvas, current, currentColour, fade)
+        drawLayer(canvas, previous, previousColour, previousMark, (1f - fade).coerceIn(0f, 1f))
+        drawLayer(canvas, current, currentColour, currentMark, fade)
 
-        // the scrims: dark from the left for the hero, dark from the bottom for the
-        // rail, a touch from the top for the clock
+        // the veil: dark under the menu, open through the middle, dark under the copy,
+        // and a vignette so the corners never fight the frame
         scrim.alpha = 255
         scrim.shader = LinearGradient(
-            frame.left, 0f, frame.right, 0f,
-            intArrayOf(0xF0050810.toInt(), 0xB8050810.toInt(), 0x1F050810, 0x73050810),
-            floatArrayOf(0f, .34f, .62f, 1f), Shader.TileMode.CLAMP,
+            0f, frame.top, 0f, frame.bottom,
+            intArrayOf(0x9E0A0706.toInt(), 0x380A0706, 0x4D0A0706, 0xE00A0706.toInt()),
+            floatArrayOf(0f, .30f, .58f, 1f), Shader.TileMode.CLAMP,
         )
         canvas.drawRect(frame, scrim)
-        scrim.shader = LinearGradient(
-            0f, frame.bottom, 0f, frame.top,
-            intArrayOf(0xF5050810.toInt(), 0x59050810, 0x00050810),
-            floatArrayOf(0f, .34f, .62f), Shader.TileMode.CLAMP,
+        scrim.shader = RadialGradient(
+            frame.centerX(), frame.centerY(), (frame.width() * .62f).coerceAtLeast(1f),
+            intArrayOf(0x000A0706, 0x000A0706, 0x8C0A0706.toInt()),
+            floatArrayOf(0f, .5f, 1f), Shader.TileMode.CLAMP,
         )
         canvas.drawRect(frame, scrim)
 
         if (dim < 1f) {
             scrim.shader = null
-            scrim.color = Ui.withAlpha(0xFF05080C.toInt(), 1f - dim)
+            scrim.color = Ui.withAlpha(0xFF0A0706.toInt(), 1f - dim)
             canvas.drawRect(frame, scrim)
         }
         canvas.restore()
@@ -140,7 +155,7 @@ class ShowcaseView @JvmOverloads constructor(
         canvas.drawRoundRect(frame, Ui.px(this, 34f), Ui.px(this, 34f), line)
     }
 
-    private fun drawLayer(canvas: Canvas, bitmap: Bitmap?, colour: Int, alpha: Float) {
+    private fun drawLayer(canvas: Canvas, bitmap: Bitmap?, colour: Int, initial: String, alpha: Float) {
         if (alpha <= 0.001f) return
         if (bitmap != null && !bitmap.isRecycled) {
             // cover, with the slow push the drift animator provides
@@ -156,8 +171,8 @@ class ShowcaseView @JvmOverloads constructor(
             canvas.drawBitmap(bitmap, src, dst, paint)
             paint.alpha = 255
         } else {
-            // the fallback every app without artwork gets: its own colour, lit from
-            // the top left and falling to near-black
+            // the fallback every app without a cover gets: its own colour, lit from
+            // the top left and falling to near-black, with its initial huge and faint
             scrim.alpha = 255
             scrim.shader = RadialGradient(
                 frame.left + frame.width() * .22f, frame.top + frame.height() * .12f,
@@ -165,11 +180,18 @@ class ShowcaseView @JvmOverloads constructor(
                 intArrayOf(
                     Ui.withAlpha(colour, .85f * alpha),
                     Ui.withAlpha(Ui.blend(colour, Color.BLACK, .55f), .95f * alpha),
-                    Ui.withAlpha(0xFF05080C.toInt(), alpha),
+                    Ui.withAlpha(0xFF0A0706.toInt(), alpha),
                 ),
                 floatArrayOf(0f, .55f, 1f), Shader.TileMode.CLAMP,
             )
             canvas.drawRect(frame, scrim)
+            scrim.shader = null
+            if (initial.isNotEmpty()) {
+                mark.textSize = Ui.px(this, 900f)
+                mark.alpha = (13 * alpha).toInt()
+                canvas.drawText(initial, frame.centerX() - mark.measureText(initial) / 2f,
+                    frame.centerY() + mark.textSize * .3f, mark)
+            }
         }
     }
 }

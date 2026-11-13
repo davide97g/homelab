@@ -11,8 +11,8 @@ android {
         applicationId = "it.davideghiotto.jarvistv"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = 2
+        versionName = "0.2"
     }
 
     buildTypes {
@@ -24,6 +24,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Artwork that is fine on our own TV but not ours to publish (the screensaver's
+    // painting). Git-ignored; see src/private/README.md. Missing is fine: the dream
+    // falls back to plain cream.
+    sourceSets["main"].assets.srcDirs("src/private/assets")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

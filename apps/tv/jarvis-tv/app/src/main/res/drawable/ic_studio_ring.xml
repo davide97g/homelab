@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the ring-and-spark beside the app name; same path as tv-preview/studio.html -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="23dp" android:height="23dp"
+    android:viewportWidth="40" android:viewportHeight="40">
+    <group android:pivotX="18" android:pivotY="22" android:rotation="32">
+        <path android:strokeColor="@color/studio_paper" android:strokeWidth="2.4"
+            android:pathData="M5,22 a13,15 0 1,0 26,0 a13,15 0 1,0 -26,0" />
+    </group>
+    <path android:fillColor="@color/studio_paper"
+        android:pathData="M30,4l1.6,4.4L36,10l-4.4,1.6L30,16l-1.6,-4.4L24,10l4.4,-1.6z" />
+</vector>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the one solid thing on the home screen: a paper pill -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/studio_paper" />
+    <corners android:radius="100dp" />
+</shape>

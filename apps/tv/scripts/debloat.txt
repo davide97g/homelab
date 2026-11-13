@@ -1,0 +1,58 @@
+# Packages scripts/debloat.sh disables on the Philips 65PUS8505 (Android 12, TPM191E).
+#
+# One package per line; `#` starts a comment. Lines not installed on the set are
+# skipped, so this list can name more than the TV actually ships. Everything is
+# `pm disable-user --user 0`: no root, nothing uninstalled, `debloat.sh --restore`
+# puts back exactly what it took away.
+#
+# "Medio": the Google feed and its ads, Google's own media apps, store-demo and
+# tutorial leftovers, telemetry senders. Kept on purpose, never list these:
+#   com.android.vending                 Play Store (updates, installs)
+#   com.google.android.gms / gsf        Play services (everything breaks)
+#   com.google.android.apps.mediashell  Chromecast built-in
+#   com.google.android.katniss          Assistant / voice search
+#   com.google.android.tvlauncher       stock launcher: --launcher in deploy-tv.sh owns it
+#   com.google.android.tv.remote.service  Google TV remote on the phone
+#   org.droidtv.*  that are not named below — JointSpace, Ambilight, EasyLink, inputs
+#                    and the TV tuner live under that prefix. Never wildcard it.
+
+# ── the Google TV feed: sponsored rows, "watch next", channel ads ───────────────
+com.google.android.tvrecommendations
+com.google.android.leanbacklauncher.recommendations
+com.google.android.tv.frameworkpackagestubs.ads
+com.google.android.adservices.api
+com.google.android.ext.services.ads
+
+# ── Google media apps nobody here opens ────────────────────────────────────────
+com.google.android.videos
+com.google.android.play.games
+com.google.android.music
+com.google.android.youtube.tvmusic
+com.google.android.youtube.tvkids
+com.google.android.apps.tv.launcherx.ads
+com.google.android.apps.youtube.kids
+
+# ── telemetry, feedback, things a sideloaded launcher never needs ───────────────
+com.google.android.feedback
+com.google.android.tv.bugreportsender
+com.google.android.partnersetup
+com.android.printspooler
+com.android.bips
+com.android.providers.partnerbookmarks
+
+# ── Philips: shop demo, tutorials, app gallery (verify in the inventory first) ──
+org.droidtv.demome
+org.droidtv.tutorials
+org.droidtv.helpcenter
+org.droidtv.nettvbrowser
+org.droidtv.appgallery
+
+# ── partner apps preinstalled by Philips. Uncomment only the ones never used ────
+# com.netflix.ninja
+# com.amazon.amazonvideo.livingroom
+# com.facebook.katana
+# com.rakuten.tv
+# com.dazn
+# tv.pluto.android
+# com.spotify.tv.android      # used: Spotify is on the rail
+# com.disney.disneyplus       # used: Disney+ is on the rail

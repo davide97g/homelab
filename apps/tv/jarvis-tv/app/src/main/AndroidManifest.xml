@@ -50,6 +50,31 @@
             </intent-filter>
         </activity>
 
+        <!-- Never posts or reads a notification: being an enabled listener is the only
+             way a sideloaded app may read other apps' media sessions, which is where
+             Spotify's album art and YouTube's thumbnail come from. -->
+        <service
+            android:name=".MediaListener"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- The screensaver: the painting and the hour. -->
+        <service
+            android:name=".MeadowDream"
+            android:exported="true"
+            android:label="@string/saver_label"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name=".SettingsActivity"
             android:exported="false"

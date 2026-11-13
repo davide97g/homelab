@@ -27,3 +27,13 @@ npm-debug.log*
 
 # ── editor ──────────────────────────────────────────────────────────────────────
 .cursor/
+
+# ── debloat state, per TV ───────────────────────────────────────────────────────
+scripts/.debloated.txt
+scripts/.inventory.txt
+
+# ── artwork we may use on our TV but not publish ─────────────────────────────
+tv-preview/assets/private/*
+!tv-preview/assets/private/README.md
+jarvis-tv/app/src/private/*
+!jarvis-tv/app/src/private/README.md

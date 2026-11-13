@@ -19,4 +19,14 @@
     <color name="warn">#FBBF24</color>
     <color name="ivory">#F4EDE2</color>
     <color name="err">#F87171</color>
+
+    <!-- studio home (tv-preview/studio.css): warm paper ink on a veiled cover -->
+    <color name="studio_paper">#F6F1EB</color>
+    <color name="studio_ink_2">#B8F6F1EB</color>
+    <color name="studio_ink_3">#80F6F1EB</color>
+    <color name="studio_rule">#4DF6F1EB</color>
+    <color name="studio_ink_dark">#1E1814</color>
+    <!-- menu bar: white words straight on the painting -->
+    <color name="menubar_ink">#FFFFFF</color>
+    <color name="menubar_ink_2">#F2FFFFFF</color>
 </resources>

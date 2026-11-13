@@ -13,11 +13,9 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import it.davideghiotto.jarvistv.databinding.ActivityHomeBinding
-import it.davideghiotto.jarvistv.databinding.ItemGaugeBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -36,23 +34,28 @@ import kotlin.math.max
 import kotlin.random.Random
 
 /**
- * Three screens on one reel: the apps, the orb, the homelab. Down goes deeper in, up
- * comes back out, and the reel is the only thing that moves.
+ * Two screens on one reel: the apps and the orb. Down goes to JARVIS, up comes back
+ * out, and the reel is the only thing that moves.
+ *
+ * The apps screen is a macOS desktop: the screensaver's painting as the wallpaper, a
+ * menu bar along the top, and the apps in a dock along the bottom that magnifies
+ * under the D-pad selector as left/right moves it.
  */
 class HomeActivity : AppCompatActivity() {
 
-    private enum class Zone { RAIL, GEAR, JARVIS, HOMELAB }
+    private enum class Zone { FLOW, TABS, JARVIS }
 
     private companion object {
         const val TAG = "JarvisHome"
-        const val JELLYFIN = "org.jellyfin.androidtv"
-        const val LEAD = 2          // the picked card never scrolls past the third slot
+        const val TAB_HOME = 0
+        const val TAB_SETTINGS = 1
     }
 
     private lateinit var ui: ActivityHomeBinding
     private lateinit var prefs: Prefs
     private lateinit var ambilight: Ambilight
     private lateinit var speaker: Speaker
+    private lateinit var media: MediaCovers
 
     private var client: JarvisClient? = null
     private var clockJob: Job? = null
@@ -64,35 +67,25 @@ class HomeActivity : AppCompatActivity() {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
+    /** What is on the drum: the favourites and the "+" card, or everything. */
     private var apps: List<LaunchableApp> = emptyList()
-    private var adapter: AppsAdapter? = null
-    private val services = ServicesAdapter()
-    private var zone = Zone.RAIL
-    private var picked = 0
-    private var railScroll = 0
+    /** Every launchable app on the set, favourites first. */
+    private var all: List<LaunchableApp> = emptyList()
+    private var showAll = false
+    private var zone = Zone.FLOW
+    private var tab = TAB_HOME
     private var launching = false
-    private var houseAwake = false
-    private var houseHeld = false
-    private var housePeaked = false
-    private var lastSnap: Snapshot? = null
     private var showcase: List<ShowcaseItem> = emptyList()
+    /** Jellyfin's resume still, by package, fetched through jarvis-server. */
     private val backdrops = mutableMapOf<String, Bitmap>()
+    /** What each app is playing, from its media session. */
+    private var playing: Map<String, NowPlaying> = emptyMap()
 
     private val itLocale = Locale("it", "IT")
-    private val timeFmt = SimpleDateFormat("HH:mm", itLocale)
-    private val dateFmt = SimpleDateFormat("EEEE d MMMM", itLocale)
+    /** The menu bar's clock: "gio 13 nov  13:11". */
+    private val clockFmt = SimpleDateFormat("EEE d MMM   HH:mm", itLocale)
 
-    /** One turn of the sweep every 5.5 s while a card is picked, as in the preview. */
-    private val sweep = ValueAnimator.ofFloat(0f, 360f).apply {
-        duration = 5_500
-        repeatCount = ValueAnimator.INFINITE
-        interpolator = null
-        addUpdateListener { a ->
-            val angle = a.animatedValue as Float
-            adapter?.sweepAngle = angle
-            currentCard()?.sweepAngle = angle
-        }
-    }
+    private val tabs get() = listOf(ui.apps.tabHome, ui.apps.tabSettings)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,37 +102,15 @@ class HomeActivity : AppCompatActivity() {
             runOnUiThread { onSpeaking(speaking) }
         }
 
-        ui.apps.rail.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        ui.apps.rail.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) { railScroll += dx }
-        })
-
-        ui.homelab.services.layoutManager = GridLayoutManager(this, 3)
-        ui.homelab.services.adapter = services
-        ui.homelab.services.addItemDecoration(
-            ServicesAdapter.Gaps(Ui.px(this, 18f).toInt(), 3)
-        )
-        ui.homelab.services.post {
-            val gaps = Ui.px(this, 18f).toInt() * 2
-            services.rowHeight = max(Ui.px(this, 72f).toInt(), (ui.homelab.services.height - gaps) / 3)
+        media = MediaCovers(this) { now ->
+            playing = now
+            refreshArt()
         }
 
         ui.jarvis.orb.onColour = { colour -> if (zone == Zone.JARVIS) tintAmbilight(colour) }
 
-        buildGauges()
         setJarvisState(OrbView.State.IDLE)
-        watchHouse()
-
-        ui.reel.post {
-            for (i in 0 until ui.reel.childCount) {
-                val c = ui.reel.getChildAt(i)
-                Log.i(TAG, "reel child $i: ${c.javaClass.simpleName} " +
-                    "${c.left},${c.top}-${c.right},${c.bottom} vis=${c.visibility} " +
-                    "children=${(c as? android.view.ViewGroup)?.childCount}")
-            }
-            Log.i(TAG, "orb: ${ui.jarvis.orb.width}x${ui.jarvis.orb.height} " +
-                "at ${ui.jarvis.orb.left},${ui.jarvis.orb.top} vis=${ui.jarvis.orb.visibility}")
-        }
+        renderTabs()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -161,18 +132,15 @@ class HomeActivity : AppCompatActivity() {
             launching = false
             ui.takeover.close { }
         }
-        sweep.start()
+        media.start()
         if (zone == Zone.JARVIS) ui.jarvis.orb.start()
-        if (houseAwake) ui.apps.house.startWalker()
     }
 
     override fun onPause() {
         super.onPause()
         clockJob?.cancel()
-        sweep.cancel()
+        media.stop()
         ui.jarvis.orb.stop()
-        if (ui.apps.house.acquiring) ui.apps.house.finish()
-        ui.apps.house.stopWalker()
         // Hand Ambilight back before whatever the viewer launched takes the screen,
         // otherwise a manual-mode pulse would freeze over their film.
         ambilight.stopPulse()
@@ -187,10 +155,9 @@ class HomeActivity : AppCompatActivity() {
     /** A launcher swallows BACK when it is already at the top. */
     override fun onBackPressed() {
         when (zone) {
-            Zone.RAIL -> Unit
-            Zone.GEAR -> goTo(Zone.RAIL)
-            Zone.JARVIS -> goTo(Zone.RAIL)
-            Zone.HOMELAB -> goTo(Zone.JARVIS)
+            Zone.FLOW -> if (showAll) setShowAll(false)
+            Zone.TABS -> goTo(Zone.FLOW)
+            Zone.JARVIS -> goTo(Zone.FLOW)
         }
     }
 
@@ -199,28 +166,31 @@ class HomeActivity : AppCompatActivity() {
             openSettings(); return true
         }
         if (launching) return true
-        if (ui.apps.house.acquiring) ui.apps.house.finish()
+        val ok = keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
         return when (zone) {
-            Zone.RAIL -> when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_RIGHT -> { pick(picked + 1); true }
-                KeyEvent.KEYCODE_DPAD_LEFT -> { pick(picked - 1); true }
-                KeyEvent.KEYCODE_DPAD_UP -> { goTo(Zone.GEAR); true }
-                KeyEvent.KEYCODE_DPAD_DOWN -> { goTo(Zone.JARVIS); true }
-                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> { openPicked(); true }
+            Zone.FLOW -> when {
+                keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> { turn(1); true }
+                keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> { turn(-1); true }
+                keyCode == KeyEvent.KEYCODE_DPAD_UP -> { tab = TAB_HOME; goTo(Zone.TABS); true }
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN -> { goTo(Zone.JARVIS); true }
+                ok -> { openPicked(); true }
                 else -> super.onKeyDown(keyCode, event)
             }
-            Zone.GEAR -> when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_DOWN -> { goTo(Zone.RAIL); true }
-                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> { openSettings(); true }
+            Zone.TABS -> when {
+                keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> { tab = (tab - 1).coerceAtLeast(0); renderTabs(); true }
+                keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> { tab = (tab + 1).coerceAtMost(TAB_SETTINGS); renderTabs(); true }
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN -> { goTo(Zone.FLOW); true }
+                ok -> {
+                    when (tab) {
+                        TAB_SETTINGS -> { goTo(Zone.FLOW); openSettings() }
+                        else -> goTo(Zone.FLOW)
+                    }
+                    true
+                }
                 else -> super.onKeyDown(keyCode, event)
             }
             Zone.JARVIS -> when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_UP -> { goTo(Zone.RAIL); true }
-                KeyEvent.KEYCODE_DPAD_DOWN -> { goTo(Zone.HOMELAB); true }
-                else -> super.onKeyDown(keyCode, event)
-            }
-            Zone.HOMELAB -> when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_UP -> { goTo(Zone.JARVIS); true }
+                KeyEvent.KEYCODE_DPAD_UP -> { goTo(Zone.FLOW); true }
                 else -> super.onKeyDown(keyCode, event)
             }
         }
@@ -234,51 +204,41 @@ class HomeActivity : AppCompatActivity() {
         zone = next
         ui.reel.goTo(
             when (next) {
-                Zone.RAIL, Zone.GEAR -> 0
+                Zone.FLOW, Zone.TABS -> 0
                 Zone.JARVIS -> 1
-                Zone.HOMELAB -> 2
             }
         )
-        // the showcase steps back off the apps screen and all but disappears behind
-        // the orb, which is the only lit thing on its screen
-        ui.showcase.dim = when (next) {
-            Zone.RAIL, Zone.GEAR -> 1f
+        // the painting steps back off the desktop and all but disappears behind the
+        // orb, which is the only lit thing on its screen
+        ui.wallpaper.dim = when (next) {
+            Zone.FLOW, Zone.TABS -> 1f
             Zone.JARVIS -> .06f
-            Zone.HOMELAB -> .12f
         }
-        ui.apps.scrollHint.animate().alpha(if (next == Zone.JARVIS || next == Zone.HOMELAB) 0f else 1f)
-            .setDuration(340).start()
-
-        val gearOn = next == Zone.GEAR
-        ui.apps.gear.animate().scaleX(if (gearOn) 1.15f else 1f).scaleY(if (gearOn) 1.15f else 1f)
-            .setDuration(180).start()
-        ui.apps.gear.alpha = if (gearOn) 1f else .7f
+        renderTabs()
 
         // the orb costs a frame of canvas work, so it only runs while it is on screen
         if (next == Zone.JARVIS) ui.jarvis.orb.start() else ui.jarvis.orb.stop()
-        if (next == Zone.RAIL || next == Zone.GEAR) ui.apps.house.startWalker() else ui.apps.house.stopWalker()
         if (next == Zone.JARVIS) tintAmbilight(orbColour()) else tintAmbilight(pickedAccent())
     }
 
-    private fun pick(index: Int) {
+    private fun renderTabs() {
+        val here = when (zone) {
+            Zone.JARVIS -> -1
+            else -> TAB_HOME
+        }
+        tabs.forEachIndexed { i, t ->
+            t.current = i == here
+            t.lit = zone == Zone.TABS && i == tab
+        }
+    }
+
+    private fun turn(by: Int) {
         if (apps.isEmpty()) return
-        picked = index.coerceIn(0, apps.size - 1)
-        adapter?.selected = picked
-        scrollRail()
-        renderHero()
-        renderShowcase()
-        tintAmbilight(pickedAccent())
+        ui.apps.dock.move(by)
+        renderPicked()
     }
 
-    private fun scrollRail() {
-        val card = resources.getDimensionPixelSize(R.dimen.card_w)
-        val gap = resources.getDimensionPixelSize(R.dimen.card_gap)
-        val target = max(0, picked - LEAD) * (card + gap)
-        ui.apps.rail.smoothScrollBy(target - railScroll, 0)
-    }
-
-    private fun currentCard(): AppCardView? =
-        (ui.apps.rail.findViewHolderForAdapterPosition(picked) as? AppsAdapter.VH)?.card
+    private val picked get() = ui.apps.dock.index
 
     private fun pickedAccent(): Int =
         apps.getOrNull(picked)?.accent ?: ContextCompat.getColor(this, R.color.accent)
@@ -287,54 +247,99 @@ class HomeActivity : AppCompatActivity() {
 
     private fun loadApps() {
         lifecycleScope.launch {
-            val loaded = withContext(Dispatchers.IO) { Apps.load(this@HomeActivity) }
-            if (loaded.map { it.pkg } == apps.map { it.pkg }) return@launch
-            apps = loaded
-            adapter = AppsAdapter(apps).also {
-                it.selected = picked.coerceIn(0, max(0, apps.size - 1))
-                it.art = backdrops
-                it.progress = resumeProgress()
-                ui.apps.rail.adapter = it
-            }
-            railScroll = 0
-            pick(picked)
+            all = withContext(Dispatchers.IO) { Apps.load(this@HomeActivity) }
+            val next = drum()
+            if (next.map { it.pkg } == apps.map { it.pkg }) return@launch
+            show(next, keep = apps.getOrNull(picked)?.pkg)
         }
     }
 
-    private fun resumeProgress(): Map<String, Float> =
+    /**
+     * Only the favourites that are installed, then a "+" card for the rest; with it
+     * open, everything and a "−" card to fold it back. No card when it would show or
+     * hide nothing.
+     */
+    private fun drum(): List<LaunchableApp> {
+        val favs = all.filter(Apps::isFavourite)
+        if (favs.isEmpty() || favs.size == all.size) return all
+        return if (showAll) all + toggleCard(R.string.fewer_apps) else favs + toggleCard(R.string.more_apps)
+    }
+
+    private fun toggleCard(label: Int) = LaunchableApp(
+        label = getString(label),
+        pkg = Apps.MORE,
+        banner = null,
+        icon = ContextCompat.getDrawable(this, R.drawable.ic_studio_plus)!!,
+        accent = 0xFF6E625B.toInt(),
+    )
+
+    private fun show(next: List<LaunchableApp>, keep: String?) {
+        apps = next
+        val focus = apps.indexOfFirst { it.pkg == keep }.coerceAtLeast(0)
+        ui.apps.dock.setApps(apps, focus)
+        pushStatus()
+        renderPicked()
+    }
+
+    /** Opening lands on the first app it revealed; closing lands back on the "+". */
+    private fun setShowAll(on: Boolean) {
+        if (showAll == on) return
+        showAll = on
+        val keep = if (on) all.firstOrNull { !Apps.isFavourite(it) }?.pkg else Apps.MORE
+        show(drum(), keep)
+    }
+
+    /**
+     * Every picture the launcher can honestly get, for the takeover: what an app is
+     * playing beats what Jellyfin says it is part way through.
+     */
+    private fun covers(): Map<String, Bitmap> =
+        backdrops + playing.mapNotNull { (pkg, p) -> p.art?.let { pkg to it } }
+
+    private fun progress(): Map<String, Float> =
         showcase.firstOrNull()?.takeIf { it.progress > 0f }?.let { mapOf(it.pkg to it.progress) }
             ?: emptyMap()
 
+    /** The running dots, the progress on the Jellyfin icon, and each tooltip's second line. */
+    private fun pushStatus() {
+        val subs = apps.mapNotNull { a -> subtitleFor(a)?.let { a.pkg to it } }.toMap()
+        val running = playing.keys + showcase.filter { it.progress > 0f }.map { it.pkg }
+        ui.apps.dock.setStatus(running, progress(), subs)
+    }
+
+    private fun refreshArt() {
+        pushStatus()
+        renderPicked()
+    }
+
     /**
-     * Opening an app: the takeover grows out of the card and the activity starts
+     * Opening an app: the takeover grows out of the front card and the activity starts
      * underneath it. The animation is the loading state — a cold start on this set is
      * 300–900 ms — so the app is asked for part way through rather than at the end.
      */
     private fun openPicked() {
         val app = apps.getOrNull(picked) ?: return
-        val card = currentCard() ?: return
-        if (card.width == 0 || card.height == 0) return
-        if (launching) return
+        if (app.pkg == Apps.MORE) { setShowAll(!showAll); return }
+        val icon = ui.apps.dock.selectedRect() ?: return
+        if (icon.width() <= 0f || launching) return
         launching = true
 
         val root = IntArray(2).also { ui.root.getLocationInWindow(it) }
-        val at = IntArray(2).also { card.getLocationInWindow(it) }
-        val w = card.width * card.scaleX
-        val h = card.height * card.scaleY
-        val left = at[0] - root[0] + (card.width - w) / 2f
-        val top = at[1] - root[1] + (card.height - h) / 2f
+        val at = IntArray(2).also { ui.apps.dock.getLocationInWindow(it) }
+        icon.offset((at[0] - root[0]).toFloat(), (at[1] - root[1]).toFloat())
 
-        ui.takeover.open(
-            RectF(left, top, left + w, top + h),
-            card.art, app.icon, app.accent, app.label,
-        )
+        // the dock bounce first, as macOS does, then the window grows out of the icon
+        ui.apps.dock.bounce()
+        ui.takeover.postDelayed({
+            ui.takeover.open(icon, covers()[app.pkg], app.icon, app.accent, app.label)
+        }, 380)
         ui.takeover.postDelayed({
             if (!Apps.launch(this, app)) {
                 Log.w(TAG, "cannot launch ${app.pkg}")
                 launching = false
                 ui.takeover.close { }
             }
-        }, 900)
+        }, 1200)
     }
 
     // ── showcase ─────────────────────────────────────────────────────────────────
@@ -360,77 +365,29 @@ class HomeActivity : AppCompatActivity() {
             first.imagePath?.let { path ->
                 Images.load(base + path)?.let { backdrops[first.pkg] = it }
             }
-            adapter?.art = backdrops
-            adapter?.progress = resumeProgress()
-            adapter?.notifyDataSetChanged()
-            renderHero()
-            renderShowcase()
+            refreshArt()
         }
     }
 
-    private fun showcaseFor(pkg: String): ShowcaseItem? =
-        showcase.firstOrNull { it.pkg == pkg }
-
-    private fun renderShowcase() {
-        val app = apps.getOrNull(picked) ?: return
-        ui.showcase.show(backdrops[app.pkg], app.accent)
+    /** The dock draws the selection itself; the room's light follows it. */
+    private fun renderPicked() {
+        if (zone == Zone.FLOW || zone == Zone.TABS) tintAmbilight(pickedAccent())
     }
 
-    private fun renderHero() {
-        val app = apps.getOrNull(picked) ?: return
-        val item = showcaseFor(app.pkg)
-        val hero = ui.apps
-
-        if (item != null) {
-            hero.heroKicker.text = item.kicker
-            hero.heroTitle.text = item.title
-            setChips(hero.heroMeta, item.meta())
-            val remaining = item.remaining()
-            if (item.progress > 0f && remaining != null) {
-                hero.heroProgressRow.visibility = View.VISIBLE
-                hero.heroProgress.progress = (item.progress * 1000).toInt()
-                hero.heroProgressText.text = remaining
-                hero.heroCtaText.setText(R.string.resume)
-            } else {
-                hero.heroProgressRow.visibility = View.GONE
-                hero.heroCtaText.setText(R.string.open)
-            }
-        } else {
-            hero.heroKicker.text = app.label.uppercase(itLocale)
-            hero.heroTitle.text = app.label
-            setChips(hero.heroMeta, emptyList())
-            hero.heroProgressRow.visibility = View.GONE
-            hero.heroCtaText.setText(R.string.open)
+    /** The tooltip's second line, or nothing when the launcher knows nothing. */
+    private fun subtitleFor(app: LaunchableApp): String? {
+        if (app.pkg == Apps.MORE) {
+            return if (showAll) getString(R.string.fewer_apps_hint)
+            else getString(R.string.more_apps_hint, all.count { !Apps.isFavourite(it) })
         }
-
-        // fade the hero down and back rather than sliding it: sideways reads as a page
-        // change, and nothing has changed page
-        listOf(hero.heroKicker, hero.heroTitle, hero.heroMeta, hero.heroProgressRow, hero.heroCta)
-            .forEachIndexed { i, v ->
-                v.alpha = 0f
-                v.translationY = Ui.px(this, 14f)
-                v.animate().alpha(1f).translationY(0f).setStartDelay(i * 30L).setDuration(340).start()
-            }
-    }
-
-    private fun setChips(row: android.widget.LinearLayout, chips: List<String>) {
-        row.removeAllViews()
-        chips.forEach { chip ->
-            val tv = TextView(this).apply {
-                text = chip
-                setBackgroundResource(R.drawable.chip_bg)
-                setTextColor(ContextCompat.getColor(this@HomeActivity, R.color.text_secondary))
-                textSize = 8f
-                val padH = Ui.px(this@HomeActivity, 13f).toInt()
-                val padV = Ui.px(this@HomeActivity, 5f).toInt()
-                setPadding(padH, padV, padH, padV)
-            }
-            val lp = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginEnd = Ui.px(this@HomeActivity, 14f).toInt() }
-            row.addView(tv, lp)
+        playing[app.pkg]?.let { p ->
+            return "${getString(R.string.now_playing)} — ${p.title}" + (p.subtitle?.let { " · $it" } ?: "")
         }
+        showcase.firstOrNull { it.pkg == app.pkg }?.let { item ->
+            return "${getString(R.string.keep_watching)} — ${item.title}" +
+                (item.remaining()?.let { " · $it" } ?: "")
+        }
+        return null
     }
 
     // ── clock ────────────────────────────────────────────────────────────────────
@@ -439,23 +396,10 @@ class HomeActivity : AppCompatActivity() {
         clockJob?.cancel()
         clockJob = lifecycleScope.launch {
             while (isActive) {
-                val now = Date()
-                ui.apps.clock.text = timeFmt.format(now)
-                ui.apps.dateLine.text = dateFmt.format(now).replaceFirstChar { it.uppercase() }
-                ui.apps.greeting.text = greeting()
+                ui.apps.clock.text = clockFmt.format(Date())
                 delay(10_000)
             }
         }
-    }
-
-    private fun greeting(): String {
-        val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        val part = when (h) {
-            in 5..12 -> "Buongiorno"
-            in 13..17 -> "Buon pomeriggio"
-            else -> "Buonasera"
-        }
-        return "$part, Davide"
     }
 
     // ── jarvis ───────────────────────────────────────────────────────────────────
@@ -466,7 +410,7 @@ class HomeActivity : AppCompatActivity() {
             ctx = this,
             prefs = prefs,
             onLink = { up -> runOnUiThread { renderLink(up) } },
-            onSnapshot = { snap -> runOnUiThread { renderHomelab(snap) } },
+            onSnapshot = { },   // homelab status: no longer shown on the TV
             onTranscript = { text -> runOnUiThread { onTranscript(text) } },
             onSay = { text, lang ->
                 runOnUiThread { onReply(text) }
@@ -559,122 +503,17 @@ class HomeActivity : AppCompatActivity() {
         ambilight.setColour(colour)
     }
 
-    // ── homelab ──────────────────────────────────────────────────────────────────
-
-    private class Gauge(val ui: ItemGaugeBinding)
-
-    private val gauges = mutableListOf<Gauge>()
-
-    private fun buildGauges() {
-        val labels = listOf(R.string.metric_cpu, R.string.metric_ram, R.string.metric_uptime, R.string.metric_services)
-        labels.forEach { label ->
-            val g = ItemGaugeBinding.inflate(layoutInflater, ui.homelab.gauges, false)
-            g.gaugeLabel.setText(label)
-            g.gaugeValue.text = "—"
-            val lp = g.root.layoutParams as android.widget.LinearLayout.LayoutParams
-            lp.marginEnd = Ui.px(this, 24f).toInt()
-            ui.homelab.gauges.addView(g.root, lp)
-            gauges += Gauge(g)
-        }
-    }
+    // ── link ─────────────────────────────────────────────────────────────────────
 
     private fun renderLink(up: Boolean) {
-        val colour = ContextCompat.getColor(this, if (up) R.color.ok else R.color.err)
-        ui.apps.linkDot.background.mutate().setTint(colour)
-        ui.apps.linkText.setText(if (up) R.string.status_online else R.string.status_offline)
-        ui.apps.house.bind(up, if (up) lastSnap?.host else null, if (up) lastSnap?.services.orEmpty() else emptyList())
         if (!up) {
             ui.jarvis.jarvisPrompt.setText(R.string.jarvis_offline)
             ui.jarvis.jarvisReply.text = ""
             setJarvisState(OrbView.State.ERROR)
-            services.items = emptyList()
-            gauges.forEach { it.ui.gaugeValue.text = "—"; it.ui.gaugeBar.progress = 0 }
-            ui.homelab.hostName.setText(R.string.homelab_unreachable)
         } else if (ui.jarvis.orb.state == OrbView.State.ERROR) {
             setJarvisState(OrbView.State.IDLE)
             ui.jarvis.jarvisPrompt.setText(R.string.jarvis_hint_phone)
         }
-    }
-
-    private fun renderHomelab(snap: Snapshot) {
-        val host = snap.host
-        lastSnap = snap
-        ui.apps.house.bind(true, host, snap.services)
-        ui.homelab.hostName.text = host?.name ?: getString(R.string.homelab_unreachable)
-        services.items = snap.services
-
-        val upCount = snap.services.count { it.up }
-        fun set(i: Int, value: String, unit: String, fraction: Float) {
-            val g = gauges.getOrNull(i) ?: return
-            g.ui.gaugeValue.text = value
-            g.ui.gaugeBar.progress = (fraction.coerceIn(0f, 1f) * 1000).toInt()
-            g.ui.gaugeLabel.text = g.ui.gaugeLabel.text.toString().substringBefore(" ·") +
-                if (unit.isEmpty()) "" else " · $unit"
-        }
-        if (host != null) {
-            set(0, "${host.cpuPercent}%", "", host.cpuPercent / 100f)
-            set(1, "${host.memUsedGb}/${host.memTotalGb} G", "",
-                if (host.memTotalGb > 0) host.memUsedGb.toFloat() / host.memTotalGb else 0f)
-            set(2, host.uptime, "", 1f)
-        }
-        set(3, "$upCount/${snap.services.size}", "", 
-            if (snap.services.isNotEmpty()) upCount.toFloat() / snap.services.size else 0f)
-    }
-
-    /**
-     * The house reports in once, the first time the launcher is drawn. Any key
-     * docks it immediately — the remote stays in charge.
-     */
-    private fun watchHouse() {
-        ui.apps.house.onFrame = { word, acquiring ->
-            ui.apps.houseWord.alpha = word
-            if (acquiring && !houseHeld && !housePeaked) {
-                houseHeld = true
-                fadeChrome(0f, 180)
-                ui.showcase.dim = .5f
-                if (prefs.ambilightEnabled) ambilight.startPulse(0x9E, 0xEA, 0xF2)
-            }
-            if (word > .5f) housePeaked = true
-            if (acquiring && housePeaked && prefs.ambilightEnabled && word > .85f) {
-                ambilight.stopPulse(restore = false)
-                ambilight.setColour(0xFFF4EDE2.toInt())
-            }
-            // chrome comes back as the line starts home, not after it has arrived
-            if (houseHeld && (!acquiring || (housePeaked && word < .2f))) {
-                houseHeld = false
-                housePeaked = false
-                fadeChrome(1f, 560)
-                ui.showcase.dim = when (zone) {
-                    Zone.JARVIS -> .06f
-                    Zone.HOMELAB -> .12f
-                    else -> 1f
-                }
-                ambilight.stopPulse(restore = false)
-                tintAmbilight(if (zone == Zone.JARVIS) orbColour() else pickedAccent())
-            }
-        }
-        ui.apps.houseWrap.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                if (ui.apps.houseWrap.height == 0) return true
-                if (!ui.apps.houseWrap.viewTreeObserver.isAlive) return true
-                ui.apps.houseWrap.viewTreeObserver.removeOnPreDrawListener(this)
-                if (!houseAwake) {
-                    houseAwake = true
-                    ui.apps.house.play()
-                }
-                return true
-            }
-        })
-    }
-
-    private fun fadeChrome(alpha: Float, ms: Long) {
-        listOf(
-            ui.apps.avatar, ui.apps.greeting, ui.apps.dateLine, ui.apps.linkPill,
-            ui.apps.clock, ui.apps.gear,
-            ui.apps.heroKicker, ui.apps.heroTitle, ui.apps.heroMeta,
-            ui.apps.heroProgressRow, ui.apps.heroCta,
-            ui.apps.rail, ui.apps.scrollHint,
-        ).forEach { it.animate().alpha(alpha).setDuration(ms).start() }
     }
 
     // ── wiring ───────────────────────────────────────────────────────────────────

@@ -99,6 +99,25 @@ Three things that cost an evening on 2026-10-08, re-enabling it after a reboot:
   it starts keeps failing for every later `adb` client too. `adb kill-server` from Terminal.app,
   then connect again.
 
+## Debloat
+
+`scripts/debloat.sh` disables what [`scripts/debloat.txt`](scripts/debloat.txt) lists —
+the Google TV feed and its ads, Google's own media apps, telemetry, Philips' shop demo
+and tutorials — with `pm disable-user --user 0`: no root, nothing uninstalled. What it
+disabled is recorded in `scripts/.debloated.txt` (git-ignored) so `--restore` undoes
+exactly that and nothing else.
+
+```sh
+scripts/debloat.sh --inventory   # every package + state → scripts/.inventory.txt
+scripts/debloat.sh               # dry run
+scripts/debloat.sh --apply
+scripts/debloat.sh --restore
+```
+
+Never list `org.droidtv.*` by wildcard: JointSpace, Ambilight, EasyLink, the inputs and
+the tuner live under that prefix. The Philips names in the list were not yet checked
+against this set's inventory when it was written (2026-11-13).
+
 ## Building and installing the launcher
 
 One script does everything: build, connect over ADB, install.
@@ -284,29 +303,54 @@ menus — TV EasyLink + ARC + auto-power on, and HDMI-CEC / TV-wake in the Bose 
 
 ## The home screen
 
-Three screens on one reel, `↓` and `↑` between them. The design is drawn first in
-[`tv-preview/`](tv-preview/) and then ported; every measurement in `dimens.xml` is a
-value from that 1920x1080 preview, halved, because the panel runs at 320 dpi and one
-preview pixel is half a dp (`Ui.px`).
+Two screens on one reel, `↓` and `↑` between them. The design is drawn first in
+[`tv-preview/`](tv-preview/) and then ported; every measurement is a value from that
+1920x1080 preview, halved, because the panel runs at 320 dpi and one preview pixel is
+half a dp (`Ui.px`).
 
 | | |
 |---|---|
-| **apps** | the showcase, the hero and the app rail |
+| **apps** | the "studio" home — [`tv-preview/studio.html`](tv-preview/studio.html) |
 | **JARVIS** | the orb, alone on the screen |
-| **homelab** | host gauges and the TCP probes, port and handshake time each |
 
-**The artwork is real.** Cards use the leanback banner every Android TV app ships, and
-the colour each card, each sweep and the Ambilight take is computed from that banner
-(`Ui.dominantColour` — one 32x32 downscale weighted by saturation, not androidx.palette).
-The Jellyfin card and the showcase behind it are the film the TV is actually part way
-through: the server reads `/Users/{id}/Items/Resume`, and since the TV has **no route to
-that Jellyfin at all** — it is on the NAS, reached over Tailscale from the mini PC — the
-stills come back through `GET /api/image/:id`, resized on the way.
+**Studio.** The hour and a plain menu (Home · JARVIS · Impostazioni, `▲` to
+reach it) along the top; the focused app's name centred; the apps on the outside of a
+drum (`CylinderLayout`), the front card largest and every step out smaller and turned
+away, wrapping all the way round; one line of copy and the action under it.
 
-**Opening an app** is one move: the sweep round the focused card charges for 420 ms, the
-card grows into the frame carrying its own still, and the sweep carries on round the
-whole frame over the app's icon and an indeterminate bar while the activity starts. A
-cold start here is 300–900 ms, so that animation *is* the loading state.
+**Only the favourites on the drum**: Prime Video, Spotify, Cassette, Jellyfin, Cinema
+(`Apps.FAVOURITES`, the ones installed), then a **+ Tutte le app** card. OK on it opens
+every app on the set behind them and focuses the first new one; the last card becomes
+**− Solo preferite**, and BACK folds it too. The homelab status screen is gone from the
+TV; the server still sends its `status` snapshot and the launcher ignores it. Type is
+Sora, bundled in `res/font` (OFL). The pre-studio design is still `tv-preview/index.html`.
+
+**Covers are only what the set can honestly get.** Android TV apps ship a banner — a
+logo on a colour — never artwork, so a card and the panel behind it show a cover only
+when there is one:
+
+- **Jellyfin**: the film the TV is part way through. The TV has **no route to that
+  Jellyfin** — it is on the NAS, reached over Tailscale from the mini PC — so the server
+  reads `/Users/{id}/Items/Resume` and the still comes back through `GET /api/image/:id`.
+- **Whatever is playing** (Spotify's album art, YouTube's thumbnail): its media session.
+  Reading other apps' sessions needs an enabled notification listener, so the APK
+  carries an empty `MediaListener`; `deploy-tv.sh` allows it with
+  `cmd notification allow_listener`. Without it the cards fall back quietly.
+- **Everything else**: the banner's dominant colour (`Ui.dominantColour`) falling to
+  near-black, with the app's initial set large. Google's "Watch Next" rows are not an
+  option: reading them needs `ACCESS_ALL_EPG_DATA`, which is signature|privileged.
+
+**Screensaver.** `MeadowDream` (a `DreamService` in the same APK): a painting, the hour,
+the date, a 40 s push in and back. `deploy-tv.sh` selects it via
+`settings put secure screensaver_components`. The painting is **git-ignored** — it is
+duna.com's hero art with the text inpainted out, fine on our TV, not ours to publish —
+in `jarvis-tv/app/src/private/assets/` (and `tv-preview/assets/private/`). A fresh clone
+builds without it and the dream draws plain cream.
+
+**Opening an app** is one move: the front card grows into the frame carrying its own
+cover, and a sweep runs round the whole frame over the app's icon and an indeterminate
+bar while the activity starts. A cold start here is 300–900 ms, so that animation *is*
+the loading state.
 
 **The orb** is `OrbView`: one closed curve, `r(θ) = R · (1 + Σ aₖ·sin(fₖθ + drift))` over
 four coprime harmonics, sampled 96 times and joined through the midpoints with
@@ -336,6 +380,10 @@ the screen the assistant lives on. The canvas loop runs only while its screen is
 
 ## Known, not yet fixed
 
+- The studio home was built and compiled on 2026-11-13 but **not yet seen on the set**
+  (the TV was unreachable that day). If the drum reads concave — side cards turned
+  *toward* you — flip `TURN_AWAY` in `CylinderLayout.kt`; it is the one sign that
+  depends on how View `rotationY` maps to the screen.
 - The launcher opens **two** WebSocket connections on start. Harmless — the server
   broadcasts to every TV client — but wrong.
 - The speaking envelope is a smoothed random walk, not a real level: Android's TTS

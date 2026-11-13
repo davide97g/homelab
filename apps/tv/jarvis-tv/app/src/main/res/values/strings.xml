@@ -3,13 +3,21 @@
     <string name="app_name">JARVIS</string>
 
     <!-- home -->
-    <string name="status_online">HOMELAB ONLINE</string>
-    <string name="status_offline">HOMELAB OFFLINE</string>
     <string name="open">Apri</string>
     <string name="resume">Riprendi</string>
     <string name="resume_badge">RIPRENDI</string>
     <string name="opening">apertura in corso</string>
-    <string name="wayfind_down">JARVIS e homelab</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_jarvis">JARVIS</string>
+    <string name="talk_to_jarvis">Parla con JARVIS</string>
+    <string name="keep_watching">Continua a guardare</string>
+    <string name="more_apps">Tutte le app</string>
+    <string name="fewer_apps">Solo preferite</string>
+    <string name="more_apps_hint">Altre %1$d app installate</string>
+    <string name="fewer_apps_hint">Torna alle preferite</string>
+    <string name="show">Mostra</string>
+    <string name="now_playing">In riproduzione</string>
+    <string name="saver_label">JARVIS · paesaggio</string>
     <string name="house_word">Casa in linea</string>
     <string name="house_tv">Questa TV</string>
     <string name="house_tv_meta">65PUS8505 · pronta</string>
@@ -26,21 +34,8 @@
     <string name="jarvis_hint_phone">tieni premuto sul telefono per parlare</string>
     <string name="jarvis_offline">nessun collegamento al mini PC</string>
     <string name="wayfind_apps">app</string>
-    <string name="wayfind_homelab">homelab</string>
     <string name="wayfind_jarvis">JARVIS</string>
     <string name="wayfind_up_apps">▴ app</string>
-    <string name="wayfind_down_homelab">▾ homelab</string>
-    <string name="wayfind_up_jarvis">▴ JARVIS</string>
-
-    <!-- homelab -->
-    <string name="section_homelab">Homelab</string>
-    <string name="section_services">Servizi · sonda TCP</string>
-    <string name="metric_cpu">CPU</string>
-    <string name="metric_ram">RAM</string>
-    <string name="metric_uptime">Uptime</string>
-    <string name="metric_services">Servizi</string>
-    <string name="homelab_unreachable">Nessuna risposta dal mini PC</string>
-    <string name="service_down">nessuna risposta</string>
 
     <!-- settings -->
     <string name="settings_title">Impostazioni</string>

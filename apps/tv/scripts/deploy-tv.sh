@@ -91,6 +91,13 @@ echo "Installing on $TV..."
 "$ADB" -s "$TV" install -r "$apk" >/dev/null
 echo "Installed $("$ADB" -s "$TV" shell dumpsys package "$PKG" | sed -n 's/.*versionName=//p' | head -1)"
 
+# Idempotent, every install: let the launcher read media sessions (covers from what
+# is playing) and make the painting the screensaver. Both survive reboots.
+"$ADB" -s "$TV" shell cmd notification allow_listener "$PKG/$PKG.MediaListener" >/dev/null 2>&1 \
+  || echo "  ! could not allow the media listener: cards fall back to their colour"
+"$ADB" -s "$TV" shell settings put secure screensaver_components "$PKG/.MeadowDream" >/dev/null
+"$ADB" -s "$TV" shell settings put secure screensaver_enabled 1 >/dev/null
+
 [ "$do_launcher" = 1 ] && set_launcher
 "$ADB" -s "$TV" shell monkey -p "$PKG" -c android.intent.category.LEANBACK_LAUNCHER 1 >/dev/null 2>&1 || true
 echo "Launched."

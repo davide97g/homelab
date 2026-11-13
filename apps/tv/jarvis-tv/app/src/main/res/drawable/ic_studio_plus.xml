@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the "+ Tutte le app" card's mark in the brand box -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:strokeColor="#F6F1EB" android:strokeWidth="1.6"
+        android:strokeLineCap="round" android:pathData="M12,5 L12,19 M5,12 L19,12" />
+</vector>

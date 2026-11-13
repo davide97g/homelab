@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>JARVIS TV — studio</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Sora ships in the APK (res/font, OFL), so the preview uses the same face.
+     Roboto stays for the JARVIS and homelab screens, which are unchanged. -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&family=Sora:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css?v=2">
+<link rel="stylesheet" href="studio.css?v=2">
+</head>
+<body>
+
+<header class="toolbar">
+  <div class="toolbar__title">JARVIS TV · studio<span>65PUS8505 · surface 1920×1080 · 16:9</span></div>
+  <div class="toolbar__group">
+    <button data-key="ArrowLeft" title="D-pad sinistra">◀</button>
+    <button data-key="ArrowUp" title="D-pad su">▲</button>
+    <button data-key="ArrowDown" title="D-pad giù">▼</button>
+    <button data-key="ArrowRight" title="D-pad destra">▶</button>
+    <button data-key="Enter" title="OK">OK</button>
+    <button data-key="Escape" title="Indietro">⟲</button>
+  </div>
+  <div class="toolbar__group">
+    <label><input type="checkbox" id="tglSafe"> safe area</label>
+    <label><input type="checkbox" id="tglAmbi" checked> ambilight</label>
+    <label><input type="checkbox" id="tglBezel" checked> cornice</label>
+    <button id="btnSaver">screensaver</button>
+    <a href="index.html" style="color:#8b97a3">design precedente</a>
+  </div>
+</header>
+
+<div class="room">
+  <div class="tv" id="tv">
+    <div class="tv__ambilight" id="ambilight"></div>
+    <div class="tv__panel">
+      <div class="stage studio" id="stage">
+
+        <!-- one framed panel; the focused app's cover fills it, under a veil -->
+        <div class="frame" id="frame">
+          <div id="covers"></div>
+          <div class="frame__veil"></div>
+          <div class="frame__glow" id="glow"></div>
+          <div class="grain"></div>
+        </div>
+        <div class="safe"></div>
+
+        <div class="reel" id="reel">
+
+          <!-- ── screen 1 : home ──────────────────────────────────────────── -->
+          <section class="screen screen--home studio-home">
+
+
+            <header class="masthead">
+              <div class="wordmark"><span id="clock">21:40</span><i></i></div>
+              <nav class="tabs" id="tabs">
+                <span class="tab is-current" data-to="home">Home</span>
+                <span class="tab" data-to="jarvis">JARVIS</span>
+                <span class="tab" data-to="homelab">Homelab</span>
+                <span class="tab" data-to="settings">Impostazioni</span>
+              </nav>
+            </header>
+
+            <div class="brand" id="brand">
+              <div class="brand__mark" id="brandMark">J</div>
+              <div class="brand__name">
+                <svg class="brand__ring" viewBox="0 0 40 40" aria-hidden="true">
+                  <ellipse cx="18" cy="22" rx="13" ry="15" transform="rotate(32 18 22)" fill="none" stroke="currentColor" stroke-width="2.4"/>
+                  <path d="M30 4l1.6 4.4L36 10l-4.4 1.6L30 16l-1.6-4.4L24 10l4.4-1.6z" fill="currentColor"/>
+                </svg>
+                <span id="brandName">Jellyfin</span>
+              </div>
+            </div>
+
+            <div class="flow" id="flow"></div>
+
+            <p class="blurb" id="blurb"></p>
+
+            <div class="actions">
+              <div class="btn btn--primary" id="cta"><span id="ctaText">Riprendi</span><kbd>OK</kbd></div>
+              <div class="btn btn--ghost"><span>Parla con JARVIS</span><kbd>↓</kbd></div>
+            </div>
+          </section>
+
+          <!-- ── screen 2 : jarvis (unchanged) ────────────────────────────── -->
+          <section class="screen screen--jarvis">
+            <div class="orbstate" id="orbState">PRONTO</div>
+            <canvas class="orb" id="orb" width="900" height="900"></canvas>
+            <div class="orbtext">
+              <div class="orbtext__prompt" id="jarvisPrompt">tieni premuto sul telefono per parlare</div>
+              <div class="orbtext__reply" id="jarvisReply"></div>
+            </div>
+            <div class="wayfind"><span><b>↑</b> app</span><span><b>↓</b> homelab</span></div>
+          </section>
+
+          <!-- ── screen 3 : homelab (unchanged) ───────────────────────────── -->
+          <section class="screen screen--homelab">
+            <div class="homelab__head">
+              <div class="section-label">Homelab</div>
+              <div class="homelab__host">debian.fritz.box</div>
+            </div>
+            <div class="gauges">
+              <div class="gauge"><span>CPU</span><b>14<i>%</i></b><div class="bar"><i style="width:14%"></i></div></div>
+              <div class="gauge"><span>RAM</span><b>7<i>/15 G</i></b><div class="bar"><i style="width:47%"></i></div></div>
+              <div class="gauge"><span>Disco</span><b>2.1<i>/4 T</i></b><div class="bar"><i style="width:53%"></i></div></div>
+              <div class="gauge"><span>Uptime</span><b>12<i>g 4h</i></b><div class="bar"><i style="width:100%"></i></div></div>
+            </div>
+            <div class="section-label section-label--spaced">Servizi · sonda TCP</div>
+            <div class="services" id="services"></div>
+            <div class="wayfind"><span><b>↑</b> JARVIS</span></div>
+          </section>
+
+        </div>
+
+        <div class="saver" id="saver">
+          <div class="saver__art"></div>
+          <div class="saver__time" id="saverTime">21:40</div>
+          <div class="saver__date" id="saverDate">venerdì 13 novembre</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="room__caption">◀ ▶ scorri · OK apri · ▲ menu · ▼ JARVIS · Esc torna a Home</div>
+</div>
+
+<script src="data.js?v=2"></script>
+<script src="orb.js"></script>
+<script src="studio.js?v=2"></script>
+</body>
+</html>
