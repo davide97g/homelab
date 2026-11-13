@@ -48,7 +48,7 @@
   .tabs { display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 4px; flex: none; }
   .tabs button {
     flex: 1; appearance: none; border: 0; background: transparent; color: var(--muted);
-    font: 600 14px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .1em;
+    font: 600 13px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .05em;
     text-transform: uppercase; padding: 11px 0; border-radius: 9px;
   }
   .tabs button[aria-selected="true"] { background: var(--raised); color: var(--accent); }
@@ -163,6 +163,36 @@
   @keyframes pulse { 50% { opacity: .25; transform: scale(.8); } }
 
   .empty { color: var(--faint); text-align: center; padding: 22px 10px; font-size: 15px; }
+
+  /* ── siti ──────────────────────────────────────────────────────────────────── */
+  .sites { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .site {
+    display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 10px 12px;
+  }
+  .site img, .site .ph {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--raised); object-fit: cover;
+    display: grid; place-items: center; color: var(--accent); font-weight: 700;
+  }
+  .site .meta { min-width: 0; }
+  .site .meta b { display: block; font-size: 16px; font-weight: 600; }
+  .site .meta span { display: block; color: var(--faint); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .site .acts { display: flex; gap: 6px; }
+  .site .acts button, .form button {
+    appearance: none; border: 1px solid var(--hairline); border-radius: 10px; background: var(--raised);
+    color: var(--muted); height: 38px; min-width: 38px; padding: 0 10px; font-size: 14px; font-weight: 600;
+  }
+  .site .acts button.go { color: var(--accent); border-color: var(--accent-dim); }
+  .form { display: flex; flex-direction: column; gap: 8px; flex: none; }
+  .form input {
+    background: var(--surface); color: var(--text); border: 1px solid var(--hairline);
+    border-radius: 12px; padding: 13px 14px; font-size: 16px; width: 100%;
+  }
+  .form input::placeholder { color: var(--faint); }
+  .form .btns { display: flex; gap: 8px; }
+  .form .btns button { flex: 1; height: 48px; font-size: 15px; }
+  .form .btns button.primary { color: var(--accent); border-color: var(--accent-dim); background: #10222B; }
+  .note { color: var(--faint); font-size: 13px; text-align: center; }
 </style>
 </head>
 <body>
@@ -177,6 +207,7 @@
   <button role="tab" aria-selected="false" data-tab="remote">Remoto</button>
   <button role="tab" aria-selected="false" data-tab="find">Cerca</button>
   <button role="tab" aria-selected="false" data-tab="ask">Chiedi</button>
+  <button role="tab" aria-selected="false" data-tab="sites">Siti</button>
 </nav>
 
 <!-- ── TV ──────────────────────────────────────────────────────────────────── -->
@@ -250,6 +281,20 @@
     <input id="text" placeholder="…oppure scrivi" enterkeyhint="send" autocomplete="off">
     <button id="send">Invia</button>
   </div>
+</section>
+
+<!-- ── Siti ────────────────────────────────────────────────────────────────── -->
+<section class="pane" data-tab="sites">
+  <form class="form" id="siteForm" autocomplete="off">
+    <input id="siteUrl" placeholder="Indirizzo, es. dev.zeroshot.it" inputmode="url" autocapitalize="off" spellcheck="false" required>
+    <input id="siteName" placeholder="Nome (facoltativo)">
+    <div class="btns">
+      <button type="button" id="siteCancel" hidden>Annulla</button>
+      <button type="submit" class="primary" id="siteSave">Aggiungi alla TV</button>
+    </div>
+  </form>
+  <div class="sites" id="sites"><div class="empty">Nessun sito ancora.</div></div>
+  <div class="note">Ogni sito diventa un'icona nel dock della TV e si apre a schermo intero.</div>
 </section>
 
 <script>
@@ -488,6 +533,85 @@ textEl.addEventListener('keydown', (e) => e.key === 'Enter' && sendText());
 
 refreshTv();
 setInterval(refreshTv, 4000);
+
+// ── siti ───────────────────────────────────────────────────────────────────────
+let editing = null;   // id of the site in the form, or null when adding
+
+function renderSites(list) {
+  const box = $('sites');
+  box.replaceChildren();
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">Nessun sito ancora.</div>';
+    return;
+  }
+  list.forEach((site, i) => {
+    const row = document.createElement('div');
+    row.className = 'site';
+    const img = document.createElement('img');
+    img.alt = '';
+    img.src = `/api/sites/${site.id}/icon`;
+    img.onerror = () => {
+      const ph = document.createElement('div');
+      ph.className = 'ph';
+      ph.textContent = site.name.slice(0, 1).toUpperCase();
+      img.replaceWith(ph);
+    };
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const b = document.createElement('b'); b.textContent = site.name;
+    const u = document.createElement('span'); u.textContent = site.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    meta.append(b, u);
+    const acts = document.createElement('div');
+    acts.className = 'acts';
+    const btn = (label, cls, fn, title) => {
+      const x = document.createElement('button');
+      x.textContent = label; if (cls) x.className = cls; if (title) x.title = title;
+      x.addEventListener('click', () => guard(fn));
+      acts.append(x);
+    };
+    btn('Apri', 'go', () => post(`/api/sites/${site.id}/open`), 'Apri sulla TV');
+    if (i > 0) btn('↑', '', async () => renderSites((await post(`/api/sites/${site.id}/move`, { by: -1 })).sites), 'Sposta prima');
+    btn('✎', '', () => startEdit(site), 'Modifica');
+    btn('✕', '', async () => {
+      if (!confirm(`Rimuovere ${site.name} dalla TV?`)) return;
+      renderSites((await api(`/api/sites/${site.id}`, { method: 'DELETE' })).sites);
+      if (editing === site.id) stopEdit();
+    }, 'Rimuovi');
+    row.append(img, meta, acts);
+    box.append(row);
+  });
+}
+
+function startEdit(site) {
+  editing = site.id;
+  $('siteUrl').value = site.url;
+  $('siteName').value = site.name;
+  $('siteSave').textContent = 'Salva';
+  $('siteCancel').hidden = false;
+  $('siteUrl').focus();
+}
+
+function stopEdit() {
+  editing = null;
+  $('siteForm').reset();
+  $('siteSave').textContent = 'Aggiungi alla TV';
+  $('siteCancel').hidden = true;
+}
+
+$('siteCancel').addEventListener('click', stopEdit);
+$('siteForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  guard(async () => {
+    const body = { url: $('siteUrl').value, name: $('siteName').value };
+    const out = editing
+      ? await api(`/api/sites/${editing}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      : await post('/api/sites', body);
+    renderSites(out.sites);
+    stopEdit();
+  });
+});
+
+api('/api/sites').then((o) => renderSites(o.sites)).catch(() => {});
 </script>
 </body>
 </html>

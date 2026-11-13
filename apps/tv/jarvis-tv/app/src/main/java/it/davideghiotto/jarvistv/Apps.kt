@@ -18,6 +18,8 @@ data class LaunchableApp(
     val accent: Int,
     /** The icon from the app's xxxhdpi resources, so the dock's magnified tile is sharp. */
     val iconHi: Drawable? = null,
+    /** Set for a web app: the site [WebAppActivity] opens instead of a package. */
+    val url: String? = null,
 )
 
 /**
@@ -74,7 +76,10 @@ object Apps {
             )
     }
 
-    fun launch(ctx: Context, app: LaunchableApp) = launch(ctx, app.pkg)
+    fun launch(ctx: Context, app: LaunchableApp): Boolean {
+        app.url?.let { WebApps.open(ctx, app.label, it); return true }
+        return launch(ctx, app.pkg)
+    }
 
     /** @return false when the package is not installed or has no launchable activity. */
     fun launch(ctx: Context, pkg: String): Boolean {

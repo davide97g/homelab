@@ -7,6 +7,7 @@ import { snapshot, describe } from './homelab.js';
 import { transcribe, chat, systemPrompt, TOOLS } from './openai.js';
 import * as jf from './jellyfin.js';
 import * as tv from './jointspace.js';
+import * as sites from './sites.js';
 
 const PORT = Number(process.env.PORT || 8787);
 const JELLYFIN_PACKAGE = 'org.jellyfin.androidtv';
@@ -28,6 +29,7 @@ wss.on('connection', async (ws) => {
   // The launcher can hold more than one socket open across a relaunch, so every
   // frame goes to all of them rather than to "the" TV.
   ws.send(JSON.stringify(await snapshot()));
+  ws.send(JSON.stringify({ type: 'sites', sites: await sites.list() }));
 });
 
 function broadcast(frame) {
@@ -334,6 +336,48 @@ app.get('/api/image/:id', async (req, res) => {
   } catch (err) {
     res.status(502).send(err.message);
   }
+});
+
+// ── web apps ───────────────────────────────────────────────────────────────────
+// Sites the TV opens full screen from its dock. Edited from the phone page (behind
+// Cloudflare Access on jarvis.davideghiotto.it); every change goes straight to the TV.
+
+const pushSites = async () => broadcast({ type: 'sites', sites: await sites.list() });
+
+const edit = (fn) => async (req, res) => {
+  try {
+    const out = await fn(req);
+    await pushSites();
+    res.json({ ok: true, ...out, sites: await sites.list() });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+app.get('/api/sites', async (_req, res) => res.json({ sites: await sites.list() }));
+app.post('/api/sites', edit(async (req) => ({ site: await sites.add(req.body) })));
+app.put('/api/sites/:id', edit(async (req) => ({ site: await sites.update(req.params.id, req.body) })));
+app.delete('/api/sites/:id', edit(async (req) => { await sites.remove(req.params.id); return {}; }));
+app.post('/api/sites/:id/move', edit(async (req) => {
+  await sites.move(req.params.id, Number(req.body.by) < 0 ? -1 : 1);
+  return {};
+}));
+
+/** Open a site on the TV now, from the phone. */
+app.post('/api/sites/:id/open', async (req, res) => {
+  const site = await sites.get(req.params.id);
+  if (!site) return res.status(404).json({ error: 'sito non trovato' });
+  if (tvs.size === 0) return res.status(503).json({ error: 'la TV non è collegata' });
+  broadcast({ type: 'open_url', id: site.id, name: site.name, url: site.url });
+  res.json({ ok: true });
+});
+
+app.get('/api/sites/:id/icon', async (req, res) => {
+  const out = await sites.icon(req.params.id);
+  if (!out) return res.status(404).end();
+  res.set('Content-Type', out.type);
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.send(out.body);
 });
 
 app.get('/api/status', async (_req, res) => res.json(await snapshot()));

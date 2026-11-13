@@ -75,6 +75,18 @@
             </intent-filter>
         </service>
 
+        <!-- A site from the dock, full screen. Its own task, so HOME and BACK behave
+             as they do for any app; singleTask so the phone can point it elsewhere. -->
+        <activity
+            android:name=".WebAppActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="it.davideghiotto.jarvistv.web"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode"
+            android:hardwareAccelerated="true"
+            android:theme="@style/Theme.JarvisTv" />
+
         <activity
             android:name=".SettingsActivity"
             android:exported="false"

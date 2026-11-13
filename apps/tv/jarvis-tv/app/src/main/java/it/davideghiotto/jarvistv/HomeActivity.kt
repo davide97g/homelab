@@ -78,6 +78,11 @@ class HomeActivity : AppCompatActivity() {
     private var showcase: List<ShowcaseItem> = emptyList()
     /** Jellyfin's resume still, by package, fetched through jarvis-server. */
     private val backdrops = mutableMapOf<String, Bitmap>()
+    /** Web apps, as the server (or, offline, the last copy in prefs) lists them. */
+    private var sites: List<Site> = emptyList()
+    /** Each site's own icon, by site id, fetched through jarvis-server. */
+    private val siteIcons = mutableMapOf<String, Bitmap>()
+    private var sitesJob: Job? = null
     /** What each app is playing, from its media session. */
     private var playing: Map<String, NowPlaying> = emptyMap()
 
@@ -94,6 +99,7 @@ class HomeActivity : AppCompatActivity() {
 
         prefs = Prefs(this)
         applyOverrides(intent)
+        sites = WebApps.cached(this)
 
         ambilight = Ambilight(lifecycleScope)
         if (prefs.ambilightEnabled) ambilight.capture()
@@ -127,6 +133,7 @@ class HomeActivity : AppCompatActivity() {
         startClock()
         startClient()
         fetchShowcase()
+        fetchSites()
         if (launching) {
             // coming back from an app the takeover opened
             launching = false
@@ -260,9 +267,68 @@ class HomeActivity : AppCompatActivity() {
      * hide nothing.
      */
     private fun drum(): List<LaunchableApp> {
+        val web = sites.map { WebApps.entry(this, it, siteIcons[it.id]) }
         val favs = all.filter(Apps::isFavourite)
-        if (favs.isEmpty() || favs.size == all.size) return all
-        return if (showAll) all + toggleCard(R.string.fewer_apps) else favs + toggleCard(R.string.more_apps)
+        if (favs.isEmpty() || favs.size == all.size) return all + web
+        return if (showAll) all + web + toggleCard(R.string.fewer_apps)
+        else favs + web + toggleCard(R.string.more_apps)
+    }
+
+    /** Rebuild the dock in place, keeping the selection on the same entry. */
+    private fun refreshDock() {
+        if (all.isEmpty()) return
+        show(drum(), keep = apps.getOrNull(picked)?.pkg)
+    }
+
+    // ── web apps ─────────────────────────────────────────────────────────────────
+
+    private fun onSites(next: List<Site>) {
+        val changed = next != sites
+        sites = next
+        WebApps.remember(this, next)
+        // a site whose address changed may have a different icon now
+        siteIcons.keys.retainAll(next.map { it.id }.toSet())
+        if (changed) refreshDock()
+        fetchSiteIcons(force = changed)
+    }
+
+    /** The socket pushes the list too; this covers a TV that comes back while it is down. */
+    private fun fetchSites() {
+        sitesJob?.cancel()
+        sitesJob = lifecycleScope.launch {
+            val base = "http://${prefs.serverHost}:${prefs.serverPort}"
+            val list = withContext(Dispatchers.IO) {
+                runCatching {
+                    http.newCall(Request.Builder().url("$base/api/sites").build()).execute().use { res ->
+                        if (!res.isSuccessful) null
+                        else Site.parseAll(JSONObject(res.body?.string() ?: "{}").optJSONArray("sites"))
+                    }
+                }.onFailure { Log.w(TAG, "sites failed: $it") }.getOrNull()
+            } ?: return@launch
+            onSites(list)
+        }
+    }
+
+    private fun fetchSiteIcons(force: Boolean = false) {
+        val base = "http://${prefs.serverHost}:${prefs.serverPort}"
+        val missing = sites.filter { force || it.id !in siteIcons }
+        if (missing.isEmpty()) return
+        lifecycleScope.launch {
+            var got = false
+            for (site in missing) {
+                val bmp = withContext(Dispatchers.IO) {
+                    runCatching {
+                        http.newCall(Request.Builder().url("$base/api/sites/${site.id}/icon").build()).execute().use { res ->
+                            val bytes = if (res.isSuccessful) res.body?.bytes() else null
+                            // ARGB, not Images' RGB_565: icons have transparent corners
+                            bytes?.let { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) }
+                        }
+                    }.getOrNull()
+                }
+                if (bmp != null) { siteIcons[site.id] = bmp; got = true }
+            }
+            if (got) refreshDock()
+        }
     }
 
     private fun toggleCard(label: Int) = LaunchableApp(
@@ -380,6 +446,7 @@ class HomeActivity : AppCompatActivity() {
             return if (showAll) getString(R.string.fewer_apps_hint)
             else getString(R.string.more_apps_hint, all.count { !Apps.isFavourite(it) })
         }
+        app.url?.let { return android.net.Uri.parse(it).host?.removePrefix("www.") }
         playing[app.pkg]?.let { p ->
             return "${getString(R.string.now_playing)} — ${p.title}" + (p.subtitle?.let { " · $it" } ?: "")
         }
@@ -421,6 +488,8 @@ class HomeActivity : AppCompatActivity() {
                     if (!Apps.launch(this, pkg)) Log.w(TAG, "cannot launch $pkg")
                 }
             },
+            onSites = { list -> runOnUiThread { onSites(list) } },
+            onOpenUrl = { name, url -> runOnUiThread { WebApps.open(this, name, url) } },
         ).also { it.start() }
     }
 

@@ -43,4 +43,6 @@
     <string name="restore_help">JARVIS è impostato come schermata principale. Per tornare al launcher Google, apri i dettagli dell\'app e premi "Attiva".</string>
     <string name="restore_button">Ripristina launcher Google</string>
     <string name="open_tv_settings">Impostazioni della TV</string>
+    <string name="web_pointer_on">Puntatore attivo</string>
+    <string name="web_pointer_off">Puntatore spento: le frecce vanno al sito (MENU per riattivarlo)</string>
 </resources>

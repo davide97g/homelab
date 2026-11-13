@@ -195,7 +195,32 @@ and a port probe treats all three alike without mounting a socket into the conta
 | `GET /healthz` | for the container healthcheck |
 | `POST /api/key` | send one allowlisted JointSpace key (D-pad, volume, playback) |
 | `POST /api/playback` `/api/seek` `/api/play` `/api/search` `/api/launch` | phone TV controls |
-| `WS /ws` | TV clients; receives `status`, `transcript`, `say`, `launch` |
+| `GET/POST /api/sites`, `PUT/DELETE /api/sites/:id`, `POST /api/sites/:id/move` | the web apps list, edited from the phone's **Siti** tab |
+| `POST /api/sites/:id/open` | open that site on the TV now |
+| `GET /api/sites/:id/icon` | the site's own icon (apple-touch-icon, else the largest raster favicon) |
+| `WS /ws` | TV clients; receives `status`, `sites`, `transcript`, `say`, `launch`, `open_url` |
+
+## Web apps
+
+Sites opened full screen from the dock, like Safari's "Add to Dock" on a Mac. Add,
+rename, reorder or re-point them from the **Siti** tab on the phone page; every change
+is pushed to the TV over the socket and the dock updates in place. The list lives in
+`sites.json` on the pinned `jarvis_jarvis-data` volume; the TV keeps the last copy it
+received, so the icons stay even while the mini PC is unreachable.
+
+`WebAppActivity` is the system WebView (Chrome's engine) with no browser chrome. The
+remote drives a pointer: arrows move it (accelerating), pushing an edge scrolls what
+is under it, OK taps, BACK goes back then out, MENU hands the arrows to the page for
+sites that already work with a D-pad, play/pause toggles the page's video. Logins
+persist. Google sign-in does not work in any embedded WebView, by Google's design.
+
+**The TV reaches the server on the LAN at `debian.fritz.box:8787`.** `jarvis-server`
+uses host networking, so that port meets UFW's `INPUT` rules, not the Docker
+`DOCKER-USER` allowlist; it needs its own rule:
+
+```sh
+sudo ufw allow from 192.168.15.0/24 to any port 8787 proto tcp comment 'jarvis-server: the TV on the LAN'
+```
 
 ## The phone
 

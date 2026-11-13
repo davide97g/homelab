@@ -34,6 +34,8 @@ class JarvisClient(
     private val onTranscript: (String) -> Unit,
     private val onSay: (String, String) -> Unit,
     private val onLaunch: (String) -> Unit,
+    private val onSites: (List<Site>) -> Unit = {},
+    private val onOpenUrl: (String, String) -> Unit = { _, _ -> },
 ) {
     private val http = OkHttpClient.Builder()
         .connectTimeout(4, TimeUnit.SECONDS)
@@ -171,6 +173,9 @@ class JarvisClient(
             // is running and has registered a session. Starting it is the one part
             // that has to happen on this side.
             "launch" -> onLaunch(o.optString("package"))
+            // web apps: the list edited on the phone, and "open this one now"
+            "sites" -> onSites(Site.parseAll(o.optJSONArray("sites")))
+            "open_url" -> onOpenUrl(o.optString("name"), o.optString("url"))
             else -> Log.d(TAG, "ignored frame: $o")
         }
     }

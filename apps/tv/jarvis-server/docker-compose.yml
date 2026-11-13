@@ -13,10 +13,19 @@ services:
       HOST_PROC: /host/proc
       HOMELAB_HOST: 127.0.0.1
       HOMELAB_NAME: debian
+      DATA_DIR: /data
     volumes:
       - /proc:/host/proc:ro
+      # the web apps list (sites.json), edited from the phone page
+      - jarvis-data:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+# Pinned by name: Dokploy runs this under its own suffixed project name, which would
+# otherwise give the volume a new prefix, and an empty list, on every recreate.
+volumes:
+  jarvis-data:
+    name: jarvis_jarvis-data
