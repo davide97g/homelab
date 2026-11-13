@@ -6,6 +6,7 @@
 #   scripts/deploy-tv.sh --launcher      also set it as the HOME launcher
 #   scripts/deploy-tv.sh --restore       put the stock Google launcher back
 #   scripts/deploy-tv.sh --no-build      install the last-built APK, skip the build
+# Options combine: scripts/deploy-tv.sh --no-build --launcher
 #
 # The TV address defaults to what the project has used throughout; override with
 #   TV=192.168.1.50 scripts/deploy-tv.sh
@@ -31,9 +32,17 @@ ADB="$(command -v adb || true)"
 connect() {
   "$ADB" connect "$TV" >/dev/null 2>&1 || true
   if ! "$ADB" -s "$TV" get-state >/dev/null 2>&1; then
+    # An adb server started by an app without macOS Local Network permission (Orca)
+    # gets "No route to host" for the TV and keeps failing for every later client,
+    # this script included. Replace it once before giving up (README → ADB).
+    "$ADB" kill-server >/dev/null 2>&1 || true
+    "$ADB" connect "$TV" >/dev/null 2>&1 || true
+  fi
+  if ! "$ADB" -s "$TV" get-state >/dev/null 2>&1; then
     echo "Cannot reach the TV at $TV."
     echo "On the TV: Settings > Device Preferences > About > tap Build 7x,"
     echo "then Developer options > enable USB debugging and Network debugging."
+    echo "Already on? Then it is the Mac: run this from Terminal.app, not Orca (README → ADB)."
     exit 1
   fi
 }
@@ -59,13 +68,14 @@ restore_launcher() {
 
 build=1
 do_launcher=0
-case "${1:-}" in
-  --restore)   connect; restore_launcher; exit 0 ;;
-  --launcher)  do_launcher=1 ;;
-  --no-build)  build=0 ;;
-  "")          ;;
-  *)           echo "unknown option: $1"; sed -n '2,12p' "$0"; exit 1 ;;
-esac
+for arg in "$@"; do
+  case "$arg" in
+    --restore)   connect; restore_launcher; exit 0 ;;
+    --launcher)  do_launcher=1 ;;
+    --no-build)  build=0 ;;
+    *)           echo "unknown option: $arg"; sed -n '2,12p' "$0"; exit 1 ;;
+  esac
+done
 
 if [ "$build" = 1 ]; then
   echo "Building release APK..."
