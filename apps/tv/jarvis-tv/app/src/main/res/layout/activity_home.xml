@@ -18,7 +18,6 @@
         android:layout_height="match_parent">
 
         <include android:id="@+id/apps" layout="@layout/screen_apps" />
-        <include android:id="@+id/jarvis" layout="@layout/screen_jarvis" />
     </it.davideghiotto.jarvistv.ReelLayout>
 
     <it.davideghiotto.jarvistv.TakeoverView

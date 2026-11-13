@@ -31,19 +31,15 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
-import kotlin.random.Random
 
 /**
- * Two screens on one reel: the apps and the orb. Down goes to JARVIS, up comes back
- * out, and the reel is the only thing that moves.
- *
- * The apps screen is a macOS desktop: the screensaver's painting as the wallpaper, a
+ * The home screen is a macOS desktop: the screensaver's painting as the wallpaper, a
  * menu bar along the top, and the apps in a dock along the bottom that magnifies
  * under the D-pad selector as left/right moves it.
  */
 class HomeActivity : AppCompatActivity() {
 
-    private enum class Zone { FLOW, TABS, JARVIS }
+    private enum class Zone { FLOW, TABS }
 
     private companion object {
         const val TAG = "JarvisHome"
@@ -54,12 +50,10 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var ui: ActivityHomeBinding
     private lateinit var prefs: Prefs
     private lateinit var ambilight: Ambilight
-    private lateinit var speaker: Speaker
     private lateinit var media: MediaCovers
 
     private var client: JarvisClient? = null
     private var clockJob: Job? = null
-    private var voiceJob: Job? = null
     private var showcaseJob: Job? = null
 
     private val http = OkHttpClient.Builder()
@@ -104,18 +98,11 @@ class HomeActivity : AppCompatActivity() {
         ambilight = Ambilight(lifecycleScope)
         if (prefs.ambilightEnabled) ambilight.capture()
 
-        speaker = Speaker(this) { speaking ->
-            runOnUiThread { onSpeaking(speaking) }
-        }
-
         media = MediaCovers(this) { now ->
             playing = now
             refreshArt()
         }
 
-        ui.jarvis.orb.onColour = { colour -> if (zone == Zone.JARVIS) tintAmbilight(colour) }
-
-        setJarvisState(OrbView.State.IDLE)
         renderTabs()
     }
 
@@ -140,14 +127,12 @@ class HomeActivity : AppCompatActivity() {
             ui.takeover.close { }
         }
         media.start()
-        if (zone == Zone.JARVIS) ui.jarvis.orb.start()
     }
 
     override fun onPause() {
         super.onPause()
         clockJob?.cancel()
         media.stop()
-        ui.jarvis.orb.stop()
         // Hand Ambilight back before whatever the viewer launched takes the screen,
         // otherwise a manual-mode pulse would freeze over their film.
         ambilight.stopPulse()
@@ -156,7 +141,6 @@ class HomeActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         client?.stop()
-        speaker.shutdown()
     }
 
     /** A launcher swallows BACK when it is already at the top. */
@@ -164,7 +148,6 @@ class HomeActivity : AppCompatActivity() {
         when (zone) {
             Zone.FLOW -> if (showAll) setShowAll(false)
             Zone.TABS -> goTo(Zone.FLOW)
-            Zone.JARVIS -> goTo(Zone.FLOW)
         }
     }
 
@@ -179,7 +162,6 @@ class HomeActivity : AppCompatActivity() {
                 keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> { turn(1); true }
                 keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> { turn(-1); true }
                 keyCode == KeyEvent.KEYCODE_DPAD_UP -> { tab = TAB_HOME; goTo(Zone.TABS); true }
-                keyCode == KeyEvent.KEYCODE_DPAD_DOWN -> { goTo(Zone.JARVIS); true }
                 ok -> { openPicked(); true }
                 else -> super.onKeyDown(keyCode, event)
             }
@@ -196,10 +178,6 @@ class HomeActivity : AppCompatActivity() {
                 }
                 else -> super.onKeyDown(keyCode, event)
             }
-            Zone.JARVIS -> when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_UP -> { goTo(Zone.FLOW); true }
-                else -> super.onKeyDown(keyCode, event)
-            }
         }
     }
 
@@ -209,32 +187,12 @@ class HomeActivity : AppCompatActivity() {
 
     private fun goTo(next: Zone) {
         zone = next
-        ui.reel.goTo(
-            when (next) {
-                Zone.FLOW, Zone.TABS -> 0
-                Zone.JARVIS -> 1
-            }
-        )
-        // the painting steps back off the desktop and all but disappears behind the
-        // orb, which is the only lit thing on its screen
-        ui.wallpaper.dim = when (next) {
-            Zone.FLOW, Zone.TABS -> 1f
-            Zone.JARVIS -> .06f
-        }
         renderTabs()
-
-        // the orb costs a frame of canvas work, so it only runs while it is on screen
-        if (next == Zone.JARVIS) ui.jarvis.orb.start() else ui.jarvis.orb.stop()
-        if (next == Zone.JARVIS) tintAmbilight(orbColour()) else tintAmbilight(pickedAccent())
     }
 
     private fun renderTabs() {
-        val here = when (zone) {
-            Zone.JARVIS -> -1
-            else -> TAB_HOME
-        }
         tabs.forEachIndexed { i, t ->
-            t.current = i == here
+            t.current = i == TAB_HOME
             t.lit = zone == Zone.TABS && i == tab
         }
     }
@@ -469,20 +427,18 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    // ── jarvis ───────────────────────────────────────────────────────────────────
+    // ── server ───────────────────────────────────────────────────────────────────
 
     private fun startClient() {
         client?.stop()
         client = JarvisClient(
             ctx = this,
             prefs = prefs,
-            onLink = { up -> runOnUiThread { renderLink(up) } },
+            onLink = { },
             onSnapshot = { },   // homelab status: no longer shown on the TV
-            onTranscript = { text -> runOnUiThread { onTranscript(text) } },
-            onSay = { text, lang ->
-                runOnUiThread { onReply(text) }
-                speaker.say(text, lang)
-            },
+            // voice is gone from the TV: the server may still answer, nobody speaks it
+            onTranscript = { },
+            onSay = { _, _ -> },
             onLaunch = { pkg ->
                 runOnUiThread {
                     if (!Apps.launch(this, pkg)) Log.w(TAG, "cannot launch $pkg")
@@ -493,96 +449,9 @@ class HomeActivity : AppCompatActivity() {
         ).also { it.start() }
     }
 
-    private fun setJarvisState(state: OrbView.State) {
-        ui.jarvis.orb.state = state
-        if (state == OrbView.State.IDLE && ui.jarvis.jarvisReply.text.isNullOrBlank()) {
-            ui.jarvis.jarvisPrompt.setText(R.string.jarvis_hint_phone)
-        }
-        ui.jarvis.orbState.setText(
-            when (state) {
-                OrbView.State.IDLE -> R.string.orb_idle
-                OrbView.State.LISTENING -> R.string.orb_listening
-                OrbView.State.THINKING -> R.string.orb_thinking
-                OrbView.State.SPEAKING -> R.string.orb_speaking
-                OrbView.State.ERROR -> R.string.orb_error
-            }
-        )
-    }
-
-    private fun orbColour(): Int = when (ui.jarvis.orb.state) {
-        OrbView.State.THINKING -> 0xFFC9B6FD.toInt()
-        OrbView.State.SPEAKING -> 0xFFFBBF24.toInt()
-        OrbView.State.ERROR -> 0xFFF87171.toInt()
-        else -> 0xFFE8A87C.toInt()
-    }
-
-    private fun onTranscript(text: String) {
-        ui.jarvis.jarvisPrompt.text = "“$text”"
-        ui.jarvis.jarvisReply.text = ""
-        setJarvisState(OrbView.State.THINKING)
-        // the question was asked on the phone, so the answer belongs on the screen
-        // that is about answering it
-        if (zone != Zone.JARVIS) goTo(Zone.JARVIS)
-    }
-
-    private fun onReply(text: String) {
-        ui.jarvis.jarvisReply.text = text
-        setJarvisState(OrbView.State.SPEAKING)
-    }
-
-    private fun onSpeaking(speaking: Boolean) {
-        if (speaking) {
-            setJarvisState(OrbView.State.SPEAKING)
-            startEnvelope()
-            if (prefs.ambilightEnabled) ambilight.startPulse(0xFB, 0xBF, 0x24)
-        } else {
-            stopEnvelope()
-            // the question stays on screen under the answer it produced; the phone
-            // hint only comes back once there is no answer to read
-            setJarvisState(OrbView.State.IDLE)
-            if (prefs.ambilightEnabled) ambilight.stopPulse()
-        }
-    }
-
-    /**
-     * A stand-in envelope. Android's TTS gives no level while it speaks — the nearest
-     * real signal is `onRangeStart`, which arrives per word — so the orb is driven by a
-     * smoothed random walk at speech tempo rather than pretending to a waveform.
-     */
-    private fun startEnvelope() {
-        stopEnvelope()
-        voiceJob = lifecycleScope.launch {
-            var level = .5f
-            while (isActive) {
-                level = (level * .6f + Random.nextFloat() * .4f + .12f).coerceIn(0f, 1f)
-                ui.jarvis.orb.amplitude = level
-                delay(90)
-            }
-        }
-    }
-
-    private fun stopEnvelope() {
-        voiceJob?.cancel()
-        voiceJob = null
-        ui.jarvis.orb.amplitude = 0f
-    }
-
     private fun tintAmbilight(colour: Int) {
         if (!prefs.ambilightEnabled) return
         ambilight.setColour(colour)
-    }
-
-    // ── link ─────────────────────────────────────────────────────────────────────
-
-    private fun renderLink(up: Boolean) {
-        if (!up) {
-            ui.jarvis.jarvisPrompt.setText(R.string.jarvis_offline)
-            ui.jarvis.jarvisReply.text = ""
-            setJarvisState(OrbView.State.ERROR)
-        } else if (ui.jarvis.orb.state == OrbView.State.ERROR) {
-            setJarvisState(OrbView.State.IDLE)
-            ui.jarvis.jarvisPrompt.setText(R.string.jarvis_hint_phone)
-        }
     }
 
     // ── wiring ───────────────────────────────────────────────────────────────────
