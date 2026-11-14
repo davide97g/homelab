@@ -8,6 +8,7 @@ import { transcribe, chat, systemPrompt, TOOLS } from './openai.js';
 import * as jf from './jellyfin.js';
 import * as tv from './jointspace.js';
 import * as sites from './sites.js';
+import * as quiz from './quiz.js';
 
 const PORT = Number(process.env.PORT || 8787);
 const JELLYFIN_PACKAGE = 'org.jellyfin.androidtv';
@@ -380,7 +381,17 @@ app.get('/api/sites/:id/icon', async (req, res) => {
   res.send(out.body);
 });
 
-app.get('/api/status', async (_req, res) => res.json(await snapshot()));
+// ── quiz night ─────────────────────────────────────────────────────────────────
+// Public under /quiz (Access bypass), gated by each guest's own link. See quiz.js.
+await quiz.mount(app);
+
+app.get('/api/status', async (_req, res) => {
+  try {
+    res.json(await snapshot());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.get('/healthz', (_req, res) => res.send('ok'));
 
 // ── status heartbeat ───────────────────────────────────────────────────────────

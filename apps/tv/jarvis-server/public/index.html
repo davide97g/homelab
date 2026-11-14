@@ -2,313 +2,502 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#070B10">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
 <title>JARVIS</title>
 <style>
+  /* iOS, dark appearance: system colours, materials, SF type scale. */
   :root {
-    --bg: #070B10;
-    --surface: #0E151E;
-    --raised: #152231;
-    --hairline: #1E3040;
-    --accent: #4DE8F4;
-    --accent-dim: #1C6E78;
-    --text: #E6F1F5;
-    --muted: #7C93A3;
-    --faint: #465B6B;
-    --ok: #4ADE80;
-    --err: #F87171;
+    --label: #FFFFFF;
+    --label-2: rgba(235, 235, 245, .6);
+    --label-3: rgba(235, 235, 245, .3);
+    --sep: rgba(84, 84, 88, .65);
+    --bg-grouped: #000000;
+    --cell: #1C1C1E;
+    --cell-2: #2C2C2E;
+    --fill: rgba(120, 120, 128, .36);
+    --fill-2: rgba(118, 118, 128, .24);
+    --blue: #0A84FF;
+    --green: #30D158;
+    --red: #FF453A;
+    --orange: #FF9F0A;
+    --yellow: #FFD60A;
+    --purple: #BF5AF2;
+    --pink: #FF375F;
+    --teal: #64D2FF;
+    --indigo: #5E5CE6;
+    --material: rgba(40, 40, 46, .55);
+    --icon: 62px;
+    --sf: -apple-system, 'SF Pro Text', 'SF Pro Display', system-ui, 'Helvetica Neue', sans-serif;
   }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+  input, textarea { -webkit-user-select: text; user-select: text; }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--label); font: 400 17px/1.29 var(--sf); letter-spacing: -.41px; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; letter-spacing: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+  [hidden] { display: none !important; }
 
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* ── wallpaper ─────────────────────────────────────────────────────── */
+  .wall { position: fixed; inset: 0; overflow: hidden; background: #07061A; }
+  .wall i { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .9; }
+  .wall i:nth-child(1) { width: 80vmax; height: 80vmax; left: -30vmax; top: -25vmax; background: radial-gradient(circle, #3B2BC9, transparent 65%); }
+  .wall i:nth-child(2) { width: 70vmax; height: 70vmax; right: -35vmax; top: 10vh; background: radial-gradient(circle, #C2246B, transparent 62%); }
+  .wall i:nth-child(3) { width: 75vmax; height: 75vmax; left: -20vmax; bottom: -40vmax; background: radial-gradient(circle, #0E7C9E, transparent 62%); }
+  .wall i:nth-child(4) { width: 40vmax; height: 40vmax; right: -10vmax; bottom: 5vh; background: radial-gradient(circle, #F08A24, transparent 62%); opacity: .55; }
+  .wall::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.35)); }
 
-  html, body {
-    margin: 0; height: 100%;
-    background: var(--bg); color: var(--text);
-    font: 400 17px/1.5 ui-sans-serif, -apple-system, system-ui, sans-serif;
-    overscroll-behavior: none;
-  }
+  /* ── status bar ────────────────────────────────────────────────────── */
+  .status { position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: calc(env(safe-area-inset-top) + 34px); padding: env(safe-area-inset-top) 28px 0; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 16px; letter-spacing: -.3px; pointer-events: none; }
+  .status .right { display: flex; align-items: center; gap: 6px; }
+  .tvpill { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: rgba(255,255,255,.14); }
+  .tvpill b { width: 7px; height: 7px; border-radius: 50%; background: var(--label-3); }
+  .tvpill.up b { background: var(--green); }
+  .tvpill.off b { background: var(--red); }
 
-  body {
-    display: flex; flex-direction: column;
-    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
-    gap: 14px;
-  }
+  /* ── home ──────────────────────────────────────────────────────────── */
+  .home { position: relative; z-index: 1; min-height: 100%; padding: calc(env(safe-area-inset-top) + 48px) 20px calc(env(safe-area-inset-bottom) + 150px); max-width: 480px; margin: 0 auto; transition: transform .45s cubic-bezier(.2,.9,.2,1), filter .45s ease, opacity .45s ease; }
+  body.app-open .home { transform: scale(.92); filter: blur(6px) brightness(.6); }
+  .widgets { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 26px; }
+  .widget { position: relative; border-radius: 22px; background: var(--material); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); padding: 14px 15px; overflow: hidden; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.12); }
+  .widget.wide { grid-column: 1 / -1; }
+  .widget .cap { font-size: 12px; font-weight: 600; color: var(--label-2); text-transform: uppercase; letter-spacing: .1px; display: flex; align-items: center; gap: 6px; }
+  .widget .cap svg { width: 14px; height: 14px; }
+  .wtitle { font-size: 20px; font-weight: 700; letter-spacing: -.45px; margin-top: 6px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wsub { font-size: 14px; color: var(--label-2); margin-top: 2px; }
+  .np-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); margin: 12px 0 5px; overflow: hidden; }
+  .np-bar i { display: block; height: 100%; width: 0; background: #fff; border-radius: 2px; transition: width .6s linear; }
+  .np-times { display: flex; justify-content: space-between; font-size: 11px; color: var(--label-2); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .np-ctl { display: flex; justify-content: center; align-items: center; gap: 34px; margin-top: 8px; }
+  .np-ctl button { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; }
+  .np-ctl button:active { background: rgba(255,255,255,.12); }
+  .np-ctl svg { width: 26px; height: 26px; fill: #fff; }
+  .np-ctl .big svg { width: 34px; height: 34px; }
+  .np-empty { color: var(--label-2); font-size: 15px; margin-top: 8px; }
+  .ring { width: 58px; height: 58px; margin: 8px 0 6px; }
+  .ring circle { fill: none; stroke-width: 7; }
+  .ring .t { stroke: rgba(255,255,255,.14); }
+  .ring .v { stroke: var(--green); stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset .8s ease; }
+  .wsmall { font-size: 13px; color: var(--label-2); line-height: 1.35; }
+  .wsmall b { color: #fff; font-weight: 600; }
+  .lead { display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; height: 64px; }
+  .lead .p { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .lead img, .lead .ph { width: 34px; height: 47px; border-radius: 6px; object-fit: cover; background: var(--fill); box-shadow: 0 0 0 1px rgba(255,255,255,.2); }
+  .lead .p:first-child img { width: 40px; height: 56px; box-shadow: 0 0 0 2px var(--yellow); }
+  .lead .s { font-size: 11px; font-weight: 600; color: var(--label-2); font-variant-numeric: tabular-nums; }
 
-  header { display: flex; align-items: center; justify-content: space-between; flex: none; }
-  .wordmark { font-size: 15px; font-weight: 600; letter-spacing: .22em; color: var(--accent); }
-  .link { display: flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: .14em; color: var(--faint); }
-  .link b { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  .link.up { color: var(--ok); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 24px; justify-items: center; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 76px; }
+  .app span { font-size: 12px; font-weight: 500; letter-spacing: -.1px; text-shadow: 0 1px 3px rgba(0,0,0,.35); max-width: 76px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon { position: relative; width: var(--icon); height: var(--icon); border-radius: 22.5%; display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.25), inset 0 0 0 .5px rgba(255,255,255,.15); transition: transform .15s ease, filter .15s ease; overflow: hidden; }
+  .icon::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.18), transparent 50%); pointer-events: none; }
+  .icon svg { width: 58%; height: 58%; fill: #fff; position: relative; }
+  .icon .word { font-weight: 800; font-size: 15px; letter-spacing: -.5px; position: relative; }
+  .app:active .icon { transform: scale(.88); filter: brightness(.75); }
+  .badge { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--red); font-size: 13px; font-weight: 600; display: grid; place-items: center; z-index: 2; box-shadow: 0 0 0 2px transparent; }
+  .app { position: relative; }
 
-  /* Tabs, because a phone screen cannot show a remote and a conversation at once
-     without one of them being uselessly small. */
-  .tabs { display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 4px; flex: none; }
-  .tabs button {
-    flex: 1; appearance: none; border: 0; background: transparent; color: var(--muted);
-    font: 600 13px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .05em;
-    text-transform: uppercase; padding: 11px 0; border-radius: 9px;
-  }
-  .tabs button[aria-selected="true"] { background: var(--raised); color: var(--accent); }
+  .spot { display: flex; justify-content: center; position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 112px); z-index: 2; pointer-events: none; transition: opacity .3s; }
+  .spot button { pointer-events: auto; display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 16px; background: var(--material); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); font-size: 13px; font-weight: 600; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.12); }
+  .spot svg { width: 13px; height: 13px; fill: #fff; }
+  .dock { position: fixed; left: 50%; translate: -50% 0; bottom: calc(env(safe-area-inset-bottom) + 12px); z-index: 2; width: min(calc(100% - 20px), 460px); padding: 14px 16px; border-radius: 32px; display: flex; justify-content: space-around; background: rgba(60, 60, 70, .38); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.14); transition: transform .45s cubic-bezier(.2,.9,.2,1), opacity .3s; }
+  .dock .app span { display: none; }
+  body.app-open .dock, body.app-open .spot { opacity: 0; transform: translateY(30px); pointer-events: none; }
 
-  .pane { flex: 1; min-height: 0; display: none; flex-direction: column; gap: 14px; }
-  .pane[data-active] { display: flex; }
+  /* ── banner (notification) ─────────────────────────────────────────── */
+  .banner { position: fixed; z-index: 90; left: 50%; top: calc(env(safe-area-inset-top) + 8px); translate: -50% -140%; width: min(calc(100% - 16px), 460px); display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 22px; background: rgba(50, 50, 56, .72); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 .5px rgba(255,255,255,.12); transition: translate .5s cubic-bezier(.2,1.2,.3,1); }
+  .banner.show { translate: -50% 0; }
+  .banner .icon { --icon: 38px; border-radius: 9px; flex: none; }
+  .banner b { display: block; font-size: 15px; font-weight: 600; }
+  .banner small { display: block; font-size: 15px; color: var(--label-2); line-height: 1.25; }
 
-  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px; }
+  /* ── app windows ───────────────────────────────────────────────────── */
+  .win { position: fixed; inset: 0; z-index: 30; background: var(--bg-grouped); overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 0; opacity: 0; pointer-events: none; transform-origin: var(--ox, 50%) var(--oy, 50%); transform: scale(.12); clip-path: inset(0 round 60px); transition: transform .5s cubic-bezier(.2,.9,.15,1), opacity .25s ease, clip-path .5s ease; }
+  .win.open { opacity: 1; pointer-events: auto; transform: none; clip-path: inset(0 round 0); }
+  .win .in { max-width: 560px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 40px) 16px calc(env(safe-area-inset-bottom) + 70px); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 44px; }
+  .nav .back { display: flex; align-items: center; gap: 2px; color: var(--blue); font-size: 17px; margin-left: -8px; }
+  .nav .back svg { width: 22px; height: 22px; fill: var(--blue); }
+  .nav .act { color: var(--blue); font-size: 17px; }
+  .large { font-size: 34px; font-weight: 700; letter-spacing: .37px; line-height: 1.2; margin: 2px 0 14px; }
+  .homebar { position: fixed; z-index: 40; left: 50%; translate: -50% 0; bottom: calc(env(safe-area-inset-bottom) + 8px); width: 140px; height: 26px; display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .homebar::before { content: ''; width: 134px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.85); }
+  body.app-open .homebar { opacity: 1; pointer-events: auto; }
 
-  /* ── now playing ───────────────────────────────────────────────────────────── */
-  .np-title { font-size: 19px; font-weight: 600; line-height: 1.3; }
-  .np-sub { color: var(--faint); font-size: 14px; margin-top: 3px; }
-  .bar { height: 4px; background: var(--hairline); border-radius: 2px; margin: 12px 0 6px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--accent); width: 0; }
-  .times { display: flex; justify-content: space-between; color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .sec-h { font-size: 13px; color: var(--label-2); text-transform: uppercase; margin: 22px 16px 7px; letter-spacing: -.08px; }
+  .sec-f { font-size: 13px; color: var(--label-2); margin: 7px 16px 0; line-height: 1.38; letter-spacing: -.08px; }
+  .group { background: var(--cell); border-radius: 10px; overflow: hidden; }
+  .cell { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 16px; position: relative; width: 100%; text-align: left; }
+  .cell + .cell::before { content: ''; position: absolute; top: 0; right: 0; left: var(--inset, 16px); height: .5px; background: var(--sep); }
+  .cell.tap:active, .cell button.tap:active { background: var(--cell-2); }
+  .cell .grow { flex: 1; min-width: 0; }
+  .cell .t { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell .d { font-size: 15px; color: var(--label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell .v { color: var(--label-2); font-size: 17px; font-variant-numeric: tabular-nums; }
+  .cell .chev { width: 8px; height: 13px; fill: var(--label-3); flex: none; }
+  .cell .sq { width: 29px; height: 29px; border-radius: 7px; display: grid; place-items: center; flex: none; }
+  .cell .sq svg { width: 18px; height: 18px; fill: #fff; }
+  .cell .blue { color: var(--blue); }
+  .cell .red { color: var(--red); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .pillbtn { flex: none; padding: 6px 13px; border-radius: 15px; background: var(--fill-2); color: var(--blue); font-size: 15px; font-weight: 600; }
+  .pillbtn:active { opacity: .6; }
+  .pillbtn.done { color: var(--green); }
+  .roundbtn { flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--fill-2); display: grid; place-items: center; }
+  .roundbtn svg { width: 16px; height: 16px; fill: var(--blue); }
+  .empty { color: var(--label-2); text-align: center; padding: 26px 16px; font-size: 15px; }
 
-  .transport { display: flex; gap: 10px; margin-top: 14px; }
-  .transport button {
-    flex: 1; appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
-    background: var(--raised); color: var(--text); height: 56px; font-size: 20px;
-  }
-  .transport button.primary { background: #10222B; border-color: var(--accent); color: var(--accent); }
-  .transport button:active { transform: scale(.97); }
+  .field { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px; border-radius: 10px; background: var(--fill-2); }
+  .field svg { width: 16px; height: 16px; fill: var(--label-2); flex: none; }
+  .field input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: #fff; font: 17px var(--sf); letter-spacing: -.41px; }
+  .field input::placeholder { color: var(--label-2); }
+  .cell input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: #fff; font: 17px var(--sf); letter-spacing: -.41px; padding: 3px 0; }
+  .cell input::placeholder { color: var(--label-3); }
+  .btn-wide { display: block; width: 100%; padding: 14px; border-radius: 12px; background: var(--blue); color: #fff; font-weight: 600; text-align: center; margin-top: 14px; }
+  .btn-wide:active { opacity: .7; }
+  .btn-wide.gray { background: var(--cell); color: var(--blue); }
 
-  .vol { display: flex; gap: 10px; margin-top: 10px; }
-  .vol button {
-    flex: 1; appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
-    background: var(--surface); color: var(--muted); height: 46px; font-size: 15px; font-weight: 600;
-  }
-  .vol button[data-on] { color: var(--accent); border-color: var(--accent-dim); }
+  /* remote */
+  .remote { display: flex; flex-direction: column; align-items: center; gap: 26px; padding-top: 10px; }
+  .pad { position: relative; width: min(78vw, 300px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #3A3A3C, #1C1C1E 70%); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 20px 40px rgba(0,0,0,.5); }
+  .pad button { position: absolute; display: grid; place-items: center; }
+  .pad button svg { width: 26px; height: 26px; fill: rgba(255,255,255,.7); }
+  .pad .u { top: 0; left: 30%; width: 40%; height: 30%; }
+  .pad .d { bottom: 0; left: 30%; width: 40%; height: 30%; }
+  .pad .l { left: 0; top: 30%; width: 30%; height: 40%; }
+  .pad .r { right: 0; top: 30%; width: 30%; height: 40%; }
+  .pad .ok { left: 32%; top: 32%; width: 36%; height: 36%; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #48484A, #2C2C2E); box-shadow: 0 4px 12px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.1); font-weight: 600; font-size: 15px; color: var(--label-2); }
+  .pad button:active svg { fill: #fff; }
+  .pad .ok:active { transform: scale(.95); }
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 30px; }
+  .key { width: 66px; height: 66px; border-radius: 50%; background: var(--cell-2); display: grid; place-items: center; box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+  .key svg { width: 26px; height: 26px; fill: #fff; }
+  .key:active { background: #48484A; transform: scale(.94); }
+  .key.tall { height: 150px; border-radius: 33px; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-around; }
+  .key.tall button { width: 100%; height: 50%; display: grid; place-items: center; }
+  .key.tall button:active svg { opacity: .5; }
 
-  .apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .apps button {
-    appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
-    background: var(--surface); color: var(--text); padding: 14px 6px; font-size: 14px; font-weight: 600;
-  }
-  .apps button:active { background: var(--raised); }
+  /* quiz */
+  .qp { display: flex; align-items: center; gap: 12px; }
+  .qp img, .qp .ph { width: 40px; height: 56px; border-radius: 6px; object-fit: cover; flex: none; background: var(--fill); }
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 6px; margin-top: 2px; }
+  .tag.in { background: rgba(48,209,88,.18); color: var(--green); }
+  .tag.out { background: var(--fill-2); color: var(--label-2); }
+  .bigscore { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .now { padding: 14px 16px; }
+  .now .k { font-size: 13px; color: var(--label-2); }
+  .now .q { font-size: 17px; font-weight: 600; margin-top: 3px; }
 
-  .label { color: var(--faint); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; }
-
-  /* ── search ────────────────────────────────────────────────────────────────── */
-  .row { display: flex; gap: 10px; flex: none; }
-  .row input {
-    flex: 1; min-width: 0; background: var(--surface); color: var(--text);
-    border: 1px solid var(--hairline); border-radius: 12px; padding: 13px 14px;
-    font-size: 16px;   /* 16px or iOS zooms the page on focus */
-  }
-  .row input::placeholder { color: var(--faint); }
-  .row button {
-    appearance: none; border: 1px solid var(--hairline); border-radius: 12px;
-    background: var(--surface); color: var(--accent); padding: 0 18px; font-size: 16px; font-weight: 600;
-  }
-
-  .results { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
-  .result {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
-    padding: 13px 14px; text-align: left; width: 100%; appearance: none; color: var(--text);
-  }
-  .result:active { background: var(--raised); }
-  .result span { font-size: 16px; }
-  .result em { color: var(--faint); font-style: normal; font-size: 13px; }
-
-  .empty { color: var(--faint); text-align: center; padding: 22px 10px; font-size: 15px; }
-
-  /* ── siti ──────────────────────────────────────────────────────────────────── */
-  .sites { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
-  .site {
-    display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px;
-    background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 10px 12px;
-  }
-  .site img, .site .ph {
-    width: 40px; height: 40px; border-radius: 10px; background: var(--raised); object-fit: cover;
-    display: grid; place-items: center; color: var(--accent); font-weight: 700;
-  }
-  .site .meta { min-width: 0; }
-  .site .meta b { display: block; font-size: 16px; font-weight: 600; }
-  .site .meta span { display: block; color: var(--faint); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .site .acts { display: flex; gap: 6px; }
-  .site .acts button, .form button {
-    appearance: none; border: 1px solid var(--hairline); border-radius: 10px; background: var(--raised);
-    color: var(--muted); height: 38px; min-width: 38px; padding: 0 10px; font-size: 14px; font-weight: 600;
-  }
-  .site .acts button.go { color: var(--accent); border-color: var(--accent-dim); }
-  .form { display: flex; flex-direction: column; gap: 8px; flex: none; }
-  .form input {
-    background: var(--surface); color: var(--text); border: 1px solid var(--hairline);
-    border-radius: 12px; padding: 13px 14px; font-size: 16px; width: 100%;
-  }
-  .form input::placeholder { color: var(--faint); }
-  .form .btns { display: flex; gap: 8px; }
-  .form .btns button { flex: 1; height: 48px; font-size: 15px; }
-  .form .btns button.primary { color: var(--accent); border-color: var(--accent-dim); background: #10222B; }
-  .note { color: var(--faint); font-size: 13px; text-align: center; }
+  .seg { display: flex; background: var(--fill-2); border-radius: 9px; padding: 2px; margin: 4px 0 6px; }
+  .seg button { flex: 1; padding: 6px 0; border-radius: 7px; font-size: 13px; font-weight: 600; }
+  .seg button[aria-selected="true"] { background: #636366; box-shadow: 0 3px 8px rgba(0,0,0,.12); }
 </style>
 </head>
 <body>
+<div class="wall"><i></i><i></i><i></i><i></i></div>
 
-<header>
-  <div class="wordmark">JARVIS</div>
-  <div class="link" id="link"><b></b><span>—</span></div>
-</header>
+<div class="status">
+  <span id="clock">9:41</span>
+  <span class="right">
+    <span class="tvpill" id="tvpill"><b></b>TV</span>
+    <svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><path d="M9 2.4c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 9 .7 10.2 10.2 0 0 0 1.8 3.6L3 4.8a8.5 8.5 0 0 1 6-2.4Zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2A6.8 6.8 0 0 0 9 4.1a6.8 6.8 0 0 0-4.8 1.9l1.2 1.2c1-.9 2.2-1.4 3.6-1.4Zm0 3.4c.5 0 .9.2 1.2.5L9 11 7.8 9.7c.3-.3.7-.5 1.2-.5Z"/></svg>
+    <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="22" height="12" rx="3.5" fill="none" stroke="rgba(255,255,255,.4)"/><rect x="2" y="2" width="17" height="9" rx="2" fill="#fff"/><path d="M24 4.5v4a2 2 0 0 0 0-4Z" fill="rgba(255,255,255,.4)"/></svg>
+  </span>
+</div>
 
-<nav class="tabs" role="tablist">
-  <button role="tab" aria-selected="true"  data-tab="tv">TV</button>
-  <button role="tab" aria-selected="false" data-tab="find">Cerca</button>
-  <button role="tab" aria-selected="false" data-tab="sites">Siti</button>
-</nav>
-
-<!-- ── TV ──────────────────────────────────────────────────────────────────── -->
-<section class="pane" data-tab="tv" data-active>
-  <div class="card" id="npCard">
-    <div class="empty" id="npEmpty">Niente in riproduzione.</div>
-    <div id="npBody" hidden>
-      <div class="np-title" id="npTitle"></div>
-      <div class="np-sub" id="npSub"></div>
-      <div class="bar"><i id="npBar"></i></div>
-      <div class="times"><span id="npPos">0:00</span><span id="npDur">0:00</span></div>
-      <div class="transport">
-        <button data-seek="-30" aria-label="Indietro 30 secondi">−30s</button>
-        <button class="primary" id="playPause" aria-label="Play o pausa">⏸</button>
-        <button data-seek="30" aria-label="Avanti 30 secondi">+30s</button>
-        <button data-playback="stop" aria-label="Ferma">⏹</button>
+<main class="home" id="home">
+  <div class="widgets">
+    <section class="widget wide" id="wNow">
+      <div class="cap"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 5H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h7v2H7v1.5h10V19h-3v-2h7a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1Z"/></svg>In riproduzione sulla TV</div>
+      <div id="npEmpty" class="np-empty">Niente in riproduzione.</div>
+      <div id="npBody" hidden>
+        <div class="wtitle" id="npTitle"></div>
+        <div class="wsub" id="npSub"></div>
+        <div class="np-bar"><i id="npBar"></i></div>
+        <div class="np-times"><span id="npPos">0:00</span><span id="npDur">0:00</span></div>
+        <div class="np-ctl">
+          <button data-seek="-30" aria-label="Indietro 30 secondi"><svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8Z"/><text x="12" y="16" font-size="6.5" text-anchor="middle" font-weight="700" font-family="-apple-system">30</text></svg></button>
+          <button class="big" id="playPause" aria-label="Play o pausa"><svg viewBox="0 0 24 24" id="ppIcon"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></button>
+          <button data-seek="30" aria-label="Avanti 30 secondi"><svg viewBox="0 0 24 24"><path d="M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8Z"/><text x="12" y="16" font-size="6.5" text-anchor="middle" font-weight="700" font-family="-apple-system">30</text></svg></button>
+        </div>
       </div>
+    </section>
+    <section class="widget" id="wLab" data-open="homelab">
+      <div class="cap"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v6H4zm0 10h16v6H4zm2-8v2h2V6zm0 10v2h2v-2z"/></svg>Homelab</div>
+      <svg class="ring" viewBox="0 0 60 60"><circle class="t" cx="30" cy="30" r="25"/><circle class="v" id="cpuRing" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="157"/><text x="30" y="35" text-anchor="middle" fill="#fff" font-size="14" font-weight="700" font-family="-apple-system" id="cpuTxt">–</text></svg>
+      <div class="wsmall" id="labTxt">—</div>
+    </section>
+    <section class="widget" id="wQuiz" data-open="quiz">
+      <div class="cap"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 9.5 8.5 3 9.3l4.9 4.4L6.5 21 12 17.3 17.5 21l-1.4-7.3L21 9.3l-6.5-.8Z"/></svg>Quiz</div>
+      <div class="lead" id="lead"><div class="wsmall">Classifica in arrivo…</div></div>
+      <div class="wsmall" id="quizTxt" style="margin-top:8px">—</div>
+    </section>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</main>
+
+<div class="spot"><button data-open="search"><svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>Cerca</button></div>
+<nav class="dock" id="dock"></nav>
+<button class="homebar" id="homebar" aria-label="Torna alla home"></button>
+
+<div class="banner" id="banner"><div class="icon" id="bIcon"></div><div><b id="bTitle"></b><small id="bText"></small></div></div>
+
+<!-- ── apps ──────────────────────────────────────────────────────────── -->
+<section class="win" id="app-remote"><div class="in">
+  <div class="nav"><button class="back" data-close><svg viewBox="0 0 24 24"><path d="M15.4 4.6 8 12l7.4 7.4-1.4 1.4L5.2 12 14 3.2Z"/></svg>Home</button></div>
+  <h1 class="large">Telecomando</h1>
+  <div class="sec-f" id="remoteNote" hidden style="margin:0 0 14px">La TV non è associata (JointSpace): funzionano solo i controlli di Jellyfin.</div>
+  <div class="remote">
+    <div class="pad">
+      <button class="u" data-key="CursorUp" aria-label="Su"><svg viewBox="0 0 24 24"><path d="M12 7l6 7H6z"/></svg></button>
+      <button class="l" data-key="CursorLeft" aria-label="Sinistra"><svg viewBox="0 0 24 24"><path d="M7 12l7-6v12z"/></svg></button>
+      <button class="r" data-key="CursorRight" aria-label="Destra"><svg viewBox="0 0 24 24"><path d="M17 12l-7 6V6z"/></svg></button>
+      <button class="d" data-key="CursorDown" aria-label="Giù"><svg viewBox="0 0 24 24"><path d="M12 17l-6-7h12z"/></svg></button>
+      <button class="ok" data-key="Confirm">OK</button>
+    </div>
+    <div class="keys">
+      <button class="key" data-key="Back" aria-label="Indietro"><svg viewBox="0 0 24 24"><path d="M15.4 4.6 8 12l7.4 7.4-1.4 1.4L5.2 12 14 3.2Z"/></svg></button>
+      <button class="key" data-key="Home" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M3 5h18v11H3zm2 2v7h14V7zm3 11h8v2H8z"/></svg></button>
+      <div class="key tall"><button data-key="VolumeUp" aria-label="Volume su"><svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></button><button data-key="VolumeDown" aria-label="Volume giù"><svg viewBox="0 0 24 24"><path d="M5 11h14v2H5z"/></svg></button></div>
+      <button class="key" data-jf="toggle" aria-label="Play o pausa"><svg viewBox="0 0 24 24"><path d="M3 5l8 7-8 7zm10 0h3v14h-3zm5 0h3v14h-3z"/></svg></button>
+      <button class="key" data-key="Mute" aria-label="Muto"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zm12.6.2L18 10.6l1.4-1.4 1.4 1.4-1.4 1.4 1.4 1.4-1.4 1.4-1.4-1.4-1.4 1.4-1.4-1.4 1.4-1.4-1.4-1.4Z"/></svg></button>
+    </div>
+    <div style="display:flex;gap:30px">
+      <button class="key" data-seek="-30" aria-label="Indietro 30 secondi"><svg viewBox="0 0 24 24"><path d="M11 6v12l-8.5-6zm.5 6L20 6v12z"/></svg></button>
+      <button class="key" data-key="Options" aria-label="Opzioni"><svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></button>
+      <button class="key" data-seek="30" aria-label="Avanti 30 secondi"><svg viewBox="0 0 24 24"><path d="M13 6v12l8.5-6zm-.5 6L4 6v12z"/></svg></button>
     </div>
   </div>
+</div></section>
 
-  <div class="label">Apri sulla TV</div>
-  <div class="apps" id="apps"></div>
-</section>
+<section class="win" id="app-search"><div class="in">
+  <div class="nav"><button class="back" data-close><svg viewBox="0 0 24 24"><path d="M15.4 4.6 8 12l7.4 7.4-1.4 1.4L5.2 12 14 3.2Z"/></svg>Home</button></div>
+  <h1 class="large">Cerca</h1>
+  <label class="field"><svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg><input id="q" type="search" placeholder="Film e serie" enterkeyhint="search" autocomplete="off"></label>
+  <div class="sec-h" id="resH" hidden>Risultati</div>
+  <div id="results"><div class="sec-f" style="margin-top:14px">Tocca un titolo per farlo partire sulla TV.</div></div>
+</div></section>
 
-<!-- ── Cerca ───────────────────────────────────────────────────────────────── -->
-<section class="pane" data-tab="find">
-  <div class="row">
-    <input id="q" placeholder="Cerca un film o una serie" enterkeyhint="search" autocomplete="off">
-    <button id="qGo">Cerca</button>
-  </div>
-  <div class="results" id="results">
-    <div class="empty">Cerca un titolo, poi toccalo per farlo partire sulla TV.</div>
-  </div>
-</section>
-
-<!-- ── Siti ────────────────────────────────────────────────────────────────── -->
-<section class="pane" data-tab="sites">
-  <form class="form" id="siteForm" autocomplete="off">
-    <input id="siteUrl" placeholder="Indirizzo, es. dev.zeroshot.it" inputmode="url" autocapitalize="off" spellcheck="false" required>
-    <input id="siteName" placeholder="Nome (facoltativo)">
-    <div class="btns">
-      <button type="button" id="siteCancel" hidden>Annulla</button>
-      <button type="submit" class="primary" id="siteSave">Aggiungi alla TV</button>
+<section class="win" id="app-sites"><div class="in">
+  <div class="nav"><button class="back" data-close><svg viewBox="0 0 24 24"><path d="M15.4 4.6 8 12l7.4 7.4-1.4 1.4L5.2 12 14 3.2Z"/></svg>Home</button></div>
+  <h1 class="large">Siti</h1>
+  <div class="sec-h" id="siteFormH">Nuovo sito</div>
+  <form id="siteForm" autocomplete="off">
+    <div class="group">
+      <div class="cell"><input id="siteUrl" placeholder="Indirizzo, es. dev.zeroshot.it" inputmode="url" autocapitalize="off" spellcheck="false" required></div>
+      <div class="cell"><input id="siteName" placeholder="Nome (facoltativo)"></div>
     </div>
+    <button class="btn-wide" type="submit" id="siteSave">Aggiungi alla TV</button>
+    <button class="btn-wide gray" type="button" id="siteCancel" hidden>Annulla</button>
   </form>
-  <div class="sites" id="sites"><div class="empty">Nessun sito ancora.</div></div>
-  <div class="note">Ogni sito diventa un'icona nel dock della TV e si apre a schermo intero.</div>
-</section>
+  <div class="sec-h">Nel dock della TV</div>
+  <div class="group" id="sites"></div>
+  <div class="sec-f">Ogni sito diventa un'icona nel dock della TV e si apre a schermo intero.</div>
+</div></section>
+
+<section class="win" id="app-quiz"><div class="in">
+  <div class="nav"><button class="back" data-close><svg viewBox="0 0 24 24"><path d="M15.4 4.6 8 12l7.4 7.4-1.4 1.4L5.2 12 14 3.2Z"/></svg>Home</button><button class="act" id="copyAll">Copia tutti</button></div>
+  <h1 class="large">Quiz</h1>
+  <div class="seg" role="tablist"><button aria-selected="true" data-seg="links">Link</button><button aria-selected="false" data-seg="board">Classifica</button></div>
+  <div data-segpane="links">
+    <div class="sec-h">Ospiti</div>
+    <div class="group" id="qLinks" style="--inset:68px"><div class="empty">Carico i link…</div></div>
+    <div class="sec-f">Ognuno ha il suo link personale: aprendolo appare la sua carta. Chi ha il link gioca come quella persona, quindi mandalo solo a lei.</div>
+    <div class="sec-h">Grande schermo</div>
+    <div class="group">
+      <div class="cell"><div class="sq" style="background:var(--red)"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H4zm6 3v6l5-3zM8 18h8v2H8z"/></svg></div><div class="grow"><div class="t">Cinema in modalità quiz</div><div class="d">Apri una volta sul dispositivo del film</div></div><button class="pillbtn" id="copyCinema">Copia</button></div>
+      <div class="cell"><div class="sq" style="background:var(--indigo)"><svg viewBox="0 0 24 24"><path d="M3 5h18v11H3zm5 13h8v2H8z"/></svg></div><div class="grow"><div class="t">Regia dal telefono</div><div class="d">Rivela e chiudi le domande a mano</div></div><button class="pillbtn" id="openScreen">Apri</button></div>
+    </div>
+  </div>
+  <div data-segpane="board" hidden>
+    <div class="sec-h">In corso</div>
+    <div class="group"><div class="now" id="qNow"><div class="k">Nessuna domanda aperta</div></div></div>
+    <div class="sec-h">Classifica</div>
+    <div class="group" id="qBoard" style="--inset:68px"></div>
+    <div class="sec-h">&nbsp;</div>
+    <div class="group"><button class="cell tap" id="qReset" style="justify-content:center"><span class="red">Azzera i punteggi</span></button></div>
+  </div>
+</div></section>
+
+<section class="win" id="app-homelab"><div class="in">
+  <div class="nav"><button class="back" data-close><svg viewBox="0 0 24 24"><path d="M15.4 4.6 8 12l7.4 7.4-1.4 1.4L5.2 12 14 3.2Z"/></svg>Home</button></div>
+  <h1 class="large">Homelab</h1>
+  <div class="group" id="labHost"></div>
+  <div class="sec-h">Servizi</div>
+  <div class="group" id="labSvc"></div>
+</div></section>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const linkEl = $('link');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// ── icons ─────────────────────────────────────────────────────────────
+const G = {
+  remote: '<svg viewBox="0 0 24 24"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm4 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-2 9v2h4v-2Zm0 3v2h4v-2Z"/></svg>',
+  search: '<svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>',
+  sites: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.9 6h-3a15 15 0 0 0-1.3-4 8 8 0 0 1 4.3 4ZM12 4c.8 1.1 1.5 2.5 1.9 4h-3.8c.4-1.5 1.1-2.9 1.9-4ZM4.3 14a8 8 0 0 1 0-4h3.4a16 16 0 0 0 0 4Zm.8 2h3a15 15 0 0 0 1.3 4 8 8 0 0 1-4.3-4Zm3-8h-3a8 8 0 0 1 4.3-4 15 15 0 0 0-1.3 4ZM12 20c-.8-1.1-1.5-2.5-1.9-4h3.8c-.4 1.5-1.1 2.9-1.9 4Zm2.3-6H9.7a14 14 0 0 1 0-4h4.6a14 14 0 0 1 0 4Zm.3 6a15 15 0 0 0 1.3-4h3a8 8 0 0 1-4.3 4Zm1.7-6a16 16 0 0 0 0-4h3.4a8 8 0 0 1 0 4Z"/></svg>',
+  quiz: '<svg viewBox="0 0 24 24"><path d="M14.5 2 7 13h5l-2.5 9L17 10h-5Z"/></svg>',
+  homelab: '<svg viewBox="0 0 24 24"><path d="M4 3h16a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm0 10h16a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1Zm2-7v2h2V6Zm0 10v2h2v-2Zm4-10v2h2V6Zm0 10v2h2v-2Z"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>',
+  share: '<svg viewBox="0 0 24 24"><path d="M12 2 7.5 6.5l1.4 1.4L11 5.8V15h2V5.8l2.1 2.1 1.4-1.4ZM5 10v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10h-3v2h1v8H7v-8h1v-2Z"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 8 13"><path d="M1.4 0 0 1.4 5.1 6.5 0 11.6 1.4 13l6.5-6.5Z"/></svg>',
+};
+
+// System apps open a window; TV apps launch on the set, with their own colours.
 const APPS = [
-  ['Jellyfin', 'org.jellyfin.androidtv'],
-  ['Spotify', 'com.spotify.tv.android'],
-  ['Twitch', 'tv.twitch.android.app'],
-  ['RaiPlay', 'it.rainet.androidtv'],
-  ['Disney+', 'com.disney.disneyplus'],
-  ['YouTube', 'com.google.android.youtube.tv'],
+  { id: 'remote', name: 'Telecomando', bg: 'linear-gradient(180deg,#8E8E93,#48484A)', glyph: G.remote },
+  { id: 'search', name: 'Cerca', bg: 'linear-gradient(180deg,#5AC8FA,#0A84FF)', glyph: G.search },
+  { id: 'quiz', name: 'Quiz', bg: 'linear-gradient(160deg,#3B2BC9,#1A1446 70%)', glyph: G.quiz, gold: true },
+  { id: 'sites', name: 'Siti', bg: 'linear-gradient(180deg,#64D2FF,#5E5CE6)', glyph: G.sites },
+  { id: 'homelab', name: 'Homelab', bg: 'linear-gradient(180deg,#34C759,#248A3D)', glyph: G.homelab },
+  { tv: 'org.jellyfin.androidtv', name: 'Jellyfin', bg: 'linear-gradient(135deg,#AA5CC3,#00A4DC)', word: '▶' },
+  { tv: 'com.google.android.youtube.tv', name: 'YouTube', bg: '#FF0033', word: '▶' },
+  { tv: 'com.spotify.tv.android', name: 'Spotify', bg: '#1ED760', word: '♫', dark: true },
+  { tv: 'com.disney.disneyplus', name: 'Disney+', bg: 'linear-gradient(160deg,#0B3C8C,#06143C)', word: 'D+' },
+  { tv: 'it.rainet.androidtv', name: 'RaiPlay', bg: '#0A2E78', word: 'Rai' },
+  { tv: 'tv.twitch.android.app', name: 'Twitch', bg: '#9146FF', word: 'tw' },
 ];
+const DOCK = ['remote', 'search', 'quiz', 'sites'];
 
-// ── tabs ───────────────────────────────────────────────────────────────────────
-document.querySelectorAll('[role="tab"]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('[role="tab"]').forEach((b) =>
-      b.setAttribute('aria-selected', String(b === btn)));
-    document.querySelectorAll('.pane').forEach((p) =>
-      p.toggleAttribute('data-active', p.dataset.tab === btn.dataset.tab));
-  });
-});
+function iconHtml(a) {
+  const inner = a.glyph
+    ? (a.gold ? a.glyph.replace('<svg', '<svg style="fill:#F2C46D;filter:drop-shadow(0 0 6px #F2C46D88)"') : a.glyph)
+    : `<span class="word" style="color:${a.dark ? '#000' : '#fff'}">${a.word}</span>`;
+  return `<div class="icon" style="background:${a.bg}">${inner}</div>`;
+}
+function appButton(a) {
+  const b = document.createElement('button');
+  b.className = 'app';
+  b.innerHTML = `${iconHtml(a)}<span>${esc(a.name)}</span>`;
+  if (a.id === 'quiz') b.insertAdjacentHTML('afterbegin', '<span class="badge" id="quizBadge" hidden></span>');
+  b.addEventListener('click', () => (a.tv ? launch(a) : openApp(a.id, b.querySelector('.icon'))));
+  return b;
+}
+for (const a of APPS) $('grid').append(appButton(a));
+for (const id of DOCK) $('dock').append(appButton(APPS.find((a) => a.id === id)));
 
+// ── chrome ────────────────────────────────────────────────────────────
+const tick = () => { const d = new Date(); $('clock').textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+tick(); setInterval(tick, 10_000);
+
+let bannerT = 0;
+function banner(app, title, text) {
+  $('bIcon').outerHTML = iconHtml(app).replace('class="icon"', 'class="icon" id="bIcon"');
+  $('bTitle').textContent = title;
+  $('bText').textContent = text;
+  $('banner').classList.add('show');
+  clearTimeout(bannerT);
+  bannerT = setTimeout(() => $('banner').classList.remove('show'), 2600);
+}
+$('banner').addEventListener('click', () => $('banner').classList.remove('show'));
+const sysApp = (id) => APPS.find((a) => a.id === id);
+const fail = (err) => banner({ bg: '#FF453A', word: '!' }, 'Non è andata', err.message || String(err));
+
+let current = null;
+function openApp(id, from) {
+  const win = $(`app-${id}`);
+  if (!win) return;
+  const r = (from || document.querySelector(`[data-open="${id}"]`) || $('home')).getBoundingClientRect();
+  win.style.setProperty('--ox', `${r.left + r.width / 2}px`);
+  win.style.setProperty('--oy', `${r.top + r.height / 2}px`);
+  win.scrollTop = 0;
+  requestAnimationFrame(() => win.classList.add('open'));
+  document.body.classList.add('app-open');
+  current = id;
+  history.pushState({ app: id }, '');
+  ON_OPEN[id]?.();
+}
+function closeApp(fromHistory) {
+  if (!current) return;
+  $(`app-${current}`).classList.remove('open');
+  document.body.classList.remove('app-open');
+  current = null;
+  if (!fromHistory) history.back();
+}
+document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeApp()));
+document.querySelectorAll('[data-open]').forEach((el) => el.addEventListener('click', () => openApp(el.dataset.open, el)));
+$('homebar').addEventListener('click', () => closeApp());
+addEventListener('popstate', () => closeApp(true));
+// swipe up from the bottom edge, like the home indicator
+let sy = null;
+addEventListener('touchstart', (e) => { const y = e.touches[0].clientY; sy = current && y > innerHeight - 50 ? y : null; }, { passive: true });
+addEventListener('touchend', (e) => { if (sy !== null && sy - e.changedTouches[0].clientY > 60) closeApp(); sy = null; });
+
+// ── server ────────────────────────────────────────────────────────────
 async function api(path, opts) {
   const res = await fetch(path, opts);
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(out.error || res.statusText);
   return out;
 }
+const post = (path, body, headers = {}) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body || {}) });
 
-function post(path, body) {
-  return api(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {}),
+let busy = false;
+async function guard(fn) {
+  busy = true;
+  try { await fn(); } catch (err) { fail(err); } finally { busy = false; refreshTv(); }
+}
+
+function launch(a) {
+  guard(async () => {
+    await post('/api/launch', { package: a.tv });
+    banner(a, a.name, 'Si apre sulla TV');
   });
 }
 
-// ── now playing ────────────────────────────────────────────────────────────────
+// ── TV ────────────────────────────────────────────────────────────────
 const clock = (s) => {
   if (s == null) return '0:00';
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = Math.floor(s % 60);
-  return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`
-           : `${m}:${String(x).padStart(2, '0')}`;
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`;
 };
-
-let polling = false;
-
+let paused = false;
+let remoteOk = false;
 async function refreshTv() {
-  // Skip while a command is in flight: the server reads state straight from
-  // Jellyfin, which lags a second behind a button press and would flip the icon back.
-  if (polling) return;
+  if (busy) return;
   try {
     const s = await api('/api/tv');
-    linkEl.className = 'link up';
-    linkEl.lastElementChild.textContent = s.session ? 'TV PRONTA' : 'TV INATTIVA';
-
+    $('tvpill').className = `tvpill ${s.session ? 'up' : ''}`;
+    remoteOk = Boolean(s.remote);
+    $('remoteNote').hidden = remoteOk;
     const np = s.nowPlaying;
     $('npEmpty').hidden = Boolean(np);
     $('npBody').hidden = !np;
     if (!np) return;
-
     $('npTitle').textContent = np.name;
-    $('npSub').textContent = [np.year, np.type === 'Episode' ? 'Episodio' : null]
-      .filter(Boolean).join(' · ');
+    $('npSub').textContent = [np.year, np.type === 'Episode' ? 'Episodio' : 'Jellyfin', np.paused ? 'In pausa' : null].filter(Boolean).join(' · ');
     $('npPos').textContent = clock(np.position);
-    $('npDur').textContent = clock(np.duration);
-    $('npBar').style.width =
-      np.duration ? `${Math.min(100, (np.position / np.duration) * 100)}%` : '0';
-    $('playPause').textContent = np.paused ? '▶' : '⏸';
+    $('npDur').textContent = `-${clock(Math.max(0, (np.duration ?? 0) - (np.position ?? 0)))}`;
+    $('npBar').style.width = np.duration ? `${Math.min(100, (np.position / np.duration) * 100)}%` : '0';
+    paused = np.paused;
+    setPP();
   } catch {
-    linkEl.className = 'link';
-    linkEl.lastElementChild.textContent = 'OFFLINE';
+    $('tvpill').className = 'tvpill off';
   }
 }
-
-async function guard(fn) {
-  polling = true;
-  try { await fn(); }
-  catch (err) { alert(err.message); }
-  finally { polling = false; refreshTv(); }
+function setPP() { $('ppIcon').innerHTML = (paused ? G.play : G.pause).replace(/<\/?svg[^>]*>/g, ''); }
+function togglePlay() {
+  guard(async () => {
+    const action = paused ? 'resume' : 'pause';
+    paused = !paused; setPP();
+    await post('/api/playback', { action });
+  });
 }
-
-$('playPause').addEventListener('click', () => guard(async () => {
-  const action = $('playPause').textContent === '▶' ? 'resume' : 'pause';
-  $('playPause').textContent = action === 'resume' ? '⏸' : '▶';   // answer the thumb at once
-  await post('/api/playback', { action });
+$('playPause').addEventListener('click', togglePlay);
+document.querySelectorAll('[data-jf="toggle"]').forEach((b) => b.addEventListener('click', togglePlay));
+document.querySelectorAll('[data-seek]').forEach((b) => b.addEventListener('click', () => guard(() => post('/api/seek', { delta: Number(b.dataset.seek) }))));
+document.querySelectorAll('[data-key]').forEach((b) => b.addEventListener('click', () => {
+  try { navigator.vibrate?.(8); } catch {}
+  if (!remoteOk) return fail(new Error('La TV non è associata (JointSpace).'));
+  post('/api/key', { key: b.dataset.key }).catch(fail);
 }));
+refreshTv();
+setInterval(refreshTv, 4000);
 
-document.querySelectorAll('[data-playback]').forEach((b) =>
-  b.addEventListener('click', () => guard(() => post('/api/playback', { action: b.dataset.playback }))));
-
-document.querySelectorAll('[data-seek]').forEach((b) =>
-  b.addEventListener('click', () => guard(() => post('/api/seek', { delta: Number(b.dataset.seek) }))));
-
-const appsEl = $('apps');
-for (const [label, pkg] of APPS) {
-  const b = document.createElement('button');
-  b.textContent = label;
-  b.addEventListener('click', () => guard(() => post('/api/launch', { package: pkg })));
-  appsEl.append(b);
-}
-
-// ── search ─────────────────────────────────────────────────────────────────────
+// ── search ────────────────────────────────────────────────────────────
 async function runSearch() {
   const q = $('q').value.trim();
   if (!q) return;
@@ -316,100 +505,65 @@ async function runSearch() {
   box.innerHTML = '<div class="empty">Cerco…</div>';
   try {
     const { results } = await api(`/api/search?q=${encodeURIComponent(q)}`);
-    box.innerHTML = '';
-    if (!results.length) {
-      box.innerHTML = '<div class="empty">Nessun risultato.</div>';
-      return;
-    }
+    $('resH').hidden = !results.length;
+    if (!results.length) { box.innerHTML = '<div class="empty">Nessun risultato.</div>'; return; }
+    box.innerHTML = '<div class="group"></div>';
     for (const r of results) {
       const b = document.createElement('button');
-      b.className = 'result';
-      b.innerHTML = '<span></span><em></em>';
-      b.firstChild.textContent = r.name;
-      b.lastChild.textContent = [r.year, r.type].filter(Boolean).join(' · ');
+      b.className = 'cell tap';
+      b.innerHTML = `<div class="sq" style="background:linear-gradient(135deg,#AA5CC3,#00A4DC)">${G.play}</div><div class="grow"><div class="t">${esc(r.name)}</div><div class="d">${esc([r.year, { Movie: 'Film', Series: 'Serie', Episode: 'Episodio' }[r.type] ?? r.type].filter(Boolean).join(' · '))}</div></div>${G.chev}`;
       b.addEventListener('click', () => guard(async () => {
-        b.lastChild.textContent = 'parte…';
+        b.querySelector('.d').textContent = 'Parte sulla TV…';
         await post('/api/play', { itemId: r.id });
-        b.lastChild.textContent = 'in riproduzione';
-        document.querySelector('[data-tab="tv"][role="tab"]').click();
+        banner(APPS[5], r.name, 'In riproduzione sulla TV');
+        closeApp();
       }));
-      box.append(b);
+      box.firstChild.append(b);
     }
   } catch (err) {
-    box.innerHTML = '<div class="empty"></div>';
-    box.firstChild.textContent = err.message;
+    box.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
   }
 }
-$('qGo').addEventListener('click', runSearch);
-$('q').addEventListener('keydown', (e) => e.key === 'Enter' && runSearch());
+$('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('q').blur(); runSearch(); } });
 
-refreshTv();
-setInterval(refreshTv, 4000);
-
-// ── siti ───────────────────────────────────────────────────────────────────────
-let editing = null;   // id of the site in the form, or null when adding
-
+// ── sites ─────────────────────────────────────────────────────────────
+let editing = null;
 function renderSites(list) {
   const box = $('sites');
   box.replaceChildren();
-  if (!list.length) {
-    box.innerHTML = '<div class="empty">Nessun sito ancora.</div>';
-    return;
-  }
+  if (!list.length) { box.innerHTML = '<div class="empty">Nessun sito ancora.</div>'; return; }
   list.forEach((site, i) => {
     const row = document.createElement('div');
-    row.className = 'site';
-    const img = document.createElement('img');
-    img.alt = '';
+    row.className = 'cell';
+    row.style.setProperty('--inset', '58px');
+    row.innerHTML = `<img alt="" style="width:29px;height:29px;border-radius:7px;object-fit:cover;background:var(--cell-2)"><div class="grow"><div class="t"></div><div class="d"></div></div>`;
+    const img = row.querySelector('img');
     img.src = `/api/sites/${site.id}/icon`;
-    img.onerror = () => {
-      const ph = document.createElement('div');
-      ph.className = 'ph';
-      ph.textContent = site.name.slice(0, 1).toUpperCase();
-      img.replaceWith(ph);
-    };
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    const b = document.createElement('b'); b.textContent = site.name;
-    const u = document.createElement('span'); u.textContent = site.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    meta.append(b, u);
-    const acts = document.createElement('div');
-    acts.className = 'acts';
-    const btn = (label, cls, fn, title) => {
-      const x = document.createElement('button');
-      x.textContent = label; if (cls) x.className = cls; if (title) x.title = title;
-      x.addEventListener('click', () => guard(fn));
-      acts.append(x);
-    };
-    btn('Apri', 'go', () => post(`/api/sites/${site.id}/open`), 'Apri sulla TV');
-    if (i > 0) btn('↑', '', async () => renderSites((await post(`/api/sites/${site.id}/move`, { by: -1 })).sites), 'Sposta prima');
-    btn('✎', '', () => startEdit(site), 'Modifica');
-    btn('✕', '', async () => {
+    img.onerror = () => { img.outerHTML = `<div class="sq" style="background:var(--indigo);font-weight:700">${esc(site.name.slice(0, 1).toUpperCase())}</div>`; };
+    row.querySelector('.t').textContent = site.name;
+    row.querySelector('.d').textContent = site.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const btn = (label, fn, cls = 'pillbtn') => { const x = document.createElement('button'); x.className = cls; x.innerHTML = label; x.addEventListener('click', () => guard(fn)); row.append(x); };
+    btn('Apri', async () => { await post(`/api/sites/${site.id}/open`); banner({ bg: 'linear-gradient(180deg,#64D2FF,#5E5CE6)', glyph: G.sites }, site.name, 'Aperto sulla TV'); });
+    if (i > 0) btn('<svg viewBox="0 0 24 24"><path d="M12 5l7 8h-5v6h-4v-6H5z"/></svg>', async () => renderSites((await post(`/api/sites/${site.id}/move`, { by: -1 })).sites), 'roundbtn');
+    btn('<svg viewBox="0 0 24 24"><path d="M4 17.2V20h2.8l8.3-8.3-2.8-2.8Zm13.7-7.6a1 1 0 0 0 0-1.4L15.8 6.3a1 1 0 0 0-1.4 0l-1.3 1.3 2.8 2.8Z"/></svg>', () => startEdit(site), 'roundbtn');
+    btn('<svg viewBox="0 0 24 24" style="fill:var(--red)"><path d="M6 7h12l-1 13H7Zm3-4h6l1 2h4v2H4V5h4Z"/></svg>', async () => {
       if (!confirm(`Rimuovere ${site.name} dalla TV?`)) return;
       renderSites((await api(`/api/sites/${site.id}`, { method: 'DELETE' })).sites);
       if (editing === site.id) stopEdit();
-    }, 'Rimuovi');
-    row.append(img, meta, acts);
+    }, 'roundbtn');
     box.append(row);
   });
 }
-
 function startEdit(site) {
   editing = site.id;
-  $('siteUrl').value = site.url;
-  $('siteName').value = site.name;
-  $('siteSave').textContent = 'Salva';
-  $('siteCancel').hidden = false;
+  $('siteUrl').value = site.url; $('siteName').value = site.name;
+  $('siteSave').textContent = 'Salva'; $('siteCancel').hidden = false; $('siteFormH').textContent = 'Modifica sito';
   $('siteUrl').focus();
 }
-
 function stopEdit() {
-  editing = null;
-  $('siteForm').reset();
-  $('siteSave').textContent = 'Aggiungi alla TV';
-  $('siteCancel').hidden = true;
+  editing = null; $('siteForm').reset();
+  $('siteSave').textContent = 'Aggiungi alla TV'; $('siteCancel').hidden = true; $('siteFormH').textContent = 'Nuovo sito';
 }
-
 $('siteCancel').addEventListener('click', stopEdit);
 $('siteForm').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -418,12 +572,122 @@ $('siteForm').addEventListener('submit', (e) => {
     const out = editing
       ? await api(`/api/sites/${editing}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       : await post('/api/sites', body);
-    renderSites(out.sites);
-    stopEdit();
+    renderSites(out.sites); stopEdit();
   });
 });
-
 api('/api/sites').then((o) => renderSites(o.sites)).catch(() => {});
+
+// ── homelab ───────────────────────────────────────────────────────────
+async function refreshLab() {
+  try {
+    const s = await api('/api/status');
+    const up = s.services.filter((x) => x.up).length;
+    $('cpuRing').style.strokeDashoffset = String(157 * (1 - s.host.cpu / 100));
+    $('cpuRing').style.stroke = s.host.cpu > 80 ? 'var(--red)' : s.host.cpu > 50 ? 'var(--orange)' : 'var(--green)';
+    $('cpuTxt').textContent = `${s.host.cpu}%`;
+    $('labTxt').innerHTML = `<b>${up}/${s.services.length}</b> servizi attivi<br>RAM ${s.host.memUsed}/${s.host.memTotal} GB`;
+    $('labHost').innerHTML = [
+      ['Host', s.host.name], ['CPU', `${s.host.cpu}%`], ['Memoria', `${s.host.memUsed} di ${s.host.memTotal} GB`], ['Acceso da', s.host.uptime],
+    ].map(([k, v]) => `<div class="cell"><div class="grow t">${k}</div><div class="v">${esc(v)}</div></div>`).join('');
+    $('labSvc').innerHTML = s.services.map((x) => `<div class="cell"><span class="dot" style="background:${x.up ? 'var(--green)' : 'var(--red)'}"></span><div class="grow t">${esc(x.name)}</div><div class="v">${x.up ? `${x.ms} ms` : 'giù'} · :${x.port}</div></div>`).join('');
+  } catch { $('labTxt').textContent = 'Non raggiungibile'; }
+}
+refreshLab();
+setInterval(refreshLab, 10_000);
+
+// ── quiz ──────────────────────────────────────────────────────────────
+let links = null;
+let qs = null;
+const cardSrc = (id) => links ? `/quiz/card/${id}?k=${encodeURIComponent(links.host)}` : '';
+const invite = (p) => `Ciao ${p.name}! ⚡ Stasera quiz su Harry Potter e la Camera dei Segreti. Apri il tuo link personale, scopri la tua carta e rispondi alle domande mentre guardiamo il film:\n${p.url}`;
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.append(ta); ta.select();
+  const ok = document.execCommand('copy'); ta.remove();
+  return ok;
+}
+function flash(btn, label = 'Copiato') {
+  const was = btn.textContent;
+  btn.textContent = label; btn.classList.add('done');
+  setTimeout(() => { btn.textContent = was; btn.classList.remove('done'); }, 1600);
+}
+
+function renderLinks() {
+  if (!links) return;
+  const joined = new Set((qs?.standings ?? []).filter((p) => p.joined).map((p) => p.id));
+  $('qLinks').innerHTML = links.players.map((p) => `
+    <div class="cell qp" data-p="${p.id}">
+      <img src="${cardSrc(p.id)}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="grow"><div class="t">${esc(p.name)}</div>
+        <span class="tag ${joined.has(p.id) ? 'in' : 'out'}">${joined.has(p.id) ? '● Entrato' : 'Non ancora entrato'}</span></div>
+      <button class="pillbtn" data-copy>Copia</button>
+      ${navigator.share ? `<button class="roundbtn" data-share aria-label="Condividi">${G.share}</button>` : ''}
+    </div>`).join('');
+  $('qLinks').querySelectorAll('[data-p]').forEach((row) => {
+    const p = links.players.find((x) => x.id === row.dataset.p);
+    row.querySelector('[data-copy]').addEventListener('click', async (e) => { if (await copy(p.url)) flash(e.currentTarget); });
+    row.querySelector('[data-share]')?.addEventListener('click', () => navigator.share({ title: `Quiz · ${p.name}`, text: invite(p) }).catch(() => {}));
+  });
+}
+
+function renderBoard() {
+  if (!qs) return;
+  const lead = qs.standings[0]?.score ?? 0;
+  $('qBoard').innerHTML = qs.standings.map((p, i) => `
+    <div class="cell qp" style="${p.joined ? '' : 'opacity:.45'}">
+      <img src="${cardSrc(p.id)}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="grow"><div class="t">${i + 1}. ${esc(p.name)} ${i === 0 && lead > 0 ? '👑' : ''}</div><div class="d">${p.right} giuste · ${esc(p.title)}</div></div>
+      <div class="bigscore">${p.score}</div>
+    </div>`).join('');
+  const c = qs.current;
+  $('qNow').innerHTML = c
+    ? `<div class="k">Domanda ${c.number}${c.total ? ` di ${c.total}` : ''} · ${c.phase === 'open' ? `${c.answered.length} risposte` : 'rivelata'}</div><div class="q">${esc(c.question.question)}</div>`
+    : `<div class="k">Nessuna domanda aperta · ${qs.asked} fatte finora</div>`;
+  // widget: the podium
+  const top = qs.standings.slice(0, 3);
+  $('lead').innerHTML = top.map((p) => `<div class="p"><img src="${cardSrc(p.id)}" alt="" onerror="this.style.visibility='hidden'"><span class="s">${p.score}</span></div>`).join('');
+  const joinedN = qs.standings.filter((p) => p.joined).length;
+  $('quizTxt').innerHTML = c ? `<b>Domanda ${c.number}</b> in corso` : `<b>${joinedN}/${qs.standings.length}</b> entrati`;
+  const badge = $('quizBadge');
+  if (badge) { badge.hidden = !(c && c.phase === 'open'); badge.textContent = c ? String(c.answered.length) : ''; }
+  renderLinks();
+}
+
+async function loadQuiz() {
+  try {
+    links = await api('/api/quiz/links');
+    const es = new EventSource(`/quiz/api/events?k=${encodeURIComponent(links.host)}`);
+    es.onmessage = (e) => { qs = JSON.parse(e.data); renderBoard(); };
+    renderLinks();
+  } catch (err) {
+    $('qLinks').innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+  }
+}
+loadQuiz();
+
+$('copyAll').addEventListener('click', async (e) => {
+  if (!links) return;
+  const text = links.players.map((p) => `${p.name}: ${p.url}`).join('\n');
+  if (await copy(text)) flash(e.currentTarget);
+});
+$('copyCinema').addEventListener('click', async (e) => { if (links && await copy(links.cinema)) flash(e.currentTarget); });
+$('openScreen').addEventListener('click', () => { if (links) open(links.screen, '_blank'); });
+$('qReset').addEventListener('click', () => {
+  if (!links || !confirm('Azzerare tutti i punteggi del quiz?')) return;
+  post('/quiz/api/host/reset', {}, { 'X-Quiz-Key': links.host }).catch(fail);
+});
+document.querySelectorAll('[data-seg]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-seg]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+  document.querySelectorAll('[data-segpane]').forEach((p) => { p.hidden = p.dataset.segpane !== b.dataset.seg; });
+}));
+
+const ON_OPEN = {
+  search: () => setTimeout(() => $('q').focus(), 350),
+  homelab: refreshLab,
+};
 </script>
 </body>
 </html>
