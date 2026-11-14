@@ -40,6 +40,14 @@ export function PartyQuizCard({ partyKey, questionId, question, number, total, o
   const current = state?.current?.id === questionId ? state.current : null
   const revealed = current?.phase === 'revealed'
 
+  // "Continua il film" pressed on the admin's phone closes the question on JARVIS:
+  // once this question has been live, its disappearance means back to the film.
+  const wasLive = useRef(false)
+  useEffect(() => {
+    if (current) wasLive.current = true
+    else if (wasLive.current && state) onClose()
+  }, [current, state, onClose])
+
   const revealedOnce = useRef(false)
   useEffect(() => {
     if (revealed && !revealedOnce.current) {
@@ -98,9 +106,16 @@ export function PartyQuizCard({ partyKey, questionId, question, number, total, o
             {question.question}
           </h2>
 
-          {!revealed && <div className="mt-5 h-1 overflow-hidden rounded-pill bg-white/10">
-            <div className="h-full origin-left bg-primary transition-transform" style={{ transform: `scaleX(${left})` }} />
-          </div>}
+          {!revealed && (
+            <>
+              <div className="mt-5 h-1 overflow-hidden rounded-pill bg-white/10">
+                <div className="h-full origin-left bg-primary transition-transform" style={{ transform: `scaleX(${left})` }} />
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground tabular-nums">
+                {left > 0 ? `La risposta tra ${Math.ceil(left * 30)}s` : 'Ecco la risposta…'}
+              </p>
+            </>
+          )}
 
           {options.length > 0 && (
             <div className="mt-6 grid gap-3 sm:grid-cols-2">

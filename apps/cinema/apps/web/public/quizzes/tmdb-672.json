@@ -2,44 +2,6 @@
   "title": "Harry Potter e la Camera dei Segreti",
   "questions": [
     {
-      "at": 310,
-      "type": "choice",
-      "question": "Secondo Dobby, cosa NON deve fare Harry quest'anno?",
-      "options": [
-        "Andare alla Tana",
-        "Tornare a Hogwarts",
-        "Usare la magia fuori dalla scuola",
-        "Scrivere a Ron"
-      ],
-      "answer": 1,
-      "explain": "«Harry Potter non deve tornare alla Scuola di Magia e Stregoneria di Hogwarts quest'anno.»"
-    },
-    {
-      "at": 357,
-      "type": "text",
-      "question": "Zio Vernon si lamenta: il rumore gli ha rovinato la barzelletta su chi?",
-      "accept": [
-        "golfista giapponese",
-        "il golfista giapponese",
-        "golfista",
-        "un golfista giapponese"
-      ],
-      "explain": "«Hai rovinato la mia barzelletta sul golfista giapponese.»"
-    },
-    {
-      "at": 405,
-      "type": "choice",
-      "question": "Perché Harry non ha ricevuto lettere dai suoi amici per tutta l'estate?",
-      "options": [
-        "Gli zii le bruciavano",
-        "Edvige era chiusa in gabbia",
-        "Dobby le ha intercettate",
-        "Ron e Hermione se n'erano dimenticati"
-      ],
-      "answer": 2,
-      "explain": "Dobby le teneva lui, sperando che Harry, sentendosi dimenticato, non volesse più tornare a scuola."
-    },
-    {
       "at": 459,
       "type": "choice",
       "question": "Previsione: Harry rifiuta. Cosa farà adesso Dobby?",
@@ -51,40 +13,6 @@
       ],
       "answer": 1,
       "explain": "Il dolce di zia Petunia finisce in testa alla signora Mason, e la colpa ricade su Harry."
-    },
-    {
-      "at": 544,
-      "type": "text",
-      "question": "Chi viene a salvare Harry? (basta un nome)",
-      "accept": [
-        "ron",
-        "fred",
-        "george",
-        "weasley",
-        "i weasley",
-        "ron fred e george",
-        "ron, fred e george",
-        "fratelli weasley"
-      ],
-      "explain": "Ron, Fred e George Weasley, con l'auto volante del signor Weasley."
-    },
-    {
-      "at": 622,
-      "type": "truefalse",
-      "question": "Vero o falso: il giorno della fuga è il compleanno di Harry.",
-      "answer": true,
-      "explain": "«A proposito, Harry, buon compleanno.» — è il 31 luglio."
-    },
-    {
-      "at": 628,
-      "type": "text",
-      "question": "Domanda bonus: che modello di auto guidano i Weasley?",
-      "accept": [
-        "ford anglia",
-        "anglia",
-        "una ford anglia"
-      ],
-      "explain": "Una Ford Anglia azzurra del 1962, incantata per volare."
     },
     {
       "at": 952,
