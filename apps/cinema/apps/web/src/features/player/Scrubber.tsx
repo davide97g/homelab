@@ -2,12 +2,19 @@ import { useRef, useState } from 'react'
 import { formatTimecode } from '@/lib/jellyfin/ticks'
 import { cn } from '@/lib/utils'
 
+export type ScrubMarker = {
+  at: number
+  state: 'pending' | 'right' | 'wrong'
+  label: string
+}
+
 type Props = {
   current: number
   duration: number
   /** Seconds buffered ahead of the playhead. */
   buffered: number
   onSeek: (seconds: number) => void
+  markers?: ScrubMarker[]
 }
 
 /**
@@ -15,7 +22,7 @@ type Props = {
  * touch and screen readers all come free -- and three stacked spans draw it,
  * because styling a range's track across browsers is worse than not using it.
  */
-export function Scrubber({ current, duration, buffered, onSeek }: Props) {
+export function Scrubber({ current, duration, buffered, onSeek, markers }: Props) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [hoverAt, setHoverAt] = useState<number | null>(null)
 
@@ -39,6 +46,19 @@ export function Scrubber({ current, duration, buffered, onSeek }: Props) {
           )}
           style={{ left: `${pct(current)}%` }}
         />
+        {/* Under the range input, so a click near a dot still seeks. */}
+        {duration > 0 &&
+          markers?.map((marker, index) => (
+            <span
+              key={index}
+              title={marker.label}
+              className={cn(
+                'absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-pill ring-2 ring-black/60',
+                marker.state === 'right' ? 'bg-match' : marker.state === 'wrong' ? 'bg-destructive' : 'bg-white',
+              )}
+              style={{ left: `${pct(marker.at)}%` }}
+            />
+          ))}
       </div>
 
       {hoverAt != null && (

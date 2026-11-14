@@ -17,7 +17,7 @@ import {
 import { PlayMethod, type AudioOption, type SubtitleOption } from '@/lib/jellyfin/playback'
 import { formatTimecode } from '@/lib/jellyfin/ticks'
 import { cn } from '@/lib/utils'
-import { Scrubber } from './Scrubber'
+import { Scrubber, type ScrubMarker } from './Scrubber'
 import { TrackMenu } from './TrackMenu'
 
 type Props = {
@@ -38,9 +38,15 @@ type Props = {
   /** Present when there is a next episode to go to. */
   onNext?: () => void
   nextLabel?: string
+  /** Dots on the scrub bar, e.g. quiz questions. */
+  markers?: ScrubMarker[]
+  /** A control-bar menu owned by someone else; the bar keeps it open and shown. */
+  renderQuizMenu?: (open: boolean, onOpenChange: (open: boolean) => void) => React.ReactNode
+  /** A dialog is over the film: shortcuts would type into it or play behind it. */
+  keyboardLocked?: boolean
 }
 
-type Menu = 'audio' | 'subtitles'
+type Menu = 'audio' | 'subtitles' | 'quiz'
 
 const SKIP = 10
 
@@ -60,6 +66,9 @@ export function PlayerControls({
   switching,
   onNext,
   nextLabel,
+  markers,
+  renderQuizMenu,
+  keyboardLocked = false,
 }: Props) {
   const [openMenu, setOpenMenu] = useState<Menu | null>(null)
   const openMenuRef = useRef(openMenu)
@@ -119,9 +128,11 @@ export function PlayerControls({
 
   // Keyboard shortcuts people expect from a video player.
   useEffect(() => {
+    if (keyboardLocked) return
     const onKey = (event: KeyboardEvent) => {
       const video = videoRef.current
       if (!video) return
+      if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select')) return
       switch (event.key) {
         case ' ':
         case 'k':
@@ -163,7 +174,7 @@ export function PlayerControls({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [videoRef, onBack, onNext])
+  }, [videoRef, onBack, onNext, keyboardLocked])
 
   async function toggleFullscreen() {
     if (document.fullscreenElement) await document.exitFullscreen()
@@ -210,6 +221,7 @@ export function PlayerControls({
           current={current}
           duration={duration}
           buffered={buffered}
+          markers={markers}
           onSeek={(seconds) => {
             if (video) video.currentTime = seconds
           }}
@@ -307,6 +319,8 @@ export function PlayerControls({
               />
             )}
           </div>
+
+          {renderQuizMenu?.(openMenu === 'quiz', (open) => setOpenMenu(open ? 'quiz' : null))}
 
           {onNext && (
             <IconButton label={nextLabel ? `Next episode: ${nextLabel}` : 'Next episode'} onClick={onNext}>

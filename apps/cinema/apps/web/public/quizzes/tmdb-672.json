@@ -1,0 +1,314 @@
+{
+  "title": "Harry Potter e la Camera dei Segreti",
+  "questions": [
+    {
+      "at": 310,
+      "type": "choice",
+      "question": "Secondo Dobby, cosa NON deve fare Harry quest'anno?",
+      "options": [
+        "Andare alla Tana",
+        "Tornare a Hogwarts",
+        "Usare la magia fuori dalla scuola",
+        "Scrivere a Ron"
+      ],
+      "answer": 1,
+      "explain": "«Harry Potter non deve tornare alla Scuola di Magia e Stregoneria di Hogwarts quest'anno.»"
+    },
+    {
+      "at": 357,
+      "type": "text",
+      "question": "Zio Vernon si lamenta: il rumore gli ha rovinato la barzelletta su chi?",
+      "accept": [
+        "golfista giapponese",
+        "il golfista giapponese",
+        "golfista",
+        "un golfista giapponese"
+      ],
+      "explain": "«Hai rovinato la mia barzelletta sul golfista giapponese.»"
+    },
+    {
+      "at": 405,
+      "type": "choice",
+      "question": "Perché Harry non ha ricevuto lettere dai suoi amici per tutta l'estate?",
+      "options": [
+        "Gli zii le bruciavano",
+        "Edvige era chiusa in gabbia",
+        "Dobby le ha intercettate",
+        "Ron e Hermione se n'erano dimenticati"
+      ],
+      "answer": 2,
+      "explain": "Dobby le teneva lui, sperando che Harry, sentendosi dimenticato, non volesse più tornare a scuola."
+    },
+    {
+      "at": 459,
+      "type": "choice",
+      "question": "Previsione: Harry rifiuta. Cosa farà adesso Dobby?",
+      "options": [
+        "Sparisce con le lettere",
+        "Fa cadere il dolce sulla testa degli ospiti",
+        "Chiude Harry in camera",
+        "Fa esplodere la lampada"
+      ],
+      "answer": 1,
+      "explain": "Il dolce di zia Petunia finisce in testa alla signora Mason, e la colpa ricade su Harry."
+    },
+    {
+      "at": 544,
+      "type": "text",
+      "question": "Chi viene a salvare Harry? (basta un nome)",
+      "accept": [
+        "ron",
+        "fred",
+        "george",
+        "weasley",
+        "i weasley",
+        "ron fred e george",
+        "ron, fred e george",
+        "fratelli weasley"
+      ],
+      "explain": "Ron, Fred e George Weasley, con l'auto volante del signor Weasley."
+    },
+    {
+      "at": 622,
+      "type": "truefalse",
+      "question": "Vero o falso: il giorno della fuga è il compleanno di Harry.",
+      "answer": true,
+      "explain": "«A proposito, Harry, buon compleanno.» — è il 31 luglio."
+    },
+    {
+      "at": 628,
+      "type": "text",
+      "question": "Domanda bonus: che modello di auto guidano i Weasley?",
+      "accept": [
+        "ford anglia",
+        "anglia",
+        "una ford anglia"
+      ],
+      "explain": "Una Ford Anglia azzurra del 1962, incantata per volare."
+    },
+    {
+      "at": 952,
+      "type": "choice",
+      "question": "Harry sbaglia a pronunciare «Diagon Alley» con la Polvere Volante. Dove finisce?",
+      "options": [
+        "Notturn Alley",
+        "Hogsmeade",
+        "Alla Gringott",
+        "Al Paiolo Magico"
+      ],
+      "answer": 0,
+      "explain": "Finisce da Magie Sinister, a Notturn Alley: e lì ci trova i Malfoy."
+    },
+    {
+      "at": 1812,
+      "type": "choice",
+      "question": "L'auto volante sta perdendo quota sopra Hogwarts. Contro cosa si schianta?",
+      "options": [
+        "La Torre di Astronomia",
+        "Il Platano Picchiatore",
+        "La capanna di Hagrid",
+        "Il Lago Nero"
+      ],
+      "answer": 1,
+      "explain": "«Ron, attento all'albero!» — il Platano Picchiatore non la prende bene."
+    },
+    {
+      "at": 2167,
+      "type": "choice",
+      "question": "Secondo Hermione, il grido della Mandragola adulta è…",
+      "options": [
+        "Fatale per chi lo sente",
+        "Fa perdere la memoria",
+        "Fa addormentare per un giorno",
+        "Pietrifica"
+      ],
+      "answer": 0,
+      "explain": "Quello dei piccoli fa solo svenire per qualche ora, per questo i paraorecchie."
+    },
+    {
+      "at": 2329,
+      "type": "choice",
+      "question": "Ron riceve una Strillettera. Chi gliel'ha mandata?",
+      "options": [
+        "Suo padre",
+        "Silente",
+        "Sua madre",
+        "Percy"
+      ],
+      "answer": 2,
+      "explain": "Molly Weasley, furiosa per l'auto. E poi: «Ginny, cara, congratulazioni per Grifondoro!»"
+    },
+    {
+      "at": 2535,
+      "type": "text",
+      "question": "Allock apre la gabbia in classe. Che creature libera?",
+      "accept": [
+        "folletti",
+        "folletti della cornovaglia",
+        "pixie",
+        "pixies",
+        "folletti della cornualia"
+      ],
+      "explain": "Folletti della Cornovaglia, appena catturati. Neville finisce appeso al lampadario."
+    },
+    {
+      "at": 2690,
+      "type": "choice",
+      "question": "Che scope ha regalato Lucius Malfoy a tutta la squadra di Serpeverde?",
+      "options": [
+        "Nimbus 2000",
+        "Firebolt",
+        "Nimbus 2001",
+        "Comet 260"
+      ],
+      "answer": 2,
+      "explain": "Nimbus 2001: il prezzo del posto di Cercatore per Draco."
+    },
+    {
+      "at": 2709,
+      "type": "choice",
+      "question": "Ron lancia la fattura a Malfoy con la bacchetta rotta. Cosa succede?",
+      "options": [
+        "Malfoy diventa un furetto",
+        "Ron vomita lumache",
+        "La bacchetta esplode",
+        "Non succede niente"
+      ],
+      "answer": 1,
+      "explain": "«Mangia lumache!» — e se le mangia Ron."
+    },
+    {
+      "at": 3500,
+      "type": "choice",
+      "question": "Con la Pozione Polisucco, in chi si trasformeranno Harry e Ron?",
+      "options": [
+        "Fred e George",
+        "Tiger e Goyle",
+        "Draco e Lucius",
+        "Percy e Baston"
+      ],
+      "answer": 1,
+      "explain": "Tiger e Goyle (Crabbe e Goyle in originale), per interrogare Malfoy."
+    },
+    {
+      "at": 3650,
+      "type": "choice",
+      "question": "Un Bolide impazzito insegue solo Harry. Chi l'ha stregato?",
+      "options": [
+        "Draco Malfoy",
+        "Piton",
+        "Dobby",
+        "Allock"
+      ],
+      "answer": 2,
+      "explain": "Dobby: voleva farlo finire in infermeria per rimandarlo a casa."
+    },
+    {
+      "at": 4325,
+      "type": "text",
+      "question": "Con quale incantesimo Piton disarma Allock al Club dei Duellanti?",
+      "accept": [
+        "expelliarmus"
+      ],
+      "explain": "Expelliarmus! Allock vola in fondo alla sala."
+    },
+    {
+      "at": 4460,
+      "type": "choice",
+      "question": "Malfoy evoca un serpente. Cosa fa Harry?",
+      "options": [
+        "Lo fa esplodere",
+        "Ci parla in Serpentese",
+        "Scappa",
+        "Lo trasforma in un bastone"
+      ],
+      "answer": 1,
+      "explain": "Harry è un Rettilofono: e tutti pensano che sia l'Erede di Serpeverde."
+    },
+    {
+      "at": 5052,
+      "type": "text",
+      "question": "Che animale è Fanny, l'uccello di Silente?",
+      "accept": [
+        "fenice",
+        "una fenice",
+        "phoenix"
+      ],
+      "explain": "Una fenice: quando muore prende fuoco e rinasce dalle ceneri."
+    },
+    {
+      "at": 5508,
+      "type": "choice",
+      "question": "Perché Hermione non esce dal bagno dopo la Polisucco?",
+      "options": [
+        "Ha bevuto la pozione sbagliata",
+        "Ha usato un pelo di gatto",
+        "Ha paura di Mirtilla",
+        "Si è trasformata in Pansy"
+      ],
+      "answer": 1,
+      "explain": "Il pelo era del gatto di Millicent Bulstrode. Per animali non funziona."
+    },
+    {
+      "at": 5885,
+      "type": "text",
+      "question": "Di chi è il diario trovato nel bagno di Mirtilla? (nome e cognome)",
+      "accept": [
+        "tom riddle",
+        "tom orvoloson riddle",
+        "riddle",
+        "tom marvolo riddle"
+      ],
+      "explain": "Tom Orvoloson Riddle: Tom Marvolo Riddle in originale."
+    },
+    {
+      "at": 6740,
+      "type": "choice",
+      "question": "Caramell porta via Hagrid. Dove?",
+      "options": [
+        "Al Ministero",
+        "Ad Azkaban",
+        "A Nurmengard",
+        "Fuori da Hogwarts e basta"
+      ],
+      "answer": 1,
+      "explain": "Ad Azkaban, «per precauzione»."
+    },
+    {
+      "at": 6886,
+      "type": "text",
+      "question": "Prima di andarsene Hagrid lascia un consiglio: «Se volete sapere qualcosa, seguite i…»",
+      "accept": [
+        "ragni",
+        "i ragni"
+      ],
+      "explain": "«Seguite i ragni.» Ron: «Perché non le farfalle?»"
+    },
+    {
+      "at": 8127,
+      "type": "choice",
+      "question": "Allock usa l'Oblivion con la bacchetta rotta di Ron. Cosa succede?",
+      "options": [
+        "Funziona su Ron",
+        "Si ritorce contro di lui",
+        "La bacchetta si ripara",
+        "Crolla il tunnel e basta"
+      ],
+      "answer": 1,
+      "explain": "L'incantesimo rimbalza: Allock dimentica perfino chi è."
+    },
+    {
+      "at": 9512,
+      "type": "choice",
+      "question": "Harry ha infilato qualcosa nel diario prima di ridarlo a Lucius. Cosa?",
+      "options": [
+        "Un guanto",
+        "Un calzino",
+        "Una piuma",
+        "Una lettera di Silente"
+      ],
+      "answer": 1,
+      "explain": "«Il padrone ha dato un calzino a Dobby.» Dobby è libero!"
+    }
+  ]
+}

@@ -20,5 +20,7 @@
     "noUncheckedSideEffectImports": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // bun test files type against bun:test, which the app bundle does not have.
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -6,6 +6,10 @@ import App from './App'
 import { QuackToastProvider } from '@/components/ui/quack-toast'
 import { AuthProvider } from '@/lib/jellyfin/auth'
 import './index.css'
+import { capturePartyKey } from '@/features/quiz/party'
+
+// ?party=<key> turns on quiz night in this browser (see features/quiz/party.ts)
+capturePartyKey()
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CircleAlert, HardDriveDownload } from 'lucide-react'
 import { useQuackToast } from '@/components/ui/quack-toast'
@@ -10,6 +10,13 @@ import { PlayerControls } from '@/features/player/PlayerControls'
 import { VideoPlayer } from '@/features/player/VideoPlayer'
 import { UpNext } from '@/features/player/UpNext'
 import { usePlaybackSession } from '@/features/player/usePlaybackSession'
+import { QuizCard } from '@/features/quiz/QuizCard'
+import { PartyQuizCard } from '@/features/quiz/PartyQuizCard'
+import { partyKey } from '@/features/quiz/party'
+import { QuizEditor } from '@/features/quiz/QuizEditor'
+import { QuizMenu } from '@/features/quiz/QuizMenu'
+import { quizKey } from '@/features/quiz/quiz'
+import { useQuiz, useQuizEnabled, useQuizTrigger } from '@/features/quiz/useQuiz'
 
 const IDLE_MS = 3000
 
@@ -81,6 +88,46 @@ function PlayerScreen({ itemId }: { itemId: string | undefined }) {
 
   const goBack = () => navigate(itemId ? `/item/${itemId}` : '/')
 
+  // ----- quiz -----
+  const key = quizKey(item?.ProviderIds, item?.Id ?? undefined)
+  const { quiz, hasDraft, hasPublished, saveQuestions, discardDraft } = useQuiz(key)
+  const questions = useMemo(() => quiz?.questions ?? [], [quiz])
+  const [quizOn, setQuizOn] = useQuizEnabled()
+  const [party] = useState(partyKey)
+  // Answers by question index; any edit renumbers, so an edit clears them.
+  const [answers, setAnswers] = useState<Record<number, boolean>>({})
+  const [asking, setAsking] = useState<number | null>(null)
+  const [editor, setEditor] = useState<{ startWithNew: boolean; at: number } | null>(null)
+
+  useQuizTrigger({
+    videoRef,
+    questions,
+    answered: answers,
+    active: quizOn && asking === null && editor === null,
+    onReach: setAsking,
+    media: source,
+  })
+
+  const resume = () => {
+    setAsking(null)
+    void videoRef.current?.play()
+  }
+  const openEditor = (startWithNew: boolean) => {
+    const video = videoRef.current
+    video?.pause()
+    setEditor({ startWithNew, at: video?.currentTime ?? 0 })
+  }
+  const answeredCount = Object.keys(answers).length
+  const rightCount = Object.values(answers).filter(Boolean).length
+  const markers = quizOn
+    ? questions.map((q, i) => ({
+        at: q.at,
+        state: i in answers ? (answers[i] ? ('right' as const) : ('wrong' as const)) : ('pending' as const),
+        label: `Question ${i + 1}`,
+      }))
+    : undefined
+  const dialogOpen = asking !== null || editor !== null
+
   const { next } = useAdjacentEpisodes(item)
   const [ended, setEnded] = useState(false)
   const [upNextDismissed, setUpNextDismissed] = useState(false)
@@ -95,7 +142,7 @@ function PlayerScreen({ itemId }: { itemId: string | undefined }) {
   return (
     <div
       className="relative h-dvh w-full overflow-hidden bg-black"
-      style={{ cursor: controlsVisible ? 'default' : 'none' }}
+      style={{ cursor: controlsVisible || dialogOpen ? 'default' : 'none' }}
     >
       {source ? (
         <>
@@ -123,7 +170,79 @@ function PlayerScreen({ itemId }: { itemId: string | undefined }) {
             switching={switching}
             onNext={next ? playNext : undefined}
             nextLabel={next?.Name ?? undefined}
+            markers={markers}
+            keyboardLocked={dialogOpen}
+            renderQuizMenu={
+              key
+                ? (open, onOpenChange) => (
+                    <QuizMenu
+                      enabled={quizOn}
+                      onEnabledChange={setQuizOn}
+                      count={questions.length}
+                      score={{ right: rightCount, answered: answeredCount }}
+                      now={videoRef.current?.currentTime ?? 0}
+                      open={open}
+                      onOpenChange={onOpenChange}
+                      onAddHere={() => {
+                        onOpenChange(false)
+                        openEditor(true)
+                      }}
+                      onEditAll={() => {
+                        onOpenChange(false)
+                        openEditor(false)
+                      }}
+                      onRestart={() => setAnswers({})}
+                    />
+                  )
+                : undefined
+            }
           />
+          {asking !== null && questions[asking] && party && (
+            <PartyQuizCard
+              key={asking}
+              partyKey={party}
+              questionId={`${key}:${questions[asking].at}`}
+              question={questions[asking]}
+              number={asking + 1}
+              total={questions.length}
+              onRevealed={() => setAnswers((prev) => ({ ...prev, [asking]: true }))}
+              onClose={resume}
+            />
+          )}
+          {asking !== null && questions[asking] && !party && (
+            <QuizCard
+              key={asking}
+              question={questions[asking]}
+              number={asking + 1}
+              total={questions.length}
+              onAnswer={(right) => setAnswers((prev) => ({ ...prev, [asking]: right }))}
+              onClose={resume}
+            />
+          )}
+          {editor && (
+            <QuizEditor
+              questions={questions}
+              now={editor.at}
+              startWithNew={editor.startWithNew}
+              hasDraft={hasDraft}
+              hasPublished={hasPublished}
+              fileName={`${key}.json`}
+              onSave={(next) => {
+                saveQuestions(next)
+                setAnswers({})
+              }}
+              onDiscardDraft={() => {
+                discardDraft()
+                setAnswers({})
+              }}
+              onJump={(seconds) => {
+                const video = videoRef.current
+                if (video) video.currentTime = seconds
+                setEditor((prev) => (prev ? { ...prev, at: seconds } : prev))
+              }}
+              onClose={() => setEditor(null)}
+            />
+          )}
           {ended && next && !upNextDismissed && !message && (
             <UpNext episode={next} onPlay={playNext} onCancel={() => setUpNextDismissed(true)} />
           )}
