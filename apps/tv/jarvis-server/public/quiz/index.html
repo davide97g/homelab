@@ -209,6 +209,7 @@
   .waiting .orb { width: 70px; height: 70px; margin: 4px auto 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--ice) 25%, #3A2F8A 70%); box-shadow: 0 0 40px #9FD8FF88, inset 0 0 20px #fff6; animation: breathe2 3s ease-in-out infinite; }
   @keyframes breathe2 { 50% { transform: scale(1.08); box-shadow: 0 0 70px #9FD8FFaa, inset 0 0 20px #fff8; } }
   .host-bar { display: flex; gap: 8px; margin-top: 16px; }
+  .host-bar .go-on, .host-bar #hr { background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: var(--ink); font-weight: 700; border: 0; }
   .host-bar button { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #F2C46D55; background: #0B0A1F88; font-family: var(--display); letter-spacing: .08em; cursor: pointer; }
   .err { text-align: center; padding-top: 30vh; color: var(--muted); font-size: 22px; }
   .conn { position: fixed; top: max(8px, env(safe-area-inset-top)); right: 10px; z-index: 9; font-family: var(--display); font-size: 10px; letter-spacing: .14em; color: var(--wrong); }
@@ -465,6 +466,8 @@
     const tick = () => {
       const left = Math.max(0, 1 - (Date.now() - openedAt) / 30000);
       bar.style.transform = `scaleX(${left})`;
+      const cd = document.getElementById('countdown');
+      if (cd) cd.textContent = left > 0 ? `La risposta tra ${Math.ceil(left * 30)}s` : 'Ecco la risposta…';
       if (left > 0 && document.body.contains(bar)) timerRaf = requestAnimationFrame(tick);
     };
     tick();
@@ -512,7 +515,8 @@
       if (S.you.host && q.type === 'text') ui = '';
       body.innerHTML = `<div class="panel">${head}<div class="timer"><i></i></div>${ui}
         <div class="faces">${room.map((p) => chip(p, c.answered.includes(p.id))).join('')}</div>
-        ${S.you.host ? `<div class="host-bar"><button id="hr">Rivela</button><button id="hc">Chiudi</button></div>` : ''}</div>`;
+        <div class="sent" id="countdown"></div>
+        ${S.you.admin ? `<div class="host-bar"><button id="hr">Rivela ora</button>${S.you.host ? '<button id="hc">Chiudi</button>' : ''}</div>` : ''}</div>`;
       runTimer(c.openedAt);
       body.querySelectorAll('.opt').forEach((b) => b.onclick = () => {
         const i = Number(b.dataset.i);
@@ -536,12 +540,12 @@
         ${head}${opts}
         <div class="answer-line">Risposta: <b>${esc(c.right)}</b></div>
         ${c.explain ? `<div class="explain">${esc(c.explain)}</div>` : ''}
-        ${S.you.host ? `<div class="host-bar"><button id="hc">Chiudi</button></div>` : ''}</div>
+        ${S.you.admin ? `<div class="host-bar"><button id="hc" class="go-on">Continua il film ▶</button></div>` : ''}</div>
         <div class="panel"><div class="kicker">Classifica</div>${board(c.results)}</div>`;
     }
     const hr = $('hr'), hc = $('hc');
-    if (hr) hr.onclick = () => fetch(api('host/reveal'), { method: 'POST' });
-    if (hc) hc.onclick = () => fetch(api('host/close'), { method: 'POST' });
+    if (hr) hr.onclick = () => { buzz(20); fetch(api('host/reveal'), { method: 'POST' }); };
+    if (hc) hc.onclick = () => { buzz(20); fetch(api('host/close'), { method: 'POST' }); };
   }
 
   function apply(next) {

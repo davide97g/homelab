@@ -30,6 +30,10 @@ const allowed = (origin) => origin === CINEMA_URL || /^http:\/\/localhost:\d+$/.
 const BASE = 100;
 const SPEED = 50;
 const SPEED_WINDOW_MS = 30_000;
+/** The answer shows itself this long after the question opens, unless revealed sooner. */
+const REVEAL_AFTER_MS = 30_000;
+/** Players who also run the show from their phone: reveal and resume the film. */
+const ADMINS = new Set(['davide']);
 
 export const PLAYERS = [
   { id: 'davide', name: 'Davide', title: 'THE SPARK' },
@@ -159,6 +163,7 @@ function view(role) {
       total: c.total,
       phase: c.phase,
       openedAt: c.openedAt,
+      revealAt: c.openedAt + REVEAL_AFTER_MS,
       question: {
         type: q.type,
         question: q.question,
@@ -176,7 +181,7 @@ function view(role) {
   }
   return {
     type: 'state',
-    you: role === 'host' ? { host: true } : { ...byId.get(role), host: false },
+    you: role === 'host' ? { host: true, admin: true } : { ...byId.get(role), host: false, admin: ADMINS.has(role) },
     current,
     standings: standings(),
     asked: state.log.length,
@@ -210,6 +215,21 @@ function cleanQuestion(raw) {
   throw new Error('domanda non valida');
 }
 
+let revealTimer = null;
+
+/** Reveal on the clock: everyone gets the same 30 seconds, however many have answered. */
+function scheduleReveal() {
+  clearTimeout(revealTimer);
+  const c = state.current;
+  if (!c || c.phase !== 'open') return;
+  revealTimer = setTimeout(() => {
+    if (state.current?.id !== c.id) return;
+    reveal();
+    save();
+    push();
+  }, Math.max(0, c.openedAt + REVEAL_AFTER_MS - Date.now()));
+}
+
 function ask({ id, number, total, question }) {
   const key = String(id ?? number);
   // Asking the same question again (the card re-mounted, the page reloaded) keeps
@@ -230,6 +250,7 @@ function ask({ id, number, total, question }) {
 function reveal() {
   const c = state.current;
   if (!c || c.phase === 'revealed') return;
+  clearTimeout(revealTimer);
   const results = {};
   for (const [pid, a] of Object.entries(c.answers)) {
     const right = isRight(c.question, a.value);
@@ -250,6 +271,7 @@ function reveal() {
 export async function mount(app) {
   await loadSecret();
   await loadState();
+  scheduleReveal(); // a restart mid-question keeps its clock
 
   const r = express.Router();
 
@@ -273,7 +295,8 @@ export async function mount(app) {
     return id;
   };
   const asHost = (req, res) => {
-    if (role(req) !== 'host') { res.status(403).json({ error: 'solo il presentatore' }); return false; }
+    const r0 = role(req);
+    if (r0 !== 'host' && !ADMINS.has(r0)) { res.status(403).json({ error: 'solo il presentatore' }); return false; }
     return true;
   };
   const host = (fn) => (req, res) => {
@@ -341,15 +364,12 @@ export async function mount(app) {
     }
     c.answers[id] = { value, label: answerLabel(c.question, value), at: Date.now() };
     if (!state.joined.includes(id)) state.joined.push(id);
-    // Everyone in the room has answered: no need to wait for the host's button.
-    const room = state.joined.filter((p) => byId.has(p));
-    if (room.every((p) => c.answers[p])) reveal();
     save();
     push();
     res.json(view(id));
   });
 
-  r.post('/api/host/ask', express.json(), host((req) => ask(req.body)));
+  r.post('/api/host/ask', express.json(), host((req) => { ask(req.body); scheduleReveal(); }));
   r.post('/api/host/reveal', express.json(), host(() => reveal()));
   r.post('/api/host/close', express.json(), host(() => { state.current = null; }));
   r.post('/api/host/reset', express.json(), host(() => {
