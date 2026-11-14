@@ -295,6 +295,7 @@
 
   let S = null;            // last state from the server
   let me = null;
+  let focusedQ = null;     // the answer box takes focus once per question, when it appears
   let draft = '';          // a free answer being typed survives re-renders
   let lastQ = null;
 
@@ -458,17 +459,28 @@
     }).join('')}</ol>`;
   }
 
+  // Server time minus this phone's, so a phone with a wrong clock counts down right.
+  let skew = 0;
   let timerRaf = 0;
-  function runTimer(openedAt) {
+  function runTimer(c) {
     cancelAnimationFrame(timerRaf);
     const bar = document.querySelector('.timer i');
     if (!bar) return;
     const tick = () => {
-      const left = Math.max(0, 1 - (Date.now() - openedAt) / 30000);
-      bar.style.transform = `scaleX(${left})`;
+      const now = Date.now() + skew;
       const cd = document.getElementById('countdown');
-      if (cd) cd.textContent = left > 0 ? `La risposta tra ${Math.ceil(left * 30)}s` : 'Ecco la risposta…';
-      if (left > 0 && document.body.contains(bar)) timerRaf = requestAnimationFrame(tick);
+      let left;
+      if (!c.optionsOpen) {
+        // the question alone: the bar stays full, the options are on their way
+        left = 1;
+        const s = Math.max(0, Math.ceil((c.optionsAt - now) / 1000));
+        if (cd) cd.textContent = s > 0 ? `Le risposte tra ${s}s…` : 'Ecco le risposte…';
+      } else {
+        left = Math.max(0, Math.min(1, (c.revealAt - now) / 30000));
+        if (cd) cd.textContent = left > 0 ? `La risposta tra ${Math.ceil(left * 30)}s` : 'Ecco la risposta…';
+      }
+      bar.style.transform = `scaleX(${left})`;
+      if ((left > 0 || !c.optionsOpen) && document.body.contains(bar)) timerRaf = requestAnimationFrame(tick);
     };
     tick();
   }
@@ -503,7 +515,9 @@
     if (c.phase === 'open') {
       const mine = c.mine;
       let ui;
-      if (q.type === 'text') {
+      if (!c.optionsOpen) {
+        ui = `<div class="sent">Leggi bene la domanda…</div>`;
+      } else if (q.type === 'text') {
         ui = mine
           ? `<div class="sent">Hai risposto <b>${esc(mine)}</b>. Aspettiamo gli altri…</div>`
           : `<form class="text-row" id="tf"><input id="ti" autocomplete="off" autocapitalize="off" placeholder="La tua risposta" value="${esc(draft)}"><button class="go" id="tb">Invia</button></form>`;
@@ -512,12 +526,12 @@
           `<button class="opt ${mine === o ? 'picked' : ''}" data-i="${i}" ${mine || S.you.host ? 'disabled' : ''}><span class="l">${'ABCDEFGH'[i]}</span><span>${esc(o)}</span></button>`).join('')}</div>`
           + (mine ? `<div class="sent">Risposta inviata: <b>${esc(mine)}</b>. Aspettiamo gli altri…</div>` : '');
       }
-      if (S.you.host && q.type === 'text') ui = '';
+      if (S.you.host && q.type === 'text' && c.optionsOpen) ui = '';
       body.innerHTML = `<div class="panel">${head}<div class="timer"><i></i></div>${ui}
         <div class="faces">${room.map((p) => chip(p, c.answered.includes(p.id))).join('')}</div>
         <div class="sent" id="countdown"></div>
         ${S.you.admin ? `<div class="host-bar"><button id="hr">Rivela ora</button>${S.you.host ? '<button id="hc">Chiudi</button>' : ''}</div>` : ''}</div>`;
-      runTimer(c.openedAt);
+      runTimer(c);
       body.querySelectorAll('.opt').forEach((b) => b.onclick = () => {
         const i = Number(b.dataset.i);
         answer(q.type === 'truefalse' ? i === 0 : i);
@@ -526,7 +540,7 @@
       if (tf) {
         const ti = $('ti');
         ti.oninput = () => { draft = ti.value; };
-        if (lastQ !== c.id) ti.focus();
+        if (focusedQ !== c.id) { focusedQ = c.id; ti.focus(); }
         tf.onsubmit = (e) => { e.preventDefault(); if (ti.value.trim()) answer(ti.value.trim()); };
       }
     } else {
@@ -551,6 +565,7 @@
   function apply(next) {
     const prev = S;
     S = next;
+    if (typeof S.now === 'number') skew = S.now - Date.now();
     if (!S.you.host) me = S.you;
     if ($('game').classList.contains('hidden')) return;
     const c = S.current;
@@ -576,11 +591,40 @@
     render();
   }
 
+  // Live state. A locked phone freezes the stream and the browser only notices minutes later, so:
+  // back on screen (unlock, tab switch, network back) -> fetch the state now and open a fresh
+  // stream; and a stream silent for longer than the server's 5 s ping is dropped and reopened.
+  let es = null;
+  let lastSeen = 0;
   function connect() {
-    const es = new EventSource(api('events'));
-    es.onmessage = (e) => { $('conn').classList.add('hidden'); apply(JSON.parse(e.data)); };
+    if (es) es.close();
+    lastSeen = Date.now();
+    es = new EventSource(api('events'));
+    es.onmessage = (e) => { lastSeen = Date.now(); $('conn').classList.add('hidden'); apply(JSON.parse(e.data)); };
+    es.addEventListener('ping', () => { lastSeen = Date.now(); });
     es.onerror = () => $('conn').classList.remove('hidden');
   }
+  async function refresh() {
+    try {
+      const r = await fetch(api('me'), { cache: 'no-store' });
+      if (r.ok) apply(await r.json());
+    } catch { /* the stream will catch up */ }
+  }
+  function wake() {
+    if (document.visibilityState !== 'visible' || !es) return;
+    refresh();
+    connect();
+  }
+  document.addEventListener('visibilitychange', wake);
+  addEventListener('pageshow', (e) => { if (e.persisted) wake(); });
+  addEventListener('online', wake);
+  addEventListener('focus', () => { if (Date.now() - lastSeen > 3000) wake(); });
+  setInterval(() => {
+    if (es && document.visibilityState === 'visible' && Date.now() - lastSeen > 8000) {
+      $('conn').classList.remove('hidden');
+      connect();
+    }
+  }, 1000);
 
   async function boot() {
     if (!key) return fail('Ti serve il tuo link personale.');

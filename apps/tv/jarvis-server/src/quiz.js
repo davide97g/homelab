@@ -30,7 +30,9 @@ const allowed = (origin) => origin === CINEMA_URL || /^http:\/\/localhost:\d+$/.
 const BASE = 100;
 const SPEED = 50;
 const SPEED_WINDOW_MS = 30_000;
-/** The answer shows itself this long after the question opens, unless revealed sooner. */
+/** The question is read alone first: the options (and the answer box) come this much later. */
+const OPTIONS_AFTER_MS = 5_000;
+/** The answer shows itself this long after the options appear, unless revealed sooner. */
 const REVEAL_AFTER_MS = 30_000;
 /** Players who also run the show from their phone: reveal and resume the film. */
 const ADMINS = new Set(['davide']);
@@ -152,22 +154,30 @@ function standings() {
 }
 
 /** What one viewer may see: the answer only after the reveal, others' picks only then. */
+/** Older saved state has no optionsAt: its options were open from the start. */
+const optionsAt = (c) => c.optionsAt ?? c.openedAt;
+const optionsOpen = (c) => c.phase === 'revealed' || Date.now() >= optionsAt(c);
+
 function view(role) {
   const c = state.current;
   let current = null;
   if (c) {
     const q = c.question;
+    const open = optionsOpen(c);
     current = {
       id: c.id,
       number: c.number,
       total: c.total,
       phase: c.phase,
       openedAt: c.openedAt,
-      revealAt: c.openedAt + REVEAL_AFTER_MS,
+      optionsAt: optionsAt(c),
+      optionsOpen: open,
+      revealAt: optionsAt(c) + REVEAL_AFTER_MS,
+      // Withheld until optionsAt, so nobody reads ahead in the page source.
       question: {
         type: q.type,
         question: q.question,
-        options: q.type === 'choice' ? q.options : q.type === 'truefalse' ? ['Vero', 'Falso'] : undefined,
+        options: !open ? undefined : q.type === 'choice' ? q.options : q.type === 'truefalse' ? ['Vero', 'Falso'] : undefined,
       },
       answered: Object.keys(c.answers),
       mine: role !== 'host' && c.answers[role] ? c.answers[role].label : null,
@@ -185,6 +195,8 @@ function view(role) {
     current,
     standings: standings(),
     asked: state.log.length,
+    // Server clock, so screens with a wrong clock still count down right.
+    now: Date.now(),
   };
 }
 
@@ -198,9 +210,11 @@ function push() {
   }
 }
 
+// A named event every 5 s (not a comment): the phone page sees it, and drops a stream that has
+// gone quiet -- the sign of a phone that was locked -- instead of waiting minutes for an error.
 setInterval(() => {
-  for (const s of streams) s.res.write(': ping\n\n');
-}, 15_000).unref();
+  for (const s of streams) s.res.write('event: ping\ndata: 1\n\n');
+}, 5_000).unref();
 
 // ── host actions ──────────────────────────────────────────────────────────────
 
@@ -216,18 +230,28 @@ function cleanQuestion(raw) {
 }
 
 let revealTimer = null;
+let optionsTimer = null;
 
-/** Reveal on the clock: everyone gets the same 30 seconds, however many have answered. */
+/**
+ * The clock of a question: options pushed to every screen after 5 s, then the reveal after the
+ * same 30 s for everyone, however many have answered.
+ */
 function scheduleReveal() {
   clearTimeout(revealTimer);
+  clearTimeout(optionsTimer);
   const c = state.current;
   if (!c || c.phase !== 'open') return;
+  if (Date.now() < optionsAt(c)) {
+    optionsTimer = setTimeout(() => {
+      if (state.current?.id === c.id) push();
+    }, optionsAt(c) - Date.now());
+  }
   revealTimer = setTimeout(() => {
     if (state.current?.id !== c.id) return;
     reveal();
     save();
     push();
-  }, Math.max(0, c.openedAt + REVEAL_AFTER_MS - Date.now()));
+  }, Math.max(0, optionsAt(c) + REVEAL_AFTER_MS - Date.now()));
 }
 
 function ask({ id, number, total, question }) {
@@ -242,6 +266,7 @@ function ask({ id, number, total, question }) {
     question: cleanQuestion(question),
     phase: 'open',
     openedAt: Date.now(),
+    optionsAt: Date.now() + OPTIONS_AFTER_MS,
     answers: {},
     results: null,
   };
@@ -251,12 +276,13 @@ function reveal() {
   const c = state.current;
   if (!c || c.phase === 'revealed') return;
   clearTimeout(revealTimer);
+  clearTimeout(optionsTimer);
   const results = {};
   for (const [pid, a] of Object.entries(c.answers)) {
     const right = isRight(c.question, a.value);
-    const speed = Math.max(0, 1 - (a.at - c.openedAt) / SPEED_WINDOW_MS);
+    const speed = Math.max(0, 1 - (a.at - optionsAt(c)) / SPEED_WINDOW_MS);
     const points = right ? BASE + Math.round(SPEED * speed) : 0;
-    results[pid] = { answer: a.label, right, points, seconds: Math.round((a.at - c.openedAt) / 100) / 10 };
+    results[pid] = { answer: a.label, right, points, seconds: Math.round((a.at - optionsAt(c)) / 100) / 10 };
     state.scores[pid] = (state.scores[pid] ?? 0) + points;
   }
   c.phase = 'revealed';
@@ -339,7 +365,7 @@ export async function mount(app) {
       'X-Accel-Buffering': 'no',
     });
     res.flushHeaders();
-    res.write('retry: 2000\n\n');
+    res.write('retry: 500\n\n');
     const s = { res, role: id };
     streams.add(s);
     res.write(`data: ${JSON.stringify(view(id))}\n\n`);
@@ -352,6 +378,7 @@ export async function mount(app) {
     const c = state.current;
     if (!c || c.phase !== 'open') return res.status(409).json({ error: 'nessuna domanda aperta' });
     if (c.answers[id]) return res.status(409).json({ error: 'hai già risposto' });
+    if (!optionsOpen(c)) return res.status(409).json({ error: 'le risposte arrivano tra un attimo' });
     let value = req.body?.value;
     if (c.question.type === 'choice') {
       value = Number(value);
