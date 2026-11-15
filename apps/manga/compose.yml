@@ -61,7 +61,7 @@ services:
   # through Kavita's upload API. Needs KAVITA_API_KEY for the upload. See
   # covers/covers.py.
   covers:
-    image: python:3.13-alpine
+    image: python:3.15-alpine
     container_name: manga-covers
     restart: unless-stopped
     user: "1000:1000"
@@ -84,7 +84,7 @@ services:
   # the search index needs. No host port: Yomu reaches it on the compose
   # network. See transcribe/serve.py.
   scripts:
-    image: python:3.13-alpine
+    image: python:3.15-alpine
     container_name: manga-scripts
     restart: unless-stopped
     user: "1000:1000"
