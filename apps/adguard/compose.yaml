@@ -9,7 +9,7 @@
 # would be used for DDoS amplification.
 services:
   adguard:
-    image: adguard/adguardhome:v0.107.79
+    image: adguard/adguardhome:v0.107.80
     container_name: adguard
     restart: unless-stopped
     ports:
