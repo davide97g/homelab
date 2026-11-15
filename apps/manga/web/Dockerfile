@@ -1,5 +1,5 @@
 # Yomu: Bun builds the bundle, nginx serves it and proxies /api to Kavita.
-FROM oven/bun:1.3 AS build
+FROM oven/bun:1.4 AS build
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
