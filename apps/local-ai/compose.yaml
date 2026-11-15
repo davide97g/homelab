@@ -176,7 +176,7 @@ services:
     mem_limit: 128m
 
   litellm-db:
-    image: postgres:17.11-alpine
+    image: postgres:17.12-alpine
     container_name: litellm-db
     restart: unless-stopped
     environment:
