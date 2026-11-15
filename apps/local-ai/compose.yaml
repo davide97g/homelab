@@ -155,7 +155,7 @@ services:
   # This answers 200 and writes SSE comments until LiteLLM's stream starts. See
   # keepalive/server.mjs. Localhost only: cloudflared runs on the host.
   llm-keepalive:
-    image: node:24.22.2-alpine
+    image: node:24.22.3-alpine
     container_name: llm-keepalive
     restart: unless-stopped
     user: "1000:1000"
