@@ -10,7 +10,7 @@
 # is still the rollback.
 services:
   swarm-build:
-    image: node:22-alpine
+    image: node:26-alpine
     container_name: swarm-build
     restart: "no"
     # The host user, and the uid qBittorrent runs as, so the files land with the

@@ -6,7 +6,7 @@
 # the session cookie needs no CORS handling and the Cloudflare Tunnel has a
 # single thing to point at.
 
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -28,7 +28,7 @@ RUN pnpm --filter ./frontend build \
 # about half the image and none of it is needed to run.
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
