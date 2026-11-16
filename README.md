@@ -8,7 +8,7 @@ history from before the merge, under `apps/`.
 
 | Path | What |
 |---|---|
-| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/) |
+| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/) |
 | [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
 | [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md) |
 | [`hosts/`](hosts/) | Per-host notes: [the NAS](hosts/nas.md) |
@@ -30,6 +30,8 @@ On the box, `~` is laid out as:
 | Project | Path | Runs on | Public URL | Deploy |
 |---|---|---|---|---|
 | Cinema, Jellyfin front end | `apps/cinema` | NAS | `cinema.davideghiotto.it` | tar over ssh, [`DEPLOY.md`](apps/cinema/docs/DEPLOY.md) |
+| Memories, Immich's public door | `apps/memories` | NAS | `memories.davideghiotto.it` | tar over ssh, [`README.md`](apps/memories/README.md) |
+| Accounts, single sign-on (OTP, invites, TV codes) | `apps/accounts` | NAS | `accounts.davideghiotto.it` | tar over ssh, [`README.md`](apps/accounts/README.md) |
 | Hub, the homelab's front door | `apps/hub` | mini PC, Dokploy | `monitoring.davideghiotto.it` | push to `main` |
 | Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
 | Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
@@ -171,6 +173,17 @@ default `bridge` because creating a network failed with *all predefined address 
 subnetted* — worth fixing (`default-address-pools` in `daemon.json`) before the next stack needs one.
 The site is a read-only bind mount of `~/touchgrass/site`; a release is that repo's `deploy/deploy.sh`
 (build on the Mac, `rsync --delay-updates`, nginx reload). No CI.
+`mirai.davideghiotto.it` is a website proposal for Mirai Sushi (Montecchio Maggiore), added
+2026-11-10, repo `~/personal/projects/mirai` (local only, not on GitHub yet). Built like touchgrass: plain
+compose in `~/mirai` (project `mirai`, container `mirai-web`, `nginx:1.30.6-alpine`, read-only, default
+`bridge`) bound to `127.0.0.1:8797`, tunnel straight to it, not behind Access, `noindex` until the
+restaurant approves. A release is that repo's `deploy/deploy.sh` (build on the Mac, rsync, nginx reload).
+`isoworld.davideghiotto.it` is the landing page of [isoworld](https://github.com/davide97g/isoworld),
+the pixel-art farming game, added 2026-11-16 (full game on itch.io; the page frames a short guided
+taster, `play.html?taster`). Built like touchgrass: plain compose in `~/isoworld` (project `isoworld`,
+container `isoworld-web`, `nginx:1.30.6-alpine`, read-only, default `bridge`) bound to
+`127.0.0.1:8798`, tunnel straight to it, not behind Access. A release is that repo's
+`deploy/deploy.sh` (build on the Mac, rsync, nginx reload). No CI.
 `lumii.davideghiotto.it` is LUMII Montecchio's restaurant app (`apps/lumii-*` in
 [zeroshot](https://github.com/davide97g/zeroshot)), added 2026-11-06: compose app `lumii-grjqvu`
 (composeId `uarKwudQqkZPe_cue7rqe`) in project `lumii`, compose path `./docker-compose.lumii.yml`,
@@ -383,7 +396,7 @@ record — was removed on 2026-10-10; the NAS is the only Jellyfin.
 | | |
 |---|---|
 | Tunnel | `nas-ilario`, `<nas-tunnel-uuid>` |
-| Ingress | `cinema.davideghiotto.it` -> `http://localhost:8898`, managed in Zero Trust |
+| Ingress | `cinema.davideghiotto.it` -> `http://localhost:8898`, `memories.davideghiotto.it` -> `http://localhost:2284` (2026-11-10, [memories](apps/memories/)), managed in Zero Trust |
 | DNS | proxied CNAME to `c5449ef2-….cfargotunnel.com` |
 | Binary | `/usr/local/bin/cloudflared` (2026.9.1), `--no-autoupdate` |
 | Config | `/usr/local/etc/cloudflared/{config.yml,<id>.json}`, root-owned `600`, dir `700` |
