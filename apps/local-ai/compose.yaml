@@ -44,7 +44,7 @@ services:
   # to bring it back, bump the image to the current release and drop the profile.
   open-webui:
     profiles: ["webui"]
-    image: ghcr.io/open-webui/open-webui:v0.11.4
+    image: ghcr.io/open-webui/open-webui:v0.13.4
     container_name: open-webui
     restart: unless-stopped
     # Stays root, deliberately: on boot Open WebUI copies build/static (including the
