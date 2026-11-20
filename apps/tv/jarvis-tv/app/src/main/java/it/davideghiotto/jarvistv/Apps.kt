@@ -36,8 +36,7 @@ object Apps {
         "com.amazon.amazonvideo.livingroom",   // Prime Video
         "com.spotify.tv.android",
         "it.davideghiotto.cassettetv",          // ~/personal/projects/cassette
-        "org.jellyfin.androidtv",
-        "it.davideghiotto.cinema",              // apps/cinema, the Findroid fork
+        "it.davideghiotto.cinema",              // apps/cinema, the Findroid fork (replaces stock Jellyfin)
     )
 
     /** Not an app: the card at the end of the drum that shows or hides the rest. */
