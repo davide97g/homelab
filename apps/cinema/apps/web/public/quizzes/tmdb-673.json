@@ -1,0 +1,198 @@
+{
+  "title": "Harry Potter e il Prigioniero di Azkaban",
+  "questions": [
+    {
+      "at": 673.5,
+      "type": "choice",
+      "question": "Stan Picchetto sta per raccontare chi è Sirius Black. Per quale crimine, ufficialmente, il Mondo Magico lo ha rinchiuso ad Azkaban?",
+      "options": [
+        "Aver ucciso con le proprie mani James e Lily Potter la notte di Godric's Hollow",
+        "Aver ucciso tredici persone con un solo incantesimo in una strada piena di Babbani, tra cui il mago Peter Minus",
+        "Aver usato la Maledizione Imperius sul Ministro della Magia per far evadere dei Mangiamorte",
+        "Aver aperto la Camera dei Segreti cinquant'anni prima, al posto di Hagrid"
+      ],
+      "answer": 1,
+      "explain": "Nel film si sente solo «È un assassino»: più avanti la McGranitt racconta che di Minus «rimase solo un dito». Nel libro le vittime sono dodici Babbani più Peter. I Potter non li ha uccisi lui: per tutti li ha traditi."
+    },
+    {
+      "at": 1251.5,
+      "type": "choice",
+      "question": "Il treno si ferma, qualcuno sale a bordo e il vetro gela. Chi, nello scompartimento, farà scappare la creatura, e come?",
+      "options": [
+        "Hermione, con un Lumos Maxima puntato dritto in faccia",
+        "Ron, con la bacchetta rotta che fa esplodere il finestrino",
+        "Il professor Lupin, che si sveglia ed evoca un Patronus d'argento",
+        "Silente in persona, che arriva a cavallo di Fierobecco"
+      ],
+      "answer": 2,
+      "explain": "Lupin «dormiva» solo per finta. Dopo, la sua cura: «Mangia, è cioccolato. Ti aiuterà»."
+    },
+    {
+      "at": 1858.5,
+      "type": "choice",
+      "question": "Ron ha letto nella tazza di Harry una croce storta e un sole. Ora la prende la Cooman, e grida. Che cosa ci vede, e che cosa significa?",
+      "options": [
+        "Il Falco: un nemico mortale che si nasconde tra gli amici più cari",
+        "La croce storta: travagli e sofferenza, seguiti da una gioia inattesa",
+        "Il Teschio: un pericolo in arrivo dal ritratto di un antenato",
+        "Il Gramo: un enorme cane nero spettrale, il presagio di morte più oscuro del mondo magico"
+      ],
+      "answer": 3,
+      "explain": "«Mio caro... tu hai il Gramo». E il cane nero che Harry ha visto a Magnolia Crescent è lo stesso: Felpato, cioè Sirius."
+    },
+    {
+      "at": 2049,
+      "type": "choice",
+      "question": "Hagrid spiega le regole prima di avvicinarsi a Fierobecco. Qual è la procedura corretta con un ippogrifo?",
+      "options": [
+        "Si lascia che sia lui a fare la prima mossa: ci si avvicina, si fa un inchino profondo e si aspetta che lo ricambi; solo allora lo si può toccare",
+        "Lo si guarda fisso senza mai abbassare lo sguardo, così riconosce chi comanda, e poi gli si offre un furetto morto",
+        "Ci si avvicina alle spalle, gli si accarezza il dorso come al Libro Mostro dei Mostri e poi si sale tra le ali",
+        "Si pronuncia il suo nome tre volte e si attende che sbatta le ali: è il segnale che accetta il cavaliere"
+      ],
+      "answer": 0,
+      "explain": "E soprattutto non insultarlo mai: «potrebbe essere l'ultima cosa che fate nella vita». Malfoy ci proverà lo stesso."
+    },
+    {
+      "at": 2581.4,
+      "type": "choice",
+      "question": "Tocca a Ron affrontare il Molliccio. In che cosa si trasforma, e che cosa diventa dopo il suo «Riddikulus»?",
+      "options": [
+        "Un ragno gigante, che si ritrova a fare il tip tap",
+        "Sua madre che urla come una Strillettera, che si sgonfia come un palloncino",
+        "Un ragno gigante, che si ritrova con i pattini a rotelle ai piedi",
+        "Il Platano Picchiatore, che inizia a ballare come un burattino"
+      ],
+      "answer": 2,
+      "explain": "Pattini a rotelle su otto zampe. Il tip tap dei ragni, invece, è l'incubo di Hagrid ubriaco, più avanti."
+    },
+    {
+      "at": 2758.7,
+      "type": "choice",
+      "question": "Il Molliccio di Harry è diventato un Dissennatore, non Voldemort. Lupin si dice «sbalordito»: secondo lui, che cosa rivela questo di Harry?",
+      "options": [
+        "Che Harry ha nascosto un legame con il Signore Oscuro, per questo non lo teme",
+        "Che ciò che Harry teme di più è la paura stessa, e questo è molto saggio",
+        "Che Harry è troppo debole per resistere ai Dissennatori e non deve uscire dal castello",
+        "Che i Dissennatori hanno già lasciato un segno sulla sua anima, sul treno"
+      ],
+      "answer": 1,
+      "explain": "«Indica che quello che ti fa più paura è la paura stessa. È molto saggio.»"
+    },
+    {
+      "at": 3163.2,
+      "type": "choice",
+      "question": "Piton chiede la differenza tra un Animagus e un lupo mannaro. Che cosa risponde Hermione, e quanto le costa aver parlato senza essere interpellata?",
+      "options": [
+        "L'Animagus è registrato al Ministero e il lupo mannaro no: dieci punti in meno a Grifondoro",
+        "L'Animagus si trasforma con una pozione, il lupo mannaro solo con la luna piena: una punizione con Gazza",
+        "L'Animagus sceglie di trasformarsi in animale; il lupo mannaro non ha scelta, e a ogni luna piena dimentica chi è: cinque punti in meno a Grifondoro",
+        "L'Animagus conserva la bacchetta anche da trasformato, il lupo mannaro la perde: cinquanta punti in meno a Grifondoro"
+      ],
+      "answer": 2,
+      "explain": "«Ucciderebbe il suo migliore amico». Poi Piton dà due rotoli di pergamena sui lupi mannari: è la ricerca con cui Hermione scoprirà Lupin."
+    },
+    {
+      "at": 3593.9,
+      "type": "text",
+      "question": "George punta la bacchetta sulla pergamena. Qual è la frase esatta che apre la Mappa del Malandrino?",
+      "accept": [
+        "giuro solennemente di non avere buone intenzioni",
+        "giuro solennemente che non ho buone intenzioni",
+        "giuro solennemente di avere cattive intenzioni"
+      ],
+      "explain": "«Giuro solennemente di non avere buone intenzioni». E per chiuderla: «Fatto il misfatto»."
+    },
+    {
+      "at": 3944.5,
+      "type": "choice",
+      "question": "Ai Tre Manici di Scopa Caramell annuncia «il peggio» su Sirius Black. Che cosa sta per rivelare?",
+      "options": [
+        "Che Black è il padrino di Harry Potter",
+        "Che Black è un Animagus non registrato e può trasformarsi in cane",
+        "Che Black ha già un complice all'interno del castello",
+        "Che Black era il Custode Segreto dei Potter per volontà di Silente"
+      ],
+      "answer": 0,
+      "explain": "«Sirius Black era... e rimane tuttora... il padrino di Harry Potter!» Harry è sotto il tavolo, col Mantello dell'Invisibilità."
+    },
+    {
+      "at": 4890.8,
+      "type": "choice",
+      "question": "La Cooman sta per entrare in trance davanti a Harry. Che cosa profetizzerà?",
+      "options": [
+        "Che il Gramo verrà a prendere Harry prima della fine dell'anno, e nessun incantesimo potrà salvarlo",
+        "Che il Signore Oscuro risorgerà con il sangue del suo nemico, e il ragazzo che è sopravvissuto morirà",
+        "Che chi ha tradito gli amici romperà le catene stanotte: sangue innocente sarà versato, e servo e padrone si riuniranno",
+        "Che un innocente evaso da Azkaban morirà stanotte per mano di chi lo ama di più"
+      ],
+      "answer": 2,
+      "explain": "Il servo è Peter Minus, non Sirius: quella notte scappa, e tornerà dal suo padrone. Lei, al risveglio, non ricorda nulla."
+    },
+    {
+      "at": 5744,
+      "type": "choice",
+      "question": "Nella Stamberga Strillante si ritrovano i vecchi amici di James. Lunastorta, Codaliscia, Felpato e Ramoso: chi è chi?",
+      "options": [
+        "Lunastorta = Black, Codaliscia = Minus, Felpato = Lupin, Ramoso = James",
+        "Lunastorta = Lupin, Codaliscia = Minus, Felpato = Black, Ramoso = James",
+        "Lunastorta = Lupin, Codaliscia = James, Felpato = Minus, Ramoso = Black",
+        "Lunastorta = Minus, Codaliscia = Lupin, Felpato = James, Ramoso = Black"
+      ],
+      "answer": 1,
+      "explain": "Lunastorta il lupo mannaro, Codaliscia il topo, Felpato il cane, Ramoso il cervo. Il film non lo dice mai a voce: lo sai solo se hai letto il libro."
+    },
+    {
+      "at": 6436.4,
+      "type": "choice",
+      "question": "Silente consegna la soluzione in codice a Hermione. Quanti giri di Giratempo servono, e a che ora si ritrovano lei e Harry?",
+      "options": [
+        "Due giri: alle otto, mentre il boia affila l'ascia",
+        "Tre giri: alle sette e mezza, poco prima di scendere da Hagrid",
+        "Tre giri: a mezzanotte, prima dell'ultimo rintocco",
+        "Un giro per ogni vita da salvare: alle nove, quando Sirius viene catturato"
+      ],
+      "answer": 1,
+      "explain": "«Tre giri dovrebbero bastare, credo». Hermione: «Le sette e mezza». Poi rivedono tutto da fuori: pugno a Malfoy compreso."
+    },
+    {
+      "at": 6919,
+      "type": "choice",
+      "question": "Fierobecco è sparito sotto gli occhi di Caramell. Come ha fatto Silente a guadagnare il tempo che serviva a Harry e Hermione?",
+      "options": [
+        "Si è fatto servire un tè da Hagrid e l'ha rovesciato sull'ordine di esecuzione, da riscrivere da capo",
+        "Ha chiesto al boia di affilare di nuovo l'ascia e ha letto ad alta voce tutto il regolamento del Comitato",
+        "Ha insistito per firmare anche lui l'ordine, con il suo nome lunghissimo, e poi ha distratto Caramell col brugo piantato dal professor Dippet",
+        "Ha fermato l'orologio della torre con un incantesimo, così il tramonto è arrivato in ritardo"
+      ],
+      "answer": 2,
+      "explain": "«Il nome soltanto» — «È un nome talmente lungo...». Poi brugo e fragole, mentre Harry attira Fierobecco con un furetto morto."
+    },
+    {
+      "at": 7261,
+      "type": "choice",
+      "question": "Harry è sicuro che stia per arrivare suo padre a scacciare i Dissennatori. Chi evocherà davvero il Patronus, e che forma ha?",
+      "options": [
+        "Il fantasma di James Potter: un lupo d'argento",
+        "Lupin, tornato in sé: un lupo d'argento",
+        "Silente, dalla Torre di Astronomia: una fenice",
+        "Harry stesso, tornato indietro nel tempo: un cervo, come l'Animagus di suo padre"
+      ],
+      "answer": 3,
+      "explain": "«Non era mio padre che avevo visto. Ero io!» Ce la fa perché sa di averlo già fatto. E il cervo è Ramoso."
+    },
+    {
+      "at": 7756.9,
+      "type": "choice",
+      "question": "«Ma chi l'ha mandata?» — «Non lo sa nessuno.» Chi ha regalato la Firebolt a Harry, e che cosa c'era nel pacco a dirlo?",
+      "options": [
+        "Lupin, con la Mappa del Malandrino restituita",
+        "Sirius Black, con una piuma di Fierobecco",
+        "Silente, con un biglietto firmato «Un amico di tuo padre»",
+        "I gemelli Weasley, con un pezzo del Platano Picchiatore"
+      ],
+      "answer": 1,
+      "explain": "La piuma di ippogrifo: Sirius vola via su Fierobecco. La Nimbus 2000 era finita nel Platano Picchiatore."
+    }
+  ]
+}
