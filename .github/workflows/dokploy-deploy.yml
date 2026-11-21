@@ -104,7 +104,7 @@ jobs:
           echo "::error::deploy of ${{ inputs.app }} still running after 30 minutes"
           exit 1
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: inputs.compose-file != ''
 
       # "done" from Dokploy means compose returned, not that the result works:
