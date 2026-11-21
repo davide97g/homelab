@@ -1,0 +1,27 @@
+{
+  "name": "@accounts/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "typecheck": "tsc -p . --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun src/db/migrate.ts",
+    "smoke": "bun scripts/smoke.ts"
+  },
+  "dependencies": {
+    "better-auth": "^1.7.17",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.16",
+    "pg": "^8.23.1",
+    "resend": "^6.37.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.15.0",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "~6.0.2"
+  }
+}

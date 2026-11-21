@@ -1,0 +1,70 @@
+# accounts.davideghiotto.it -- the homelab's single sign-on, on the NAS next to
+# the Jellyfin and Immich it signs people into. Published on the NAS's own
+# tunnel (nas-ilario), like cinema and memories. Deploy: see README.md.
+#
+# Lives in /volume1/docker/accounts: a UGOS update wipes the home dir.
+services:
+  accounts:
+    build: .
+    container_name: accounts
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://accounts:${POSTGRES_PASSWORD}@accounts-db:5432/accounts
+      # Jellyfin sits on the default bridge, published on the host's :8899.
+      JELLYFIN_URL: ${JELLYFIN_URL:-http://host.docker.internal:8899}
+      IMMICH_URL: ${IMMICH_URL:-http://immich_server:2283}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      accounts-db:
+        condition: service_healthy
+    # Loopback only: cloudflared runs on the host and is the one caller.
+    ports:
+      - "127.0.0.1:2290:3000"
+    networks: [default, immich]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  accounts-db:
+    image: postgres:17-alpine
+    container_name: accounts-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: accounts
+      POSTGRES_DB: accounts
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U accounts"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nightly dump next to the data, 14 kept. Small DB: seconds.
+  accounts-backup:
+    image: postgres:17-alpine
+    container_name: accounts-backup
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c 'while true; do
+        pg_dump -h accounts-db -U accounts accounts | gzip > /backups/accounts-$$(date +%F).sql.gz;
+        ls -1t /backups/*.sql.gz | tail -n +15 | xargs -r rm;
+        sleep 86400; done'
+    depends_on:
+      accounts-db:
+        condition: service_healthy
+
+networks:
+  # Immich's own compose network, so the server is reached by container name.
+  immich:
+    name: immich_default
+    external: true
