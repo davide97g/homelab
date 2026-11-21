@@ -24,11 +24,14 @@ struct AccountsClient: Sendable {
     enum Failure: LocalizedError {
         case http(Int, String)
         case noSession
+        /// The app's Immich account is not linked to a homelab account (an admin links it).
+        case notLinked(String)
 
         var errorDescription: String? {
             switch self {
             case .http(let code, let message): message.isEmpty ? "Sign-in service error \(code)." : message
             case .noSession: "The sign-in service sent no session."
+            case .notLinked(let message): message
             }
         }
 
@@ -117,6 +120,26 @@ struct AccountsClient: Sendable {
                            body: ["userCode": Self.normalizeUserCode(userCode)], bearer: session)
     }
 
+    /// A TV's code, as accounts sees it when the phone app vouches for it with its own token.
+    struct AppApproval: Decodable, Sendable {
+        let userCode: String
+        let clientId: String
+        let user: Me.User
+
+        var what: String { DeviceRequest(userCode: userCode, status: "pending", clientId: clientId).what }
+    }
+
+    /// Approve a TV with this iPhone's own Immich token instead of an accounts session: no email
+    /// code. accounts asks Immich whose token it is and finds the homelab account linked to it;
+    /// it only approves TVs of the same app. `check` returns who would approve, without changing anything.
+    @discardableResult
+    func withApp(_ action: String, app: String, userCode: String, upstreamToken: String) async throws -> AppApproval? {
+        let (data, _) = try await call("POST", "device/with-app", body: [
+            "app": app, "userCode": Self.normalizeUserCode(userCode), "action": action,
+        ], bearer: upstreamToken)
+        return action == "check" ? try JSONDecoder().decode(AppApproval.self, from: data) : nil
+    }
+
     // MARK: Plumbing
 
     private func call(_ method: String, _ path: String, query: [URLQueryItem] = [], body: [String: String]? = nil,
@@ -134,7 +157,12 @@ struct AccountsClient: Sendable {
         }
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw Failure.http(0, "") }
-        guard (200..<300).contains(http.statusCode) else { throw Failure.http(http.statusCode, Self.message(data)) }
+        guard (200..<300).contains(http.statusCode) else {
+            if http.statusCode == 409, (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String == "not_linked" {
+                throw Failure.notLinked(Self.message(data))
+            }
+            throw Failure.http(http.statusCode, Self.message(data))
+        }
         return (data, http)
     }
 
