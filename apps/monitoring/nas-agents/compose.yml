@@ -18,7 +18,7 @@
 
 services:
   node-exporter:
-    image: quay.io/prometheus/node-exporter:v1.12.1
+    image: quay.io/prometheus/node-exporter:v1.13.1
     container_name: nas-node-exporter
     restart: unless-stopped
     # Host network + host PID so the metrics are the box's own. Root is needed
@@ -51,7 +51,7 @@ services:
       - /:/host:ro,rslave
 
   cadvisor:
-    image: ghcr.io/google/cadvisor:v0.60.6
+    image: ghcr.io/google/cadvisor:v0.61.1
     container_name: nas-cadvisor
     restart: unless-stopped
     privileged: true
@@ -72,7 +72,7 @@ services:
       - /dev/disk/:/dev/disk:ro
 
   jellyfin-exporter:
-    image: python:3.13-alpine
+    image: python:3.15-alpine
     container_name: nas-jellyfin-exporter
     restart: unless-stopped
     # Who is watching what, from the same GET /Sessions the Cinema web app
@@ -99,7 +99,7 @@ services:
       - ./jellyfin_exporter.py:/app/jellyfin_exporter.py:ro
 
   alloy:
-    image: grafana/alloy:v1.20.0
+    image: grafana/alloy:v1.22.0
     container_name: nas-alloy
     restart: unless-stopped
     # Behind a profile, so `docker compose up -d` brings up only the two
