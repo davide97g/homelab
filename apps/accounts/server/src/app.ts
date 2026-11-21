@@ -7,6 +7,7 @@ import { pool } from './db/client.ts'
 import { env } from './env.ts'
 import { adminRoutes } from './routes/admin.ts'
 import { appRoutes } from './routes/apps.ts'
+import { deviceRoutes } from './routes/device.ts'
 import { inviteRoutes } from './routes/invites.ts'
 import { meRoutes } from './routes/me.ts'
 import { wellKnownRoutes } from './routes/wellknown.ts'
@@ -32,6 +33,8 @@ const api = new Hono<AppEnv>()
     return c.json({ ok: true })
   })
   .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
+  // Authenticated by the phone app's own upstream token, not a session.
+  .route('/device', deviceRoutes)
   .use(async (c, next) => {
     const r = await auth.api.getSession({ headers: c.req.raw.headers })
     c.set('user', r?.user ?? null)

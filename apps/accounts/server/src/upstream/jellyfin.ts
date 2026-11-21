@@ -71,3 +71,10 @@ export async function signIn(login: string, password: string, device: Device) {
 export async function deleteDevice(deviceId: string) {
   await admin(`/Devices?id=${encodeURIComponent(deviceId)}`, { method: 'DELETE' })
 }
+
+/** Who a user token belongs to (a phone's own Jellyfin session). */
+export async function whoAmI(accessToken: string) {
+  return (await call('jellyfin', `${base()}/Users/Me`, {
+    headers: { Authorization: `MediaBrowser Token="${quote(accessToken)}"` },
+  })) as { Id: string; Name: string }
+}

@@ -46,3 +46,12 @@ export async function signIn(email: string, password: string, deviceName: string
 export async function signOut(accessToken: string) {
   await call('immich', `${base()}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } })
 }
+
+/** Who a user token belongs to (the iPhone's own Immich session). */
+export async function whoAmI(accessToken: string) {
+  return (await call('immich', `${base()}/users/me`, { headers: { Authorization: `Bearer ${accessToken}` } })) as {
+    id: string
+    email: string
+    name: string
+  }
+}

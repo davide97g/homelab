@@ -65,6 +65,7 @@ All paths are under `/api`. Native clients send `Authorization: Bearer <session 
 | **TV:** poll | `POST /auth/device/token` `{grant_type:"urn:ietf:params:oauth:grant-type:device_code", device_code, client_id}`. Errors are `authorization_pending`, `slow_down`, `access_denied` and `expired_token`. On success it returns `{access_token}`, which is a session token. |
 | **Phone:** claim | `GET /auth/device?user_code=XXXXXXXX`. This is required before approve, because it binds the code to the caller. |
 | **Phone:** approve / deny | `POST /auth/device/approve` or `/deny` `{userCode}` |
+| **Phone app, no email code:** check / approve / deny | `POST /device/with-app` `{app, userCode, action:"check"\|"approve"\|"deny"}` with `Authorization: Bearer <the app's own Immich or Jellyfin token>`. accounts asks the upstream whose token it is, finds the homelab account linked to that upstream user (409 `not_linked` otherwise), and approves only TVs of the same app. No session is handed out. |
 
 The QR on the TV encodes `https://accounts.davideghiotto.it/{cinema|memories}/device?user_code=…`.
 There is one path per app so each iOS/Android app claims its own universal link: with the app
