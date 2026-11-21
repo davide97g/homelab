@@ -37,6 +37,8 @@ object Apps {
         "com.spotify.tv.android",
         "it.davideghiotto.cassettetv",          // ~/personal/projects/cassette
         "it.davideghiotto.cinema",              // apps/cinema, the Findroid fork (replaces stock Jellyfin)
+        "it.davideghiotto.cinema.debug",        // what apps/cinema/apps/android/scripts/tv.sh installs
+        "it.davideghiotto.memoriestv",          // apps/memories/tv, the NAS's Immich
     )
 
     /** Not an app: the card at the end of the drum that shows or hides the rest. */
