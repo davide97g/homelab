@@ -168,7 +168,18 @@ final class AppModel {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
               parts.path.hasSuffix("/device") else { return false }
         let code = parts.queryItems?.first { $0.name == "user_code" }?.value ?? ""
-        deviceApproval = DeviceApproval(code: code)
+        // The same link can arrive twice (activity + URL): one sheet is enough.
+        if deviceApproval?.code == code { return true }
+        if showSettings {
+            // One sheet at a time: close Settings, then present the approval.
+            showSettings = false
+            Task {
+                try? await Task.sleep(for: .milliseconds(450))
+                deviceApproval = DeviceApproval(code: code)
+            }
+        } else {
+            deviceApproval = DeviceApproval(code: code)
+        }
         return true
     }
 

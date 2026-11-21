@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher banner: the icon's sunset photo on its navy, wide. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="320dp" android:height="180dp"
+    android:viewportWidth="320" android:viewportHeight="180">
+    <path android:pathData="M0,0h320v180h-320z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="320" android:endY="180"
+                android:startColor="#1B2A4A" android:endColor="#0A0F1D" />
+        </aapt:attr>
+    </path>
+    <group android:translateX="71.1" android:translateY="1.1" android:scaleX="0.3472" android:scaleY="0.3472">
+        <path android:pathData="M168,112H344A56,56 0 0 1 400,168V344A56,56 0 0 1 344,400H168A56,56 0 0 1 112,344V168A56,56 0 0 1 168,112Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="0" android:startY="112" android:endX="0" android:endY="400"
+                    android:startColor="#FFB36B" android:endColor="#FF6F91" />
+            </aapt:attr>
+        </path>
+        <path android:fillColor="#FFF6DC" android:pathData="M266,196A34,34 0 1 0 334,196A34,34 0 1 0 266,196Z" />
+        <path android:fillColor="#3B2A5C" android:pathData="M112,330C180,270 230,300 270,320C320,290 360,280 400,300V344A56,56 0 0 1 344,400H168A56,56 0 0 1 112,344Z" />
+    </group>
+</vector>

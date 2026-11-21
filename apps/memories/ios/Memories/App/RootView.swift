@@ -28,6 +28,11 @@ struct RootView: View {
         }
         // The TV's QR: https://accounts.davideghiotto.it/memories/device?user_code=…
         .onOpenURL { url in app.handle(url: url) }
+        // A universal link (the TV's QR scanned with the Camera) arrives as a browsing-web
+        // activity; onOpenURL alone missed it on iOS 27.
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            if let url = activity.webpageURL { app.handle(url: url) }
+        }
         // Automatic "free up space" asks only in the foreground (iOS shows its own prompt).
         .onChange(of: scenePhase, initial: true) { _, phase in
             guard phase == .active, app.phase == .ready else { return }

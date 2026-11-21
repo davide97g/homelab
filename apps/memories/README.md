@@ -12,6 +12,9 @@ Before that, Immich was reachable only on the LAN and over Tailscale.
 Same idea as Cinema's `/jf`: one hostname, the native apps get their own prefix. Unlike Cinema,
 the root is Immich's own web UI, not a custom front end.
 
+Our own clients on top of it: [`ios/`](ios/) (iPhone, with backup), [`web/`](web/) and [`tv/`](tv/)
+(Android TV, signed in with a code the iPhone approves). Shared look: [`DESIGN.md`](DESIGN.md).
+
 ## The shape of it
 
 | | |

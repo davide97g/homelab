@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.Memories" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/black</item>
+        <item name="android:colorBackground">@color/black</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+    <color name="black">#000000</color>
+</resources>
