@@ -1,0 +1,105 @@
+# XcodeGen spec. `xcodegen generate` writes Memories.xcodeproj (gitignored).
+name: Memories
+options:
+  bundleIdPrefix: it.davideghiotto
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "2"
+    # Automatic signing placeholder: set your team in Xcode (Signing & Capabilities)
+    # or pass DEVELOPMENT_TEAM=XXXXXXXXXX to xcodebuild. Nothing else is configured.
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ENABLE_PREVIEWS: YES
+
+schemes:
+  Memories:
+    build:
+      targets:
+        Memories: all
+        MemoriesTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MemoriesTests
+    profile:
+      config: Release
+    archive:
+      config: Release
+
+targets:
+  Memories:
+    type: application
+    platform: iOS
+    sources:
+      - path: Memories
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: it.davideghiotto.memories
+        PRODUCT_NAME: Memories
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Memories/Info.plist
+    # The TV's QR (https://accounts.davideghiotto.it/memories/device?user_code=…) opens the app.
+    # The server side is accounts' /.well-known/apple-app-site-association.
+    entitlements:
+      path: Memories/Memories.entitlements
+      properties:
+        com.apple.developer.associated-domains:
+          - applinks:accounts.davideghiotto.it
+    info:
+      path: Memories/Info.plist
+      properties:
+        CFBundleDisplayName: Memories
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIStatusBarStyle: UIStatusBarStyleDefault
+        NSPhotoLibraryUsageDescription: Memories backs up the photos and videos on this iPhone to your own Immich server.
+        NSLocalNetworkUsageDescription: Memories talks to your Immich server directly on the home network when it is reachable, so large videos skip the Internet.
+        # A self-hosted server: the user types its URL, which may be plain HTTP on the LAN
+        # (http://<nas-ip>:2283) or a Tailscale name. Immich's own app ships the same exception.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - fetch
+          - processing
+        BGTaskSchedulerPermittedIdentifiers:
+          - it.davideghiotto.memories.backup
+          - it.davideghiotto.memories.backup-refresh
+
+  MemoriesTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MemoriesTests
+    dependencies:
+      - target: Memories
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: it.davideghiotto.memories.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Memories.app/Memories
+        BUNDLE_LOADER: $(TEST_HOST)

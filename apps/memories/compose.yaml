@@ -1,0 +1,32 @@
+# memories.davideghiotto.it -- the NAS's Immich, published on the NAS's own
+# Cloudflare tunnel (nas-ilario), the way Cinema publishes Jellyfin.
+#
+#   /         Immich web UI, for anyone with an account
+#   /immich/  the same Immich with the prefix stripped -- the server URL the
+#             native apps are given, mirroring cinema's /jf
+#
+# Immich itself is untouched: it stays the stock compose in
+# /volume1/docker/immich-app, published on :2283 for the LAN and Tailscale.
+# This is only the nginx in front of it. Deploy: see README.md.
+services:
+  memories-proxy:
+    image: nginx:1.30-alpine
+    container_name: memories-proxy
+    restart: unless-stopped
+    volumes:
+      # nginx:alpine renders templates/*.template with envsubst at boot.
+      - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      IMMICH_UPSTREAM: http://immich_server:2283
+    # Loopback only: cloudflared runs on the host and is the one caller.
+    # The LAN keeps using :2283 directly.
+    ports:
+      - "127.0.0.1:2284:80"
+    networks:
+      - immich
+
+networks:
+  # Immich's own compose network, so the server is reached by container name.
+  immich:
+    name: immich_default
+    external: true
