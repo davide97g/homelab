@@ -30,13 +30,23 @@ back to the series plus Previous/Next on an episode, and in the player a next-ep
 (`Shift+N`) and an 8-second "Next episode" countdown when one ends. Adjacency is the server's
 `getEpisodes({ adjacentTo })`, so it crosses season boundaries.
 
+**Film quiz (2026-11-10).** A switch in the player's control bar (question-mark button, off by
+default, remembered across films). When it is on, the film stops at each question, asks it
+(multiple choice, true/false or a free answer that forgives case, accents and small typos), and
+says right or wrong; dots on the scrub bar turn green or red. Only playback running across a
+question asks it: seeking past one does not. Quizzes are static files,
+`apps/web/public/quizzes/tmdb-<id>.json`, keyed by TMDB id because Jellyfin ids change with a
+reinstall. The same menu adds and edits questions at the current moment; edits are a draft in that
+browser until "Copy JSON" is committed over the file. `src/features/quiz/quiz.test.ts` is the first
+`bun test`. Web only; the native players do not have it.
+
 **Next, in rough order of value:**
 
 1. **Quality selector.** Same mechanism as the track pickers — `usePlaybackSession`'s
    `renegotiate`, with `maxStreamingBitrate`. Send `MediaSourceId` with it: without one the server
    ignores the stream indexes in `PlaybackInfo` and silently answers with the defaults.
 2. **Virtualised grid.** Fine to ~500 items; past that, TanStack Virtual.
-3. **Tests.** There is no test setup at all. `availability.ts` and the ticks/format helpers are
+3. **Tests.** Only the quiz has any (`bun test`). `availability.ts` and the ticks/format helpers are
    where a bug would be quiet rather than loud.
 
 Chunk sizes are settled: the SDK is one shared 165 kB chunk, `index` is 332 kB and `PlayerRoute`
@@ -70,6 +80,13 @@ once, not twice.
 3. **The other locales** still say "Swiftfin". Only `en.lproj` was rewritten, then
    `Shared/Strings/Strings.swift` regenerated with `swift Scripts/Translations/GenerateStrings.swift`.
 
+**Homelab account (2026-11-12, simulator only).** The sign-in screen leads with a code by email
+(accounts.davideghiotto.it); the broker returns this device's Jellyfin token under the app's own
+device ID, and Swiftfin's usual save path takes it from there. Jellyfin's username/password stays
+below. "Sign In a TV" in Settings, and the TV's QR through the `/cinema/device` universal link, open
+an approval sheet. iOS and tvOS build; the sheet renders. Not run end to end on iOS: the simulator
+cannot be typed into from here, so the flow rests on Memories iOS's live test of the same client.
+
 **Not verified on hardware.** Branding was (install, launch, screenshot). The home screen, settings
 and player changes are **compile-verified only** — every simulator on this Mac is signed out. The
 iOS README explains what that costs and how to get past it.
@@ -96,6 +113,16 @@ beats two that need a sideways press.
 65PUS8505 (Android 12, 32-bit). `apps/android/scripts/tv.sh` builds, installs, launches and follows
 logcat; the TV app now actually logs (upstream never planted Timber there) to logcat and to
 `files/logs/cinema.log`. Not yet judged on the set: playback paths, focus, performance on 2 GB.
+
+**TV sign-in through accounts (2026-11-11, emulator only).** A TV with no user opens on a code and
+a QR (`it/davideghiotto/cinema/accounts/`): the phone approves it at
+`accounts.davideghiotto.it/cinema/device`, the TV polls the device flow, swaps the session for its
+own Jellyfin token through the broker, and adds the server the broker names. Server, user and
+password sign-in is one button away. On start, a Jellyfin 401 now forgets the user (`MainViewModel`),
+so a device revoked from accounts lands back on the code instead of an empty home. Verified on the
+`cinema-tv` emulator against a local accounts and a throwaway Jellyfin 10.11: approve, home,
+revoke, back to the code. `-PaccountsUrl=http://10.0.2.2:3190` points a debug build at a local
+accounts. Not yet on the Philips set, and accounts itself is not deployed.
 
 **What the emulator caught, and the compiler could not:** TV's selected tab was white on white —
 upstream paints the pill `Color.White` and its label `colorScheme.onPrimary`, which under Reel is

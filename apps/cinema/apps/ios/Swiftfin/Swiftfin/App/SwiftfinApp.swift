@@ -13,6 +13,10 @@ import UIKit
 @main
 struct SwiftfinApp: App {
 
+    /// Cinema: TV approvals, from a `/cinema/device` universal link or Settings.
+    @ObservedObject
+    private var accounts = CinemaAccounts.shared
+
     init() {
         Self.configure()
 
@@ -41,6 +45,17 @@ struct SwiftfinApp: App {
             // It does not replace `RootCoordinator.applyAppAppearance()`, which
             // is what reaches UIKit and the accent colour; see the note there.
             .preferredColorScheme(.dark)
+            // Cinema: the TV's QR, https://accounts.davideghiotto.it/cinema/device?user_code=…
+            .onOpenURL { url in accounts.handle(url: url) }
+            // Cinema: a QR scanned with the Camera arrives as a browsing-web activity, which
+            // onOpenURL alone missed (seen in Memories on iOS 27).
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                if let url = activity.webpageURL { accounts.handle(url: url) }
+            }
+            .sheet(item: $accounts.approval) { approval in
+                AccountsDeviceApprovalView(code: approval.code)
+                    .preferredColorScheme(.dark)
+            }
         }
     }
 }

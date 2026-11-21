@@ -24,6 +24,11 @@ internal constructor(@param:IntRange(from = 0) private val hideSeconds: Int) {
         channel.trySend(seconds)
     }
 
+    /** Cinema: hide now (↑ past the top row of the controls). */
+    fun hideControls() {
+        _controlsVisible = false
+    }
+
     private val channel = Channel<Int>(CONFLATED)
 
     @OptIn(FlowPreview::class)

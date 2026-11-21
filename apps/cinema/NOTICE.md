@@ -62,6 +62,7 @@ Everything below is a dependency, resolved at build time and not vendored:
 | [hls.js](https://github.com/video-dev/hls.js) | Apache-2.0 | HLS playback where the browser has none |
 | [React](https://react.dev), [TanStack Query](https://tanstack.com/query), [React Router](https://reactrouter.com) | MIT | The web client |
 | [Radix UI](https://www.radix-ui.com) | MIT | Slider and slot primitives |
+| [ZXing](https://github.com/zxing/zxing) core | Apache-2.0 | The sign-in QR on the Android TV app |
 | [Lucide](https://lucide.dev) | ISC | Icons, including the `film` glyph Cinema uses as its mark |
 | [Geist](https://vercel.com/font), [Bricolage Grotesque](https://github.com/ateliertriay/bricolage) | OFL-1.1 | Typefaces |
 | [Tailwind CSS](https://tailwindcss.com), [Vite](https://vite.dev), [Bun](https://bun.sh), [oxlint](https://oxc.rs) | MIT | Build and tooling |

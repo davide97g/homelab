@@ -24,6 +24,7 @@ import dev.jdtech.jellyfin.ui.MovieScreen
 import dev.jdtech.jellyfin.ui.PlayerScreen
 import dev.jdtech.jellyfin.utils.base64ToByteArray
 import dev.jdtech.jellyfin.utils.toBase64Str
+import it.davideghiotto.cinema.accounts.AccountsLoginScreen
 import java.util.UUID
 import kotlinx.parcelize.parcelableCreator
 import kotlinx.serialization.Serializable
@@ -45,6 +46,8 @@ inline fun <reified T : Parcelable> String.base64ToParcelable(): T {
     val item = parcelableCreator<T>().createFromParcel(parcel)
     return item
 }
+
+@Serializable data object AccountsLoginRoute
 
 @Serializable data object WelcomeRoute
 
@@ -88,11 +91,28 @@ fun NavigationRoot(
     val startDestination =
         when {
             hasServers && hasCurrentServer && hasCurrentUser -> MainRoute
-            hasServers && hasCurrentServer -> UsersRoute
-            hasServers -> ServersRoute
-            else -> WelcomeRoute
+            // Cinema: sign in through accounts.davideghiotto.it first; the stock flow is a button.
+            else -> AccountsLoginRoute
         }
     NavHost(navController = navController, startDestination = startDestination) {
+        composable<AccountsLoginRoute> {
+            AccountsLoginScreen(
+                onSuccess = {
+                    navController.navigate(MainRoute) {
+                        popUpTo(startDestination) { inclusive = true }
+                    }
+                },
+                onOtherWaysClick = {
+                    navController.navigate(
+                        when {
+                            hasServers && hasCurrentServer -> UsersRoute
+                            hasServers -> ServersRoute
+                            else -> WelcomeRoute
+                        }
+                    )
+                },
+            )
+        }
         composable<WelcomeRoute> {
             WelcomeScreen(onContinueClick = { navController.navigate(ServersRoute) })
         }

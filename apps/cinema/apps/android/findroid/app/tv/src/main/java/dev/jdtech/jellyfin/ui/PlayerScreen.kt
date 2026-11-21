@@ -20,10 +20,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -55,6 +58,14 @@ import dev.jdtech.jellyfin.ui.components.player.VideoPlayerSeeker
 import dev.jdtech.jellyfin.ui.components.player.VideoPlayerState
 import dev.jdtech.jellyfin.ui.components.player.rememberVideoPlayerState
 import dev.jdtech.jellyfin.utils.handleDPadKeyEvents
+import it.davideghiotto.cinema.player.SeekButtons
+import it.davideghiotto.cinema.player.SeekController
+import it.davideghiotto.cinema.player.SeekIndicator
+import it.davideghiotto.cinema.player.rememberSeekController
+import it.davideghiotto.cinema.player.seekKeys
+import it.davideghiotto.cinema.quiz.QuizController
+import it.davideghiotto.cinema.quiz.QuizOverlay
+import it.davideghiotto.cinema.quiz.QuizToggle
 import java.util.Locale
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
@@ -108,15 +119,22 @@ fun PlayerScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val videoPlayerState = rememberVideoPlayerState()
+    // Cinema: the controls stay 10 s after the last key, not 2 s after focus first lands.
+    val videoPlayerState = rememberVideoPlayerState(hideSeconds = 10)
+    val focusManager = LocalFocusManager.current
+    val seek = rememberSeekController(viewModel.player)
+    // Cinema: film quizzes, as on the web player (it.davideghiotto.cinema.quiz).
+    val quiz = remember { QuizController(context) }
+    LaunchedEffect(itemId) { quiz.load(context, itemId) }
 
     var currentPosition by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(viewModel.player.isPlaying) }
     LaunchedEffect(Unit) {
         while (true) {
-            delay(300)
+            delay(250)
             currentPosition = viewModel.player.currentPosition
             isPlaying = viewModel.player.isPlaying
+            quiz.tick(viewModel.player, seeking = seek.pendingTargetMs != null)
         }
     }
 
@@ -167,9 +185,29 @@ fun PlayerScreen(
         }
     }
 
+    // Cinema: with the controls gone the root has to hold focus, or the remote's keys reach
+    // nothing (a segment's skip button takes it instead while one is up).
+    val rootFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(videoPlayerState.controlsVisible, segment, quiz.asking) {
+        if (quiz.asking != null) videoPlayerState.showControls(seconds = 0)
+        if (!videoPlayerState.controlsVisible && segment == null && quiz.asking == null) {
+            runCatching { rootFocusRequester.requestFocus() }
+        }
+    }
+
     Box(
         modifier =
-            Modifier.dPadEvents(exoPlayer = viewModel.player, videoPlayerState = videoPlayerState)
+            Modifier.controlsKeys(
+                    state = videoPlayerState,
+                    isPlaying = { viewModel.player.isPlaying },
+                    blocked = { quiz.asking != null },
+                    moveUp = { focusManager.moveFocus(FocusDirection.Up) },
+                )
+                .seekKeys(seek, blocked = { quiz.asking != null }) {
+                    videoPlayerState.controlsVisible
+                }
+                .dPadEvents(exoPlayer = viewModel.player, videoPlayerState = videoPlayerState)
+                .focusRequester(rootFocusRequester)
                 .focusable()
     ) {
         AndroidView(
@@ -203,6 +241,7 @@ fun PlayerScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+        SeekIndicator(seek = seek, durationMs = viewModel.player.duration)
         val focusRequester = remember { FocusRequester() }
         VideoPlayerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -213,14 +252,17 @@ fun PlayerScreen(
                 VideoPlayerControls(
                     title = uiState.currentItemTitle,
                     isPlaying = isPlaying,
-                    contentCurrentPosition = currentPosition,
+                    contentCurrentPosition = seek.pendingTargetMs ?: currentPosition,
                     player = viewModel.player,
+                    seek = seek,
+                    quiz = quiz,
                     state = videoPlayerState,
                     focusRequester = focusRequester,
                     // navigator = navigator,
                 )
             },
         )
+        QuizOverlay(quiz = quiz, onResume = { quiz.close(viewModel.player) })
     }
 }
 
@@ -231,6 +273,8 @@ fun VideoPlayerControls(
     isPlaying: Boolean,
     contentCurrentPosition: Long,
     player: Player,
+    seek: SeekController,
+    quiz: QuizController,
     state: VideoPlayerState,
     focusRequester: FocusRequester,
     // navigator: DestinationsNavigator,
@@ -254,10 +298,16 @@ fun VideoPlayerControls(
                 onSeek = { player.seekTo(player.duration.times(it).toLong()) },
                 contentProgress = contentCurrentPosition.milliseconds,
                 contentDuration = player.duration.milliseconds,
+                // Cinema: ←/→ on the timeline are 10 s, never accelerated.
+                onStep = { direction, isRepeat ->
+                    seek.press(direction, 10_000L, isRepeat, accelerate = false)
+                },
             )
         },
         mediaActions = {
             Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.medium)) {
+                SeekButtons(seek = seek, state = state, isPlaying = isPlaying)
+                QuizToggle(quiz = quiz, state = state, isPlaying = isPlaying)
                 VideoPlayerMediaButton(
                     icon = painterResource(id = R.drawable.ic_speaker),
                     state = state,
@@ -309,6 +359,24 @@ private fun SkipButton(
             Text(text = stringResource(stringRes), color = Color.Black)
         }
     }
+}
+
+/**
+ * Cinema: while the controls are up, every key keeps them up another 10 s (paused, they stay), and
+ * ↑ with nothing above the focused control hides them.
+ */
+private fun Modifier.controlsKeys(
+    state: VideoPlayerState,
+    isPlaying: () -> Boolean,
+    blocked: () -> Boolean,
+    moveUp: () -> Boolean,
+): Modifier = onPreviewKeyEvent { event ->
+    if (!state.controlsVisible || blocked()) return@onPreviewKeyEvent false
+    val native = event.nativeKeyEvent
+    if (native.action == android.view.KeyEvent.ACTION_DOWN && isPlaying()) state.showControls()
+    if (native.keyCode != android.view.KeyEvent.KEYCODE_DPAD_UP) return@onPreviewKeyEvent false
+    if (native.action == android.view.KeyEvent.ACTION_DOWN && !moveUp()) state.hideControls()
+    true
 }
 
 private fun Modifier.dPadEvents(exoPlayer: Player, videoPlayerState: VideoPlayerState): Modifier =

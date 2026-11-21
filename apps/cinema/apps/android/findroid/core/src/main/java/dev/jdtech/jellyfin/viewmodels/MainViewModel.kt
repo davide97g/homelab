@@ -3,20 +3,29 @@ package dev.jdtech.jellyfin.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.jdtech.jellyfin.api.JellyfinApi
 import dev.jdtech.jellyfin.database.ServerDatabaseDao
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.User
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import org.jellyfin.sdk.api.client.exception.InvalidStatusException
+import timber.log.Timber
 
 @HiltViewModel
 class MainViewModel
 @Inject
-constructor(private val appPreferences: AppPreferences, private val database: ServerDatabaseDao) :
-    ViewModel() {
+constructor(
+    private val appPreferences: AppPreferences,
+    private val database: ServerDatabaseDao,
+    private val jellyfinApi: JellyfinApi,
+) : ViewModel() {
     private val _state = MutableStateFlow(MainState())
     val state = _state.asStateFlow()
 
@@ -36,6 +45,7 @@ constructor(private val appPreferences: AppPreferences, private val database: Se
     private fun check() {
         viewModelScope.launch {
             _state.emit(MainState(isLoading = true))
+            forgetRevokedUser()
             val mainState =
                 MainState(
                     isLoading = false,
@@ -75,6 +85,27 @@ constructor(private val appPreferences: AppPreferences, private val database: Se
         return appPreferences.getValue(appPreferences.currentServer)?.let {
             database.getServerCurrentUser(it) != null
         } == true
+    }
+
+    /**
+     * Cinema: a token revoked from accounts.davideghiotto.it (or a reset password) sends the app
+     * back to sign-in, instead of an empty home that silently gets 401s. Only a 401 counts: offline
+     * or an unreachable server keeps the user.
+     */
+    private suspend fun forgetRevokedUser() {
+        if (checkIsOfflineMode()) return
+        val serverId = appPreferences.getValue(appPreferences.currentServer) ?: return
+        val user = database.getServerCurrentUser(serverId) ?: return
+        try {
+            withTimeout(5000) {
+                withContext(Dispatchers.IO) { jellyfinApi.userApi.getCurrentUser() }
+            }
+        } catch (e: InvalidStatusException) {
+            if (e.status == 401) {
+                Timber.i("token for ${user.name} was revoked, signing out")
+                database.deleteUser(user.id)
+            }
+        } catch (_: Exception) {}
     }
 
     private fun checkIsDynamicColors(): Boolean {

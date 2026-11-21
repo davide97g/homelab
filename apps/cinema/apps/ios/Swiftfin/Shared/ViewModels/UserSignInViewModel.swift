@@ -45,6 +45,8 @@ final class UserSignInViewModel: ObservableObject {
         case getPublicData
         case signIn(username: String, password: String)
         case signInQuickConnect(secret: String)
+        /// Cinema: a token from accounts.davideghiotto.it's broker.
+        case signInWithToken(accessToken: String)
 
         case save(
             user: UserStateDataPair,
@@ -66,7 +68,7 @@ final class UserSignInViewModel: ObservableObject {
                 .none
             case .getPublicData:
                 .background(.gettingPublicData)
-            case .signIn, .signInQuickConnect:
+            case .signIn, .signInQuickConnect, .signInWithToken:
                 .loop(.signingIn)
             }
         }
@@ -176,6 +178,36 @@ final class UserSignInViewModel: ObservableObject {
             )
 
             events.send(.connected(((newUserState, accessToken), userData)))
+        }
+    }
+
+    /// Cinema: the broker already signed in as this device; only the user is missing.
+    @Function(\Action.Cases.signInWithToken)
+    private func _signInWithToken(
+        _ accessToken: String
+    ) async throws {
+        let configuration = server.client.configuration
+        let client = JellyfinClient(
+            configuration: .init(
+                url: configuration.url,
+                accessToken: accessToken,
+                client: configuration.client,
+                deviceName: configuration.deviceName,
+                deviceID: configuration.deviceID,
+                version: configuration.version
+            )
+        )
+        let userData = try await client.send(Paths.getCurrentUser).value
+
+        guard let id = userData.id, let username = userData.name else {
+            logger.error("Missing user data from network call")
+            throw ErrorMessage(L10n.unknownError)
+        }
+
+        if let existingUser = existingUser(id: id) {
+            events.send(.existingUser(((existingUser, accessToken), userData)))
+        } else {
+            events.send(.connected(((UserState(id: id, serverID: server.id, username: username), accessToken), userData)))
         }
     }
 

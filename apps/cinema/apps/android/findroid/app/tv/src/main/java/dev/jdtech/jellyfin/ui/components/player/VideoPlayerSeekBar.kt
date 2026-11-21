@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin.ui.components.player
 
+import android.view.KeyEvent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.focusable
@@ -22,6 +23,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,7 @@ fun VideoPlayerSeekBar(
     progress: Float,
     onSeek: (seekProgress: Float) -> Unit,
     state: VideoPlayerState,
+    onStep: ((direction: Int, isRepeat: Boolean) -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var isSelected by remember { mutableStateOf(false) }
@@ -63,30 +66,51 @@ fun VideoPlayerSeekBar(
             Modifier.fillMaxWidth()
                 .height(animatedHeight)
                 .padding(horizontal = 4.dp)
-                .handleDPadKeyEvents(
-                    onEnter = {
-                        if (isSelected) {
-                            onSeek(seekProgress)
-                            focusManager.moveFocus(FocusDirection.Exit)
-                        } else {
-                            seekProgress = progress
+                .then(
+                    if (onStep != null) {
+                        // Cinema: ←/→ on the focused timeline move it 10 s per press (see
+                        // SeekController), instead of entering a mode that jumps 5% at a time.
+                        Modifier.onPreviewKeyEvent { event ->
+                            val native = event.nativeKeyEvent
+                            val direction =
+                                when (native.keyCode) {
+                                    KeyEvent.KEYCODE_DPAD_LEFT -> -1
+                                    KeyEvent.KEYCODE_DPAD_RIGHT -> 1
+                                    else -> return@onPreviewKeyEvent false
+                                }
+                            if (native.action == KeyEvent.ACTION_DOWN) {
+                                onStep(direction, native.repeatCount > 0)
+                                state.showControls()
+                            }
+                            true
                         }
-                        isSelected = !isSelected
-                    },
-                    onLeft = {
-                        if (isSelected) {
-                            seekProgress = (seekProgress - 0.05f).coerceAtLeast(0f)
-                        } else {
-                            focusManager.moveFocus(FocusDirection.Left)
-                        }
-                    },
-                    onRight = {
-                        if (isSelected) {
-                            seekProgress = (seekProgress + 0.05f).coerceAtMost(1f)
-                        } else {
-                            focusManager.moveFocus(FocusDirection.Right)
-                        }
-                    },
+                    } else {
+                        Modifier.handleDPadKeyEvents(
+                            onEnter = {
+                                if (isSelected) {
+                                    onSeek(seekProgress)
+                                    focusManager.moveFocus(FocusDirection.Exit)
+                                } else {
+                                    seekProgress = progress
+                                }
+                                isSelected = !isSelected
+                            },
+                            onLeft = {
+                                if (isSelected) {
+                                    seekProgress = (seekProgress - 0.05f).coerceAtLeast(0f)
+                                } else {
+                                    focusManager.moveFocus(FocusDirection.Left)
+                                }
+                            },
+                            onRight = {
+                                if (isSelected) {
+                                    seekProgress = (seekProgress + 0.05f).coerceAtMost(1f)
+                                } else {
+                                    focusManager.moveFocus(FocusDirection.Right)
+                                }
+                            },
+                        )
+                    }
                 )
                 .focusable(interactionSource = interactionSource)
     ) {

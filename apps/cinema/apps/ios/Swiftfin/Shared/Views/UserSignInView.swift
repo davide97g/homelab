@@ -295,6 +295,19 @@ struct UserSignInView: View {
     private var contentView: some View {
         #if os(iOS)
         List {
+            // Cinema: the homelab account first; Jellyfin's own sign-in stays below it.
+            Section {
+                AccountsEmailCodeRows(submitTitle: L10n.signIn) { email, code in
+                    try await CinemaAccounts.shared.signIn(email: email, code: code)
+                    let token = try await CinemaAccounts.shared.jellyfinToken(for: viewModel.server.client.configuration)
+                    await viewModel.signInWithToken(accessToken: token)
+                }
+            } header: {
+                Text("Homelab Account")
+            } footer: {
+                Text("A code by email, no password. Or use a Jellyfin username and password below.")
+            }
+            .disabled(viewModel.state == .signingIn)
             signInSection
             publicUsersSection
         }

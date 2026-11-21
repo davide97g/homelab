@@ -52,6 +52,15 @@ Everything under `Shared/Cinema/` is new here, not modified upstream:
 | `CinemaMark.swift` | The film glyph and the wordmark, drawn rather than imported. |
 | `FeatureCard.swift` | One page of the feature band. |
 | `FeatureContentGroup.swift` | The band itself, and the `ContentGroup` that places it. |
+| `AccountsClient.swift` | accounts.davideghiotto.it: email code, broker, TV approval. Ours, shared in spirit with Memories iOS. |
+| `CinemaAccounts.swift` | The accounts session in the Keychain, and the TV approval waiting to be shown. |
+| `AccountsViews.swift` | The email-code rows on the sign-in screen and the "Sign In a TV" sheet (iOS only). Signed in to Cinema, the sheet approves with this iPhone's own Jellyfin token (`POST /api/device/with-app`): one tap, no email code; the email code only when the Jellyfin account is not linked in accounts. |
+
+Upstream files touched for accounts, each change marked `Cinema:`: `UserSignInViewModel`
+(`signInWithToken`), `UserSignInView` (the homelab section on top), `SettingsView` ("Sign In a TV"),
+`SwiftfinApp` (`onOpenURL` + the sheet) and `Swiftfin.entitlements`
+(`applinks:accounts.davideghiotto.it`). Debug runs take `-accountsURL http://localhost:3190` and
+`-approveCode ABCD-EFGH`.
 
 The app icon is rendered by `apps/ios/make-app-icon.swift` in the Cinema monorepo, from the same
 glyph and the same tokens. Upstream's alternate icons are still in the catalogue, untouched, but

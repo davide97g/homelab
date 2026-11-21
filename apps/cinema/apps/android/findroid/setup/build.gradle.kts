@@ -8,7 +8,18 @@ android {
     compileSdk = Versions.COMPILE_SDK
     buildToolsVersion = Versions.BUILD_TOOLS
 
-    defaultConfig { minSdk = Versions.MIN_SDK }
+    defaultConfig {
+        minSdk = Versions.MIN_SDK
+        // Cinema: the sign-in service. `-PaccountsUrl=http://10.0.2.2:3190` for a local one.
+        val accountsUrl = providers.gradleProperty("accountsUrl").orNull
+        buildConfigField(
+            "String",
+            "ACCOUNTS_URL",
+            "\"${accountsUrl ?: "https://accounts.davideghiotto.it"}\"",
+        )
+    }
+
+    buildFeatures { buildConfig = true }
 
     buildTypes {
         named("release") { isMinifyEnabled = false }

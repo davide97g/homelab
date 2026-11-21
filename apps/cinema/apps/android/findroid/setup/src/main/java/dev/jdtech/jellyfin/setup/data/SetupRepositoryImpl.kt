@@ -230,6 +230,24 @@ class SetupRepositoryImpl(
         }
     }
 
+    override suspend fun loginWithToken(accessToken: String) {
+        withContext(Dispatchers.IO) {
+            jellyfinApi.api.update(accessToken = accessToken)
+            val me by jellyfinApi.userApi.getCurrentUser()
+            val user =
+                User(
+                    id = me.id,
+                    name = me.name!!,
+                    serverId = me.serverId!!,
+                    accessToken = accessToken,
+                )
+
+            database.insertUser(user)
+            database.updateServerCurrentUser(user.serverId, user.id)
+            jellyfinApi.userId = me.id
+        }
+    }
+
     private suspend fun saveAuthenticationResult(authenticationResult: AuthenticationResult) {
         val user =
             User(

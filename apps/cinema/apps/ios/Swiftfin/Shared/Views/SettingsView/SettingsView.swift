@@ -75,6 +75,15 @@ struct SettingsView: View {
                 }
 
                 #if os(iOS)
+                // Cinema: approve a TV that shows a sign-in code.
+                ChevronButton("Sign In a TV") {
+                    router.dismiss()
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(450)) // one sheet at a time
+                        CinemaAccounts.shared.approval = .init(code: "")
+                    }
+                }
+
                 if userSession.user.data.policy?.isAdministrator == true {
                     ChevronButton(L10n.dashboard) {
                         router.route(to: .adminDashboard)

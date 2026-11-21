@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose.compiler)
@@ -19,11 +21,33 @@ android {
 
         versionCode = Versions.APP_CODE
         versionName = Versions.APP_NAME
+
+        // Cinema quiz night. The host key is a secret and this repo is public: it comes from
+        // local.properties (cinema.quizHostKey) or -Pcinema.quizHostKey, never from the tree.
+        // Without it the TV plays quizzes alone, with the remote.
+        val localProps =
+            Properties().apply {
+                rootProject
+                    .file("local.properties")
+                    .takeIf { it.exists() }
+                    ?.inputStream()
+                    ?.use { load(it) }
+            }
+        val quizHostKey =
+            (project.findProperty("cinema.quizHostKey") as String?)
+                ?: localProps.getProperty("cinema.quizHostKey")
+                ?: ""
+        buildConfigField("String", "QUIZ_HOST_KEY", "\"$quizHostKey\"")
+        buildConfigField("String", "QUIZ_BASE_URL", "\"https://cinema.davideghiotto.it\"")
+        buildConfigField("String", "JARVIS_URL", "\"https://jarvis.davideghiotto.it\"")
     }
 
     buildTypes {
         named("debug") { applicationIdSuffix = ".debug" }
         named("release") {
+            // Cinema: sideloaded over adb onto one TV, like Cassette and JARVIS, so the debug key
+            // signs it. Installs as "Cinema" (it.davideghiotto.cinema), beside a debug build.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -114,7 +138,9 @@ dependencies {
     ksp(libs.kotlin.metadata.jvm)
     implementation(libs.media3.ffmpeg.decoder)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
     implementation(libs.timber)
+    implementation(libs.zxing.core)
 
     coreLibraryDesugaring(libs.android.desugar.jdk)
 

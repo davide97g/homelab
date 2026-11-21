@@ -11,8 +11,10 @@ import type { Api } from '@jellyfin/sdk'
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api'
 import type { UserDto } from '@jellyfin/sdk/lib/generated-client/models/user-dto'
 import { createApi } from './client'
+import { requestJellyfinToken } from '../accounts'
 
 const STORAGE_KEY = 'cinema.session'
+export const SIGNED_OUT_KEY = 'cinema.signedOut'
 
 type StoredSession = { accessToken: string; userId: string }
 
@@ -22,7 +24,10 @@ type AuthContextValue = {
   user: UserDto | null
   userId: string | null
   status: 'loading' | 'signedOut' | 'signedIn'
+  /** Local Jellyfin account (the admin's escape hatch when accounts is down). */
   signIn: (username: string, password: string) => Promise<void>
+  /** The normal way in: a token from the homelab's accounts service. Throws NeedsSignIn. */
+  signInWithAccounts: () => Promise<void>
   signOut: () => void
 }
 
@@ -92,7 +97,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signedIn')
   }, [])
 
+  const signInWithAccounts = useCallback(async () => {
+    const r = await requestJellyfinToken()
+    const next: StoredSession = { accessToken: r.accessToken, userId: r.userId }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    localStorage.removeItem(SIGNED_OUT_KEY)
+    // The boot effect validates the token and loads the user.
+    setStatus('loading')
+    setSession(next)
+  }, [])
+
   const signOut = useCallback(() => {
+    // Remembered so the login page does not sign straight back in through
+    // the still-valid accounts cookie.
+    localStorage.setItem(SIGNED_OUT_KEY, '1')
     localStorage.removeItem(STORAGE_KEY)
     setSession(null)
     setUser(null)
@@ -100,8 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ api, user, userId: session?.userId ?? null, status, signIn, signOut }),
-    [api, user, session?.userId, status, signIn, signOut],
+    () => ({ api, user, userId: session?.userId ?? null, status, signIn, signInWithAccounts, signOut }),
+    [api, user, session?.userId, status, signIn, signInWithAccounts, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

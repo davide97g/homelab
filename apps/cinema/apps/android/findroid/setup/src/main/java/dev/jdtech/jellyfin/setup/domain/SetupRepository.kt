@@ -33,6 +33,9 @@ interface SetupRepository {
 
     suspend fun loginWithSecret(secret: String)
 
+    /** Cinema: a token handed over by accounts.davideghiotto.it (the broker). */
+    suspend fun loginWithToken(accessToken: String)
+
     suspend fun getUsers(serverId: String): List<User>
 
     suspend fun getPublicUsers(serverId: String): List<User>
