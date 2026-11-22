@@ -96,7 +96,7 @@ services:
 
   prowlarr:
     <<: *common
-    image: lscr.io/linuxserver/prowlarr:2.6.5
+    image: lscr.io/linuxserver/prowlarr:3.0.2
     container_name: prowlarr
     ports:
       - "9696:9696"
@@ -111,7 +111,7 @@ services:
 
   radarr:
     <<: *common
-    image: lscr.io/linuxserver/radarr:6.4.4
+    image: lscr.io/linuxserver/radarr:7.0.3
     container_name: radarr
     ports:
       - "7878:7878"
