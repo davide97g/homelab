@@ -30,7 +30,8 @@ fi
 # 2. The script the box starts on the NAS. /volume1 survives a UGOS update; /home does not.
 # Not scp: UGOS's sftp roots at the shares, so /volume1/... does not exist there.
 ssh nas "mkdir -p $nasdir && chmod 700 $nasdir && (setfacl -b $nasdir 2>/dev/null || true)"
-ssh nas "cat > $nasdir/run.sh && chmod 700 $nasdir/run.sh" <"$here/nas-run.sh"
+# Written beside and renamed: a run in progress keeps reading the old file.
+ssh nas "cat > $nasdir/run.sh.new && chmod 700 $nasdir/run.sh.new && mv $nasdir/run.sh.new $nasdir/run.sh" <"$here/nas-run.sh"
 ssh nas "docker pull -q $RESTIC_IMAGE >/dev/null"
 
 systemctl --user daemon-reload
