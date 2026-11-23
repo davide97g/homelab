@@ -12,6 +12,7 @@ import type {
   PersonResponseDto,
   SearchExploreResponseDto,
   SearchResponseDto,
+  SentenceSearchResponseDto,
   SearchSuggestionType,
   ServerVersionResponseDto,
   SmartSearchDto,
@@ -152,6 +153,18 @@ export const api = {
   explore: () => request<SearchExploreResponseDto[]>('GET', '/search/explore'),
 
   smartSearch: (dto: SmartSearchDto) => request<SearchResponseDto>('POST', '/search/smart', { body: { withExif: false, size: 100, ...dto } }),
+  /**
+   * Search with a sentence via memories-search (LLM plan -> Immich filters). Where that service
+   * isn't there (dev against a bare Immich, mock), plain smart search answers instead.
+   */
+  sentenceSearch: async (query: string, page?: number): Promise<SentenceSearchResponseDto> => {
+    try {
+      return await request<SentenceSearchResponseDto>('POST', '/memories/search', { body: { query, page: page ?? 1, size: 100 } })
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) throw e
+      return api.smartSearch({ query, size: 100, page })
+    }
+  },
   metadataSearch: (dto: MetadataSearchDto) => request<SearchResponseDto>('POST', '/search/metadata', { body: dto }),
   suggestions: (type: SearchSuggestionType) => request<string[]>('GET', '/search/suggestions', { query: { type } }),
 

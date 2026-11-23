@@ -1,10 +1,49 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { MapPin, Search, Sparkles, X } from 'lucide-react'
+import { Calendar, Eye, Heart, Image, MapPin, Search, Sparkles, User, Video, X, type LucideIcon } from 'lucide-react'
 import { api, personThumbUrl } from '@/lib/api/client'
 import { ResultsGrid } from '@/features/search/ResultsGrid'
 import { SectionHeader } from '@/components/Page'
+import type { SentenceSearchInfo } from '@/lib/api/types'
+
+const HEADER = 168
+
+/** "Marci · eating · Roma · estate 2025": how the sentence was read, so a wrong guess shows. */
+function Interpretation({ info, loading }: { info?: SentenceSearchInfo; loading: boolean }) {
+  if (!info) {
+    return (
+      <p className="flex h-7 items-center gap-1 text-[13px] text-label-2">
+        <Sparkles className="size-3.5" /> {loading ? 'Reading your search…' : 'Smart search'}
+      </p>
+    )
+  }
+  const chips: [string, LucideIcon][] = (info.people ?? []).map((p) => [p.replace(/\b\w/g, (c) => c.toUpperCase()), User])
+  if (info.visual && !info.fallback) chips.push([info.visual, Eye])
+  if (info.place) chips.push([info.place[1], MapPin])
+  if (info.when) chips.push([info.when, Calendar])
+  if (info.media === 'video') chips.push(['Videos', Video])
+  if (info.media === 'photo') chips.push(['Photos', Image])
+  if (info.favorite) chips.push(['Favorites', Heart])
+  const missing = info.missingPeople ?? []
+  const note = missing.length
+    ? `No one named ${missing.map((n) => `“${n}”`).join(', ')} yet: name their face in People and search again.`
+    : info.fallback
+      ? 'Searched for the words as typed (the language model didn’t answer).'
+      : ''
+  return (
+    <>
+      <div className="no-scrollbar -mx-4 flex h-7 gap-1.5 overflow-x-auto px-4">
+        {chips.map(([label, Icon]) => (
+          <span key={label} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-fill px-2.5 text-[12px] font-medium">
+            <Icon className="size-3.5 text-accent" /> {label}
+          </span>
+        ))}
+      </div>
+      {note && <p className="mt-1.5 truncate text-[12px] text-label-2">{note}</p>}
+    </>
+  )
+}
 
 const CATEGORIES = ['Beach', 'Mountains', 'Sunset', 'Snow', 'Food', 'Dogs', 'Cats', 'Cars', 'Concert', 'Birthday cake', 'Flowers', 'Night city', 'Documents', 'Hiking']
 
@@ -35,19 +74,17 @@ export default function SearchRoute() {
       {q ? (
         <ResultsGrid
           key={q}
-          queryKey={['smart', q]}
-          fetchPage={(page) => api.smartSearch({ query: q, size: 100, page: page ? Number(page) : undefined })}
-          topInset={112}
+          queryKey={['sentence', q]}
+          fetchPage={(page) => api.sentenceSearch(q, page ? Number(page) : undefined)}
+          topInset={HEADER}
           bottomInset={120}
           emptyText="No results"
-          header={
-            <div className="flex h-[112px] flex-col justify-end px-4 pb-3">
-              <h1 className="large-title truncate">{q}</h1>
-              <p className="flex items-center gap-1 text-[13px] text-label-2">
-                <Sparkles className="size-3.5" /> Smart search
-              </p>
+          header={(first) => (
+            <div className="flex flex-col justify-end px-4 pb-3" style={{ height: HEADER }}>
+              <h1 className="large-title truncate pb-2">{q}</h1>
+              <Interpretation info={first?.memories} loading={!first} />
             </div>
-          }
+          )}
         />
       ) : (
         <div className="absolute inset-0 overflow-y-auto">

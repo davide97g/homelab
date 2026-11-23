@@ -11,7 +11,7 @@ import { useViewer } from '@/features/viewer/ViewerProvider'
  * Grid over a paginated search endpoint (smart / metadata). Pages are pulled
  * as the user nears the end.
  */
-export function ResultsGrid({
+export function ResultsGrid<R extends SearchResponseDto = SearchResponseDto>({
   queryKey,
   fetchPage,
   topInset,
@@ -21,10 +21,11 @@ export function ResultsGrid({
 }: {
   queryKey: unknown[]
   /** pageParam: undefined for the first page, else nextCursor / nextPage */
-  fetchPage: (pageParam: string | undefined) => Promise<SearchResponseDto>
+  fetchPage: (pageParam: string | undefined) => Promise<R>
   topInset: number
   bottomInset: number
-  header?: ReactNode
+  /** Or a function of the first page, once it's there (e.g. how a sentence was read). */
+  header?: ReactNode | ((first: R | undefined) => ReactNode)
   emptyText?: string
 }) {
   const viewer = useViewer()
@@ -51,7 +52,7 @@ export function ResultsGrid({
       source={source}
       topInset={topInset}
       bottomInset={bottomInset}
-      header={header}
+      header={typeof header === 'function' ? header(q.data?.pages[0]) : header}
       onOpen={(i) => viewer.open(source, i)}
       onVisible={onVisible}
       footer={isFetchingNextPage ? <Loader2 className="size-5 animate-spin text-label-2" /> : undefined}

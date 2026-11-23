@@ -423,6 +423,17 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<boolea
       : []
     return send(res, 200, list), true
   }
+  if (path === '/memories/search' && method === 'POST') {
+    // memories-search stand-in: smart search plus a canned "how it was read".
+    const body = await readJson<{ query?: string; size?: number; page?: number }>(req)
+    const page = body.page ?? 1
+    const size = body.size ?? 100
+    const all = sampleAssets(`${body.query ?? ''}`, 180)
+    const items = all.slice((page - 1) * size, page * size)
+    const nextPage = page * size < all.length ? String(page + 1) : null
+    const memories = { fallback: false, people: ['marci'], missingPeople: ['marci'], visual: 'eating', place: ['city', 'Roma'], when: 'summer 2025', media: 'photo', favorite: false }
+    return send(res, 200, { albums: { count: 0, total: 0, items: [], facets: [] }, assets: { count: items.length, total: all.length, items: items.map(assetDto), facets: [], nextPage, nextCursor: null }, memories }), true
+  }
   if (path === '/search/smart' && method === 'POST') {
     const body = await readJson<{ query?: string; size?: number; page?: number }>(req)
     const page = body.page ?? 1

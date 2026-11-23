@@ -172,6 +172,23 @@ export interface SearchResponseDto {
   }
 }
 
+/** How memories-search (apps/memories/search) read a sentence. */
+export interface SentenceSearchInfo {
+  fallback?: boolean
+  people?: string[]
+  missingPeople?: string[]
+  visual?: string
+  /** [field, value], e.g. ["city", "Roma"] */
+  place?: [string, string] | null
+  when?: string
+  media?: 'photo' | 'video' | null
+  favorite?: boolean
+}
+
+export interface SentenceSearchResponseDto extends SearchResponseDto {
+  memories?: SentenceSearchInfo
+}
+
 export type SearchSuggestionType = 'country' | 'state' | 'city' | 'camera-make' | 'camera-model' | 'camera-lens-model'
 
 export interface SmartSearchDto {

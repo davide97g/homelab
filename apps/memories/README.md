@@ -5,12 +5,13 @@ Before that, Immich was reachable only on the LAN and over Tailscale.
 
 | What | Where |
 |---|---|
-| Immich web UI | `https://memories.davideghiotto.it` |
+| Our web app (`web/`, iOS Photos style) | `https://memories.davideghiotto.it` |
 | Immich server URL, for the native apps | `https://memories.davideghiotto.it/immich` |
 | Immich on the LAN / Tailscale | `http://<nas-ip>:2283` |
 
-Same idea as Cinema's `/jf`: one hostname, the native apps get their own prefix. Unlike Cinema,
-the root is Immich's own web UI, not a custom front end.
+Same idea as Cinema's `/jf`: one hostname, the native apps get their own prefix. The root is our
+own web app (`web/dist`); only `/api`, `/.well-known`, `/share`, `/s` and `/_app` (public share
+links) go to Immich. Immich's stock web UI stays on the LAN / Tailscale at `:2283`.
 
 Our own clients on top of it: [`ios/`](ios/) (iPhone, with backup), [`web/`](web/) and [`tv/`](tv/)
 (Android TV, signed in with a code the iPhone approves). Shared look: [`DESIGN.md`](DESIGN.md).
@@ -37,7 +38,8 @@ under the same prefix.
 
 ```sh
 cd ~/personal/projects/homelab/apps/memories
-COPYFILE_DISABLE=1 tar czf - compose.yaml nginx.conf upload-relay/relay.py search/search.py | ssh nas 'mkdir -p ~/memories && tar xzf - -C ~/memories'
+(cd web && bun run build)
+COPYFILE_DISABLE=1 tar czf - compose.yaml nginx.conf upload-relay/relay.py search/search.py web/dist | ssh nas 'mkdir -p ~/memories && tar xzf - -C ~/memories'
 ssh nas 'cd ~/memories && docker compose up -d --force-recreate'
 ```
 

@@ -57,12 +57,9 @@ The app is static files plus **one requirement: same-origin `/api` reaches Immic
 - `crypto.subtle` (SHA-1 for the duplicate check) needs a secure context. Over plain-http LAN the
   check is skipped and the server dedupes on its own.
 
-Sketch for the existing `memories-proxy` nginx (not deployed; Immich keeps `/` today):
-
-```nginx
-location /api/ { proxy_pass ${IMMICH_UPSTREAM}; }          # Immich API, prefix kept
-location /     { root /usr/share/nginx/memories-web; try_files $uri /index.html; }
-```
+Served by `memories-proxy` at `/` (see `../nginx.conf`, deploy in `../README.md`). Search goes to
+`POST /api/memories/search` (memories-search, LLM) and falls back to Immich smart search when that
+service isn't there.
 
 ## Layout
 
