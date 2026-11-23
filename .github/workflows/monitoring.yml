@@ -41,6 +41,8 @@ jobs:
           QBITTORRENT_USER: ci
           QBITTORRENT_PASS: ci
           GRAFANA_ADMIN_PASSWORD: ci
+          ALERT_TELEGRAM_BOT_TOKEN: "0:ci"
+          ALERT_TELEGRAM_CHAT_ID: "0"
         run: docker compose -f docker-compose.yml config --quiet
 
   deploy:
