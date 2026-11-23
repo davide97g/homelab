@@ -12,13 +12,15 @@
 #   QBITTORRENT_PASS        required, its password
 #   GRAFANA_ROOT_URL        optional, e.g. https://grafana.davideghiotto.it
 #   GRAFANA_COOKIE_SECURE   optional, set true once served over HTTPS
+#   ALERT_TELEGRAM_BOT_TOKEN  required, the bot Alertmanager sends as
+#   ALERT_TELEGRAM_CHAT_ID    required, the chat it sends to (the Jellyfin group, as Jellyseerr)
 
 services:
   prometheus:
     image: prom/prometheus:v3.15.1
     container_name: homelab-prometheus
     labels:
-      homelab.configs-hash: "a9c0b213502f"
+      homelab.configs-hash: "566eb262660d"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -87,6 +89,9 @@ services:
       # `security_opt: [apparmor=unconfined]`, which is a real privilege
       # increase for a metric no panel uses.
       - --collector.netdev.device-exclude=^(veth|docker|br-|lo).*$$
+      # *.prom files written by host scripts -- today the nightly restic backup
+      # (hosts/debian/backup). The path is under --path.rootfs's /host mount.
+      - --collector.textfile.directory=/host/home/davide/ops/metrics
     volumes:
       - /:/host:ro,rslave
 
@@ -291,8 +296,33 @@ services:
     networks:
       - monitoring
 
+  # Turns firing Prometheus rules into Telegram messages. No port: only
+  # Prometheus talks to it, over the stack network.
+  alertmanager:
+    image: prom/alertmanager:v0.31.0
+    container_name: homelab-alertmanager
+    labels:
+      homelab.configs-hash: "d5b9af18fbf5"
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - alertmanager-data:/alertmanager
+    configs:
+      - source: alertmanager_yml
+        target: /etc/alertmanager/alertmanager.yml
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
 volumes:
   prometheus-data:
+  alertmanager-data:
   grafana-data:
   loki-data:
   alloy-data:
@@ -317,6 +347,11 @@ configs:
 
       rule_files:
         - /etc/prometheus/rules/*.yml
+
+      alerting:
+        alertmanagers:
+          - static_configs:
+              - targets: ["alertmanager:9093"]
 
       scrape_configs:
         - job_name: prometheus
@@ -581,6 +616,58 @@ configs:
                 severity: warning
               annotations:
                 summary: NAS sensor sustained above 60C
+
+        # From ~/ops/metrics/backup.prom, written by hosts/debian/backup/backup.sh
+        # at the end of every run (textfile collector on node-exporter).
+        - name: backup-alerts
+          interval: 60s
+          rules:
+            - alert: BackupFailed
+              expr: homelab_backup_last_exit_code{instance="homelab"} != 0
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: the last nightly backup to the NAS failed — journalctl --user -u homelab-backup
+
+            - alert: BackupStale
+              expr: time() - homelab_backup_last_success_timestamp_seconds{instance="homelab"} > 30 * 3600
+              for: 30m
+              labels:
+                severity: warning
+              annotations:
+                summary: no successful backup to the NAS in over 30 hours
+
+            - alert: BackupMetricsMissing
+              expr: absent(homelab_backup_last_run_timestamp_seconds{instance="homelab"})
+              for: 2h
+              labels:
+                severity: warning
+              annotations:
+                summary: backup.prom is not being read — is the backup timer installed?
+
+  # Compose fills in the two ${...}; Go templates ({{ }}) pass through untouched.
+  alertmanager_yml:
+    content: |
+      route:
+        receiver: telegram
+        group_by: [alertname, instance]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 12h
+
+      receivers:
+        - name: telegram
+          telegram_configs:
+            - bot_token: ${ALERT_TELEGRAM_BOT_TOKEN:?set ALERT_TELEGRAM_BOT_TOKEN in the Dokploy Environment tab}
+              chat_id: ${ALERT_TELEGRAM_CHAT_ID:?set ALERT_TELEGRAM_CHAT_ID in the Dokploy Environment tab}
+              send_resolved: true
+              # Plain text: a summary with a < in it would break HTML parsing.
+              parse_mode: ""
+              message: |-
+                {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} {{ .CommonLabels.alertname }} ({{ .CommonLabels.instance }})
+                {{ range .Alerts }}{{ .Annotations.summary }}
+                {{ end }}
 
   json_exporter_yml:
     content: |

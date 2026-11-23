@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up the mini PC to the NAS (restic over sftp)
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/ops/backup/backup.sh
+# The first run sends ~20 GB over Tailscale; later ones are minutes.
+TimeoutStartSec=6h
+Nice=10
+IOSchedulingClass=idle

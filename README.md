@@ -96,6 +96,12 @@ was lifted on 2026-11-03 for the 28.5 → 29.9 upgrade and not put back, so chec
 manual upgrade. `sudo` asks for a password, so those runs are done by hand over `ssh -t homelab`.
 The last full pass was 2026-11-03: kernel 6.12.115, Docker 29.9.2, Traefik 3.7.17, Dokploy 0.30.10.
 
+Backup: every night at 03:30, restic sends the home directory, the Docker volumes, `/etc/dokploy`
+and a `pg_dumpall` of every running Postgres to the NAS (`/volume1/docker/homelab-backup`),
+encrypted. A failed or missing run reaches Telegram through Alertmanager. Runbook, restore and
+the password's whereabouts: [`hosts/debian/backup`](hosts/debian/backup/). Since 2026-11-23;
+before that `~/backups/` sat on the same single NVMe as everything it backed up.
+
 ## Hardware
 
 | | |

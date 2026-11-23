@@ -566,8 +566,12 @@ residence benefit.
 
 ## Alerts
 
-Rules are defined in Prometheus but there is no Alertmanager yet, so they fire into nothing.
-They are visible under Grafana → Alerting → Prometheus rules.
+Rules are defined in Prometheus and, since 2026-11-23, delivered: Prometheus hands firing alerts
+to `homelab-alertmanager`, which sends them to Telegram (one message per alert name and instance,
+again every 12 h while it keeps firing, and a ✅ when it resolves). The bot and chat come from
+`ALERT_TELEGRAM_BOT_TOKEN` and `ALERT_TELEGRAM_CHAT_ID` in the Dokploy Environment tab; the deploy
+refuses to start without them. They are the same bot and chat Jellyseerr uses (`davide_jelly_bot`,
+the **Jellyfin** group, see `docs/media-pipeline.md`), so alerts land next to the media news. The rules are also under Grafana → Alerting → Prometheus rules.
 
 `HostDown`, `EthernetLinkFlapping`, `EthernetErrors`, `MemoryPressure`, `DiskFillingUp`,
 `CPUHot`, `SmartPlugDown`. `HostDown` and `EthernetLinkFlapping` exist because of the September 2026 suspend
@@ -579,5 +583,11 @@ the dashboard does: the NAS reports the same metric names.
 The NAS has its own group: `NasDown`, `NasPoolFillingUp`, `NasRaidDegraded`, `NasDiskHot`.
 `NasPoolFillingUp` sits close to firing by design — `/volume1` is at 82 % and only gets fuller.
 
-Add Alertmanager, or wire Grafana's own alerting to a notification channel, to actually get
-told.
+The backup has its own group, read from `~/ops/metrics/backup.prom` through node-exporter's
+textfile collector: `BackupFailed`, `BackupStale`, `BackupMetricsMissing` (see
+[`hosts/debian/backup`](../../hosts/debian/backup/)).
+
+**What this cannot tell you:** that the mini PC itself is down. Prometheus and Alertmanager run on
+it, so `HostDown` for the box only fires if node-exporter dies alone. Covering that needs a check
+from outside — a dead-man's switch such as healthchecks.io pinged by an always-firing `Watchdog`
+alert.
