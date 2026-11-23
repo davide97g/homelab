@@ -1,0 +1,6 @@
+[Unit]
+Description=Write reboot-required and apt-upgradable metrics for node-exporter
+
+[Service]
+Type=oneshot
+ExecStart=%h/ops/host-metrics/host-metrics.sh

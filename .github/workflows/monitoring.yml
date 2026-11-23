@@ -43,6 +43,7 @@ jobs:
           GRAFANA_ADMIN_PASSWORD: ci
           ALERT_TELEGRAM_BOT_TOKEN: "0:ci"
           ALERT_TELEGRAM_CHAT_ID: "0"
+          HEALTHCHECKS_PING_URL: https://hc-ping.com/ci
         run: docker compose -f docker-compose.yml config --quiet
 
   deploy:

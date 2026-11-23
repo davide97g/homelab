@@ -14,13 +14,14 @@
 #   GRAFANA_COOKIE_SECURE   optional, set true once served over HTTPS
 #   ALERT_TELEGRAM_BOT_TOKEN  required, the bot Alertmanager sends as
 #   ALERT_TELEGRAM_CHAT_ID    required, the chat it sends to (the Jellyfin group, as Jellyseerr)
+#   HEALTHCHECKS_PING_URL     required, hc-ping.com URL the always-firing Watchdog pings
 
 services:
   prometheus:
     image: prom/prometheus:v3.15.1
     container_name: homelab-prometheus
     labels:
-      homelab.configs-hash: "566eb262660d"
+      homelab.configs-hash: "d24e38f187d2"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -302,7 +303,7 @@ services:
     image: prom/alertmanager:v0.31.0
     container_name: homelab-alertmanager
     labels:
-      homelab.configs-hash: "d5b9af18fbf5"
+      homelab.configs-hash: "76c650282149"
     restart: unless-stopped
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
@@ -619,9 +620,41 @@ configs:
 
         # From ~/ops/metrics/backup.prom, written by hosts/debian/backup/backup.sh
         # at the end of every run (textfile collector on node-exporter).
-        - name: backup-alerts
+        - name: backup-and-host-alerts
           interval: 60s
           rules:
+            - alert: Watchdog
+              expr: vector(1)
+              labels:
+                severity: none
+              annotations:
+                summary: always firing; Alertmanager routes it to healthchecks.io as a heartbeat
+
+            # From ~/ops/metrics/host.prom (hosts/debian/host-metrics), every 30 min.
+            - alert: RebootRequired
+              expr: homelab_reboot_required{instance="homelab"} == 1 and time() - homelab_reboot_required_since_seconds{instance="homelab"} > 3 * 86400
+              for: 1h
+              labels:
+                severity: warning
+              annotations:
+                summary: a kernel or library update has waited over 3 days for a reboot — sudo reboot over ssh -t homelab
+
+            - alert: AptUpgradesPending
+              expr: homelab_apt_upgradable_packages{instance="homelab"} > 0
+              for: 7d
+              labels:
+                severity: warning
+              annotations:
+                summary: apt upgrades pending for a week (Docker, cloudflared, Tailscale are not unattended) — sudo apt full-upgrade
+
+            - alert: HostMetricsMissing
+              expr: absent(homelab_apt_upgradable_packages{instance="homelab"})
+              for: 2h
+              labels:
+                severity: warning
+              annotations:
+                summary: host.prom is not being read — is the host-metrics timer installed?
+
             - alert: BackupFailed
               expr: homelab_backup_last_exit_code{instance="homelab"} != 0
               for: 5m
@@ -655,8 +688,21 @@ configs:
         group_wait: 30s
         group_interval: 5m
         repeat_interval: 12h
+        routes:
+          # Dead man's switch. Watchdog always fires, so healthchecks.io gets a ping
+          # every ~5 minutes for as long as the box, Prometheus and Alertmanager all
+          # work. When the pings stop, healthchecks.io is the one that tells us.
+          - matchers: [alertname="Watchdog"]
+            receiver: healthchecks
+            group_wait: 0s
+            group_interval: 1m
+            repeat_interval: 5m
 
       receivers:
+        - name: healthchecks
+          webhook_configs:
+            - url: ${HEALTHCHECKS_PING_URL:?set HEALTHCHECKS_PING_URL in the Dokploy Environment tab}
+              send_resolved: false
         - name: telegram
           telegram_configs:
             - bot_token: ${ALERT_TELEGRAM_BOT_TOKEN:?set ALERT_TELEGRAM_BOT_TOKEN in the Dokploy Environment tab}
