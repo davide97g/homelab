@@ -196,6 +196,22 @@ enum MetadataQuery: Hashable, Sendable {
 struct SearchPage: Sendable {
     var assets: [Asset]
     var nextPage: Int?
+    /// How memories-search read the sentence (absent for plain Immich search).
+    var interpretation: SearchInterpretation? = nil
+}
+
+/// What a sentence search was turned into, shown above the results.
+struct SearchInterpretation: Sendable, Equatable {
+    var people: [String]
+    /// Names in the sentence that match no named person in Immich.
+    var missingPeople: [String]
+    var visual: String
+    var place: String?
+    var when: String
+    var media: String
+    var favorite: Bool
+    /// The LLM didn't answer: rules + the sentence as typed.
+    var fallback: Bool
 }
 
 enum DateParsing {

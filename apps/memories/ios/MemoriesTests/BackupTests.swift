@@ -43,6 +43,35 @@ struct BackupTests {
         #expect(data.range(of: payload) != nil)
     }
 
+    /// Pieces for the relay are the one-go body cut at `maxPieceSize`, byte for byte.
+    @Test func multipartPiecesConcatenateToBody() throws {
+        let dir = try tempDir()
+        let media = dir.appending(path: "IMG_0002.MOV")
+        try Data((0..<10_000).map { UInt8($0 % 241) }).write(to: media)
+        let fields = [("filename", "IMG_0002.MOV"), ("isFavorite", "false")]
+        let body = dir.appending(path: "body")
+        let size = try MultipartBody.write(to: body, boundary: "B", fields: fields, fileField: "assetData",
+                                           filename: "IMG_0002.MOV", fileURL: media, chunkSize: 333)
+        let (files, total) = try MultipartBody.writePieces(
+            maxPieceSize: 3000, piece: { dir.appending(path: "piece-\($0)") }, boundary: "B", fields: fields,
+            fileField: "assetData", filename: "IMG_0002.MOV", fileURL: media, chunkSize: 333)
+        #expect(total == size)
+        #expect(files.count == Int((size + 2999) / 3000))
+        var joined = Data()
+        for (i, f) in files.enumerated() {
+            let d = try Data(contentsOf: f)
+            if i < files.count - 1 { #expect(d.count == 3000) }
+            joined.append(d)
+        }
+        #expect(joined == (try Data(contentsOf: body)))
+    }
+
+    @Test func uploadJobWithoutChunksStillDecodes() throws {
+        let json = #"{"part":{"localId":"L","kind":"single","stagedFile":"file:///x","filename":"x.jpg","checksumHex":"h","checksumBase64":"b","created":0,"modified":0,"isFavorite":false,"size":1},"bodyFile":"file:///y"}"#
+        let job = try JSONDecoder().decode(UploadJob.self, from: Data(json.utf8))
+        #expect(job.chunks == nil)
+    }
+
     @Test func liveVideoIsHidden() {
         let p = UploadPart(localId: "L", kind: .liveVideo, stagedFile: URL(fileURLWithPath: "/x.mov"), filename: "x.MOV",
                            checksumHex: "", checksumBase64: "", created: .now, modified: .now, durationMs: nil, isFavorite: false, size: 1)

@@ -98,16 +98,26 @@ time. `NSAllowsArbitraryLoads` is on because the LAN URL is plain HTTP on a user
 - Live photos: the paired video goes first (`visibility=hidden`), then the still with
   `livePhotoVideoId=<video id>`. The chaining happens in the session delegate, so it completes in
   the background too.
-- **100 MB:** Cloudflare rejects bodies over 100 MB on the public hostname. Such items are skipped
-  with that reason and retried automatically when the LAN URL is active. A 413 from the server is
-  treated the same way.
+- **100 MB:** Cloudflare rejects bodies over 100 MB on the public hostname. There the body is
+  written in pieces of 90 MB and PUT one after another to the upload relay
+  (`<api>/memories/upload/<id>/<n>`, `upload-relay/relay.py` next to the proxy), chained in the
+  session delegate like live photos; the last piece returns Immich's own answer. Each piece is
+  tried 4 times. Without a relay (`GET <api>/memories/upload/config` fails) such items are
+  skipped and retried when the LAN URL is active, as before. On the LAN they go in one request.
 - **Wi-Fi only** (default on) sets `allowsCellularAccess`/`allowsExpensiveNetworkAccess` per
   request and pauses a pass on cellular. **Include videos** toggles video items.
 - State (`local identifier -> remote id`, skipped items, last run) persists in
   `Application Support/backup-state.json`.
-- Triggers: toggle on, *Back Up Now*, PhotoKit change observer, `BGProcessingTask`
+- A pass fills the session up to 10 uploads and returns; every finished upload tops it up
+  again, also when iOS relaunches the app in the background for session events (the refill
+  runs before the completion handler is called). Triggers besides that: toggle on, the app
+  coming to the foreground, *Back Up Now*, the PhotoKit change observer, `BGProcessingTask`
   (`it.davideghiotto.memories.backup`, ~25 min budget) and `BGAppRefreshTask`
-  (`…backup-refresh`, ~20 s). iOS decides when background tasks actually run.
+  (`…backup-refresh`, ~20 s). iOS decides when background tasks run; Low Power Mode pauses all of it.
+- Leaving home: uploads aimed at the LAN URL are cancelled when it stops answering (they would
+  wait up to a day in the background session, holding the queue) and re-queued on the public URL.
+- Failures: an item whose upload fails 3 times, or that Photos can't export (iCloud download),
+  is listed as skipped and tried again after an hour. Unsupported formats stay skipped.
 - In mock mode a pass enumerates and hashes the simulator's photos but uploads nothing.
 
 ## Free up space and Save to iPhone
@@ -144,7 +154,7 @@ Memories/
   Viewer/       ViewerView (paging, chrome, filmstrip), ZoomableImageView, players (AVKit, live photo), InfoSheet, ShareLink payload
   Collections/  Collections screen, album/person/favorites/trash grids, places map
   Memories/     Ken Burns slideshow
-  Search/       smart search + suggestion chips
+  Search/       sentence search via memories-search (falls back to Immich smart search) + chips
   Settings/     account, backup, home network
   Backup/       BackupManager, PhotoLibrarySource, BackgroundUploader, MultipartBody, models
 MemoriesTests/  Swift Testing: DTO decoding, thumbhash vs reference vectors, multipart, SHA-1, timeline, layout

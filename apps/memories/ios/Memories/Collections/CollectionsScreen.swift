@@ -48,6 +48,7 @@ struct CollectionsScreen: View {
     @Environment(AppModel.self) private var app
     @State private var model = CollectionsModel()
     @State private var path = NavigationPath()
+    @State private var naming: Person?
     @State private var playingMemory: Memory?
 
     var body: some View {
@@ -80,7 +81,7 @@ struct CollectionsScreen: View {
                 TimelineGridScreen(title: album.name, query: .album(id: album.id))
             }
             .navigationDestination(for: Person.self) { person in
-                TimelineGridScreen(title: person.name, query: .person(id: person.id))
+                PersonScreen(person: person)
             }
             .refreshable { await model.load(app.service) }
         }
@@ -88,6 +89,13 @@ struct CollectionsScreen: View {
             guard !model.loaded else { return }
             await model.load(app.service)
             if app.launch.openMemory, let m = model.memories.first { playingMemory = m }
+        }
+        .onChange(of: app.peopleVersion) {
+            Task { if let p = try? await app.service.people() { model.people = p } }
+        }
+        .sheet(item: $naming) { p in
+            NamePersonSheet(person: p) { _ in }
+                .environment(app)
         }
         .fullScreenCover(item: $playingMemory) { memory in
             MemoryPlayerView(memory: memory)
@@ -101,7 +109,7 @@ struct CollectionsScreen: View {
         case .timeline(let title, let query): TimelineGridScreen(title: title, query: query)
         case .metadata(let q): MetadataGridScreen(query: q)
         case .albums: AlbumsListView(albums: model.albums)
-        case .people: PeopleListView(people: model.people)
+        case .people: PeopleListView(people: model.people, naming: $naming)
         case .places: PlacesMapView()
         case .memories: MemoriesListView(memories: model.memories) { playingMemory = $0 }
         }
@@ -169,11 +177,13 @@ struct CollectionsScreen: View {
                                         .clipShape(.circle)
                                     Text(p.name.isEmpty ? "Add Name" : p.name)
                                         .font(.footnote.weight(.medium))
+                                        .foregroundStyle(p.name.isEmpty ? Theme.accent : .primary)
                                         .lineLimit(1)
                                 }
                                 .frame(width: 88)
                             }
                             .buttonStyle(.plain)
+                            .personContextMenu(p, naming: $naming)
                         }
                     }
                     .padding(.horizontal, 16)

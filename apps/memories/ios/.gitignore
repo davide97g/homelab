@@ -6,3 +6,5 @@ build/
 DerivedData/
 *.xcresult
 xcuserdata/
+store/review/demo-credentials.md
+build/

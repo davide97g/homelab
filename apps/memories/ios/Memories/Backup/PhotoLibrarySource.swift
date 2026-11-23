@@ -95,7 +95,16 @@ enum PhotoLibrarySource {
         }
     }
 
-    static func cleanStaging() {
-        try? FileManager.default.removeItem(at: stagingRoot)
+    /// Removes leftover staging folders: not used by a queued upload and older than `minAge`.
+    /// Never the whole root: between one relay piece finishing and the next starting no task is
+    /// in flight, and wiping it then deleted the next piece under the uploader (crash, 2026-11-23).
+    static func cleanStaging(keeping: Set<String>, minAge: TimeInterval = 6 * 3600) {
+        let fm = FileManager.default
+        guard let dirs = try? fm.contentsOfDirectory(at: stagingRoot, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
+        let cutoff = Date().addingTimeInterval(-minAge)
+        for d in dirs where !keeping.contains(d.lastPathComponent) {
+            let modified = (try? d.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            if modified < cutoff { try? fm.removeItem(at: d) }
+        }
     }
 }

@@ -13,6 +13,7 @@ struct ViewerView: View {
                 .ignoresSafeArea()
             if model.chromeVisible {
                 chrome
+                    .environment(\.colorScheme, .dark)
                     .transition(.opacity)
             }
         }
@@ -170,7 +171,7 @@ struct ViewerView: View {
             .buttonStyle(.plain)
             .glassEffect(.regular.interactive(), in: .circle)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(.primary)
     }
 
     private var bottomBar: some View {
@@ -217,7 +218,7 @@ struct ViewerView: View {
                 .accessibilityLabel("Delete")
             }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(.primary)
     }
 }
 

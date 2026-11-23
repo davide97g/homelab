@@ -1,9 +1,12 @@
 import Foundation
+import Synchronization
 import UIKit
 
 final class RemoteMediaService: MediaService {
     let api: APIClient
     var isMock: Bool { false }
+    /// False once the public URL answered 404 for sentence search (no memories-search there).
+    private let sentenceSearch = Mutex(true)
 
     init(api: APIClient) { self.api = api }
 
@@ -81,7 +84,36 @@ final class RemoteMediaService: MediaService {
 
     // MARK: Search
 
+    /// Sentence search through memories-search when the server has it, else Immich's own smart
+    /// search. Always via the public URL: the LAN address is Immich itself, without it.
     func smartSearch(_ text: String, page: Int) async throws -> SearchPage {
+        if sentenceSearch.withLock({ $0 }), let base = api.endpoints.current.publicAPI {
+            var req = URLRequest(url: base.appending(path: "memories/search"))
+            req.httpMethod = "POST"
+            for (k, v) in api.authHeaders { req.setValue(v, forHTTPHeaderField: k) }
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.setValue("application/json", forHTTPHeaderField: "Accept")
+            req.httpBody = try APIClient.encoder.encode(SentenceSearchRequestDto(query: text, page: page))
+            req.timeoutInterval = 40
+            do {
+                let data = try await api.perform(req)
+                let res = try JSONDecoder().decode(SentenceSearchResponseDto.self, from: data)
+                let info = res.memories.map {
+                    SearchInterpretation(
+                        people: $0.people ?? [], missingPeople: $0.missingPeople ?? [], visual: $0.visual ?? "",
+                        place: $0.place?.last, when: $0.when ?? "", media: $0.media ?? "any",
+                        favorite: $0.favorite ?? false, fallback: $0.fallback ?? false)
+                }
+                return SearchPage(assets: res.assets.items.map(Asset.init(dto:)),
+                                  nextPage: res.assets.nextPage.flatMap(Int.init), interpretation: info)
+            } catch APIError.unauthorized {
+                throw APIError.unauthorized
+            } catch APIError.http(404, _) {
+                sentenceSearch.withLock { $0 = false }
+            } catch {
+                // Public URL unreachable or the service is down: Immich's own search below.
+            }
+        }
         let dto = SmartSearchDto(query: text, size: 100, page: page, withExif: false)
         let res: SearchResponseDto = try await api.send("POST", "search/smart", body: dto)
         return SearchPage(assets: res.assets.items.map(Asset.init(dto:)), nextPage: res.assets.nextPage.flatMap(Int.init))
@@ -99,6 +131,18 @@ final class RemoteMediaService: MediaService {
     }
 
     // MARK: Mutations
+
+    func updatePerson(_ id: String, name: String?, isHidden: Bool?, isFavorite: Bool?) async throws {
+        let _: PersonResponseDto = try await api.send("PUT", "people/\(id)",
+                                                     body: PersonUpdateDto(name: name, isHidden: isHidden, isFavorite: isFavorite))
+    }
+
+    func mergePeople(into target: String, from sources: [String]) async throws {
+        let res: [BulkIdResponseDto] = try await api.send("POST", "people/\(target)/merge", body: MergePersonDto(ids: sources))
+        if let failed = res.first(where: { !$0.success }) {
+            throw APIError.http(400, "Couldn't merge: \(failed.error ?? "unknown error")")
+        }
+    }
 
     func setFavorite(_ ids: [String], _ value: Bool) async throws {
         try await api.sendNoContent("PUT", "assets", body: AssetBulkUpdateDto(ids: ids, isFavorite: value))

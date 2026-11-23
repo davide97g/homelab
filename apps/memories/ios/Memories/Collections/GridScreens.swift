@@ -128,6 +128,7 @@ struct AlbumsListView: View {
 
 struct PeopleListView: View {
     let people: [Person]
+    @Binding var naming: Person?
 
     var body: some View {
         ScrollView {
@@ -138,16 +139,31 @@ struct PeopleListView: View {
                             AssetImage(personID: p.id)
                                 .aspectRatio(1, contentMode: .fit)
                                 .clipShape(.circle)
-                            Text(p.name).font(.footnote.weight(.medium)).lineLimit(1)
+                            Text(p.name.isEmpty ? "Add Name" : p.name)
+                                .font(.footnote.weight(.medium))
+                                .foregroundStyle(p.name.isEmpty ? Theme.accent : .primary)
+                                .lineLimit(1)
                         }
                     }
                     .buttonStyle(.plain)
+                    .personContextMenu(p, naming: $naming)
                 }
             }
             .padding(16)
         }
         .background(Theme.groupedBackground)
         .navigationTitle("People & Pets")
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if people.contains(where: { $0.name.isEmpty }) {
+                Text("Tap a face, or touch and hold it, to add a name. Named people can be searched: \"foto di Marci al mare\".")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.bar)
+            }
+        }
     }
 }
 

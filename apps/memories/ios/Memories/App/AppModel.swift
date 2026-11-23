@@ -17,6 +17,8 @@ final class AppModel {
     var selectedTab: AppTab
     var showSettings = false
     var toast: String?
+    /// Bumped when a person is named, merged or hidden: people lists reload.
+    var peopleVersion = 0
     /// Mirrors `ServerEndpoints` for the UI.
     private(set) var usingLAN = false
     /// A TV code to approve: set by a `/memories/device?user_code=` link or Settings.
@@ -82,7 +84,10 @@ final class AppModel {
             Task { @MainActor in self?.handleUnauthorized() }
         }
         endpoints.setOnChange { [weak self] state in
-            Task { @MainActor in self?.usingLAN = state.usingLAN }
+            Task { @MainActor in
+                self?.usingLAN = state.usingLAN
+                self?.backup.endpointsChanged(usingLAN: state.usingLAN, lanHost: state.lanAPI?.host())
+            }
         }
         backup.onPassFinished = { [weak self] in self?.spaceSaver.maybeAutoClean() }
         endpoints.start()

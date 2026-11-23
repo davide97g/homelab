@@ -101,6 +101,22 @@ struct PersonResponseDto: Codable, Sendable, Hashable {
     let thumbnailPath: String
 }
 
+struct PersonUpdateDto: Codable, Sendable {
+    var name: String?
+    var isHidden: Bool?
+    var isFavorite: Bool?
+}
+
+struct MergePersonDto: Codable, Sendable {
+    let ids: [String]
+}
+
+struct BulkIdResponseDto: Codable, Sendable {
+    let id: String
+    let success: Bool
+    let error: String?
+}
+
 struct PeopleResponseDto: Codable, Sendable {
     let people: [PersonResponseDto]
     let total: Int
@@ -205,6 +221,30 @@ struct SearchAssetResponseDto: Codable, Sendable {
 
 struct SearchResponseDto: Codable, Sendable {
     let assets: SearchAssetResponseDto
+}
+
+/// `POST <public api>/memories/search` (apps/memories/search): Immich's search response plus
+/// how the sentence was read.
+struct SentenceSearchRequestDto: Codable, Sendable {
+    let query: String
+    var page: Int = 1
+    var size: Int = 100
+    var withExif: Bool = false
+}
+
+struct SentenceSearchResponseDto: Decodable, Sendable {
+    struct Info: Decodable, Sendable {
+        var fallback: Bool?
+        var people: [String]?
+        var missingPeople: [String]?
+        var visual: String?
+        var place: [String]?
+        var when: String?
+        var media: String?
+        var favorite: Bool?
+    }
+    let assets: SearchAssetResponseDto
+    let memories: Info?
 }
 
 struct AssetBulkUpdateDto: Codable, Sendable {

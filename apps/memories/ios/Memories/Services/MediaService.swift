@@ -50,6 +50,11 @@ protocol MediaService: Sendable {
     func smartSearch(_ text: String, page: Int) async throws -> SearchPage
     func metadataSearch(_ query: MetadataQuery, page: Int) async throws -> SearchPage
 
+    /// Name, hide or favourite a face cluster (`PUT /people/{id}`). nil leaves a field alone.
+    func updatePerson(_ id: String, name: String?, isHidden: Bool?, isFavorite: Bool?) async throws
+    /// Folds `sources` into `target` (`POST /people/{target}/merge`): same person, split by Immich.
+    func mergePeople(into target: String, from sources: [String]) async throws
+
     func setFavorite(_ ids: [String], _ value: Bool) async throws
     func trash(_ ids: [String]) async throws
     func restore(_ ids: [String]) async throws

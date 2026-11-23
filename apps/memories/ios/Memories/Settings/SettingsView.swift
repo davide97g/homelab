@@ -53,7 +53,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Backup")
                 } footer: {
-                    Text("Originals and live photos go to your server in the background. Files over 100 MB are skipped on the public URL (Cloudflare's limit) and sent when the home network URL is reachable.")
+                    Text("Originals and live photos go to your server in the background. Files over 100 MB are sent in pieces on the public URL (Cloudflare's limit is 100 MB per request) and in one go on the home network.")
                 }
 
                 if !backup.skipped.isEmpty {

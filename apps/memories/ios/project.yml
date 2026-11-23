@@ -11,8 +11,8 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    MARKETING_VERSION: "0.2.0"
-    CURRENT_PROJECT_VERSION: "2"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "3"
     # Automatic signing placeholder: set your team in Xcode (Signing & Capabilities)
     # or pass DEVELOPMENT_TEAM=XXXXXXXXXX to xcodebuild. Nothing else is configured.
     CODE_SIGN_STYLE: Automatic

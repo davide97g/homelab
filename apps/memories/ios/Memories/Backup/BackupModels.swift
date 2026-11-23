@@ -44,6 +44,26 @@ struct UploadJob: Codable, Sendable {
     var livePhotoVideoId: String?
     /// For a live video: the photo to send once the video has an id.
     var pairedPhoto: UploadPart?
+    /// Set when the body is over Cloudflare's cap and goes in pieces through the relay.
+    var chunks: ChunkPlan? = nil
+}
+
+/// A body too big for one request through Cloudflare, cut into pieces that are PUT one after
+/// another to the relay next to the proxy (`<public api>/memories/upload/<id>/<index>`, see
+/// apps/memories/upload-relay). The relay answers 202 per piece and, on the last one, posts
+/// the reassembled body to Immich and returns Immich's answer.
+struct ChunkPlan: Codable, Sendable {
+    var uploadID: String
+    /// The public API URL the relay lives under (fixed for the whole upload).
+    var base: URL
+    var files: [URL]
+    var index: Int
+    /// Bytes in the pieces before `index`, and in all of them (progress).
+    var offset: Int64
+    var total: Int64
+    var contentType: String
+    /// Tries of the current piece.
+    var attempt: Int
 }
 
 struct BackupRecord: Codable, Sendable, Equatable {
@@ -75,6 +95,8 @@ struct SkippedItem: Codable, Sendable, Identifiable, Equatable {
     var reason: Reason
     var detail: String
     var size: Int64?
+    /// When it was skipped; `.failed` items get another go after a while (absent before 0.3).
+    var at: Date? = nil
     var id: String { localId }
 }
 
@@ -103,4 +125,6 @@ enum Checksum {
 /// Cloudflare's free plan rejects request bodies over 100 MB on the public hostname.
 enum UploadLimits {
     static let publicBodyLimit: Int64 = 100 * 1_000_000 - 64 * 1024
+    /// Piece size for the relay; it may ask for smaller (`maxChunkSize` in its config).
+    static let chunkSize: Int64 = 90 * 1_000_000
 }

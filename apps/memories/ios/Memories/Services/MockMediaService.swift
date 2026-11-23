@@ -286,6 +286,14 @@ final class MockMediaService: MediaService {
         return SearchPage(assets: withThumbhashes(slice), nextPage: hits.count > page * size ? page + 1 : nil)
     }
 
+    func updatePerson(_ id: String, name: String?, isHidden: Bool?, isFavorite: Bool?) async throws {
+        try await pause(80...150)
+    }
+
+    func mergePeople(into target: String, from sources: [String]) async throws {
+        try await pause(80...150)
+    }
+
     func setFavorite(_ ids: [String], _ value: Bool) async throws {
         try await pause(80...150)
         mutable.withLock { s in for id in ids { s.favorites[id] = value } }

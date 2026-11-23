@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// Smart (CLIP) search. Empty field: suggestion chips for people, places and categories.
+/// Search with a sentence ("Marci eating at the beach last summer"): memories-search on the
+/// server reads it (people, what's in the photo, place, dates) and runs Immich's smart search;
+/// plain CLIP search when the server doesn't have it. Empty field: suggestion chips.
 struct SearchScreen: View {
     @Environment(AppModel.self) private var app
     @State private var text = ""
@@ -27,13 +29,16 @@ struct SearchScreen: View {
             }
             .navigationTitle("Search")
             .navigationDestination(for: Person.self) { p in
-                TimelineGridScreen(title: p.name, query: .person(id: p.id))
+                PersonScreen(person: p)
             }
         }
-        .searchable(text: $text, prompt: "Photos, People, Places…")
+        .searchable(text: $text, prompt: "Marci eating at the beach last summer…")
         .onSubmit(of: .search) { run(text) }
         .onChange(of: text) { _, new in
             if new.isEmpty { submitted = nil; results = nil }
+        }
+        .onChange(of: app.peopleVersion) {
+            Task { if let p = try? await app.service.people() { people = p } }
         }
         .task {
             if people.isEmpty { people = (try? await app.service.people()) ?? [] }
@@ -99,7 +104,7 @@ struct SearchScreen: View {
                     ChipFlow(items: categories, onTap: search)
                         .padding(.horizontal, 16)
                 }
-                Text("Search understands what's in a photo (\"red car at night\", \"birthday cake\"), powered by Immich's smart search.")
+                Text("Write it like you'd say it: \"Marci eating pizza in Naples\", \"videos at the beach in 2024\", \"Grandma's favorites last summer\". People need a name in Immich to be found.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 16)
@@ -122,7 +127,55 @@ struct SearchScreen: View {
         } else {
             ResultsGrid(store: store)
                 .id(ObjectIdentifier(store))
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if let info = store.interpretation { InterpretationBar(info: info) }
+                }
         }
+    }
+}
+
+/// "Marci · eating · Rome · 06/2022": how the sentence was read, so a wrong guess is visible.
+private struct InterpretationBar: View {
+    let info: SearchInterpretation
+
+    private var chips: [(String, String)] {
+        var c: [(String, String)] = info.people.map { ($0.capitalized, "person.fill") }
+        if !info.visual.isEmpty, !info.fallback { c.append((info.visual, "eye")) }
+        if let place = info.place { c.append((place, "mappin.and.ellipse")) }
+        if !info.when.isEmpty { c.append((info.when, "calendar")) }
+        if info.media == "video" { c.append(("Videos", "video.fill")) }
+        if info.media == "photo" { c.append(("Photos", "photo")) }
+        if info.favorite { c.append(("Favorites", "heart.fill")) }
+        return c
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(chips, id: \.0) { chip in
+                        Label(chip.0, systemImage: chip.1)
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 10)
+                            .frame(height: 28)
+                            .glassEffect(.regular, in: .capsule)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            if !info.missingPeople.isEmpty {
+                Text("No one named \(info.missingPeople.map { "“\($0)”" }.joined(separator: ", ")) yet: name their face in People and search again.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+            } else if info.fallback {
+                Text("Searched for the words as typed (the server's language model didn't answer).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+            }
+        }
+        .padding(.vertical, 8)
     }
 }
 

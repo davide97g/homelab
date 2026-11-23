@@ -418,6 +418,9 @@ final class PhotoGridViewController: UIViewController, UICollectionViewDataSourc
         let model = ViewerModel(source: source, startIndex: index, app: app)
         let host = UIHostingController(rootView: ViewerView(model: model).environment(app))
         host.view.backgroundColor = .black
+        // The viewer is always dark. `.preferredColorScheme` inside a UIKit-presented host
+        // doesn't reach the glass, which then went light on bright photos with white icons.
+        host.overrideUserInterfaceStyle = .dark
         model.dismissAction = { [weak host] in host?.dismiss(animated: true) }
 
         let options = UIViewController.Transition.ZoomOptions()

@@ -223,9 +223,7 @@ final class SpaceSaver {
         phase = .waitingForConfirmation
         let ids = toDelete.map(\.localId)
         do {
-            try await PHPhotoLibrary.shared().performChanges {
-                PHAssetChangeRequest.deleteAssets(PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil))
-            }
+            try await PHPhotoLibrary.shared().performChanges(PhotoChanges.delete(ids))
         } catch {
             let ns = error as NSError
             if ns.domain == PHPhotosErrorDomain, ns.code == PHPhotosError.userCancelled.rawValue {
@@ -331,21 +329,9 @@ final class SpaceSaver {
         let location = asset.coordinate.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }
         let mainURL = main, pairedURL = paired
         let box = PlaceholderBox()
-        try await PHPhotoLibrary.shared().performChanges {
-            let req = PHAssetCreationRequest.forAsset()
-            let opts = PHAssetResourceCreationOptions()
-            opts.originalFilename = mainURL.lastPathComponent
-            req.addResource(with: isVideo ? .video : .photo, fileURL: mainURL, options: opts)
-            if let pairedURL {
-                let v = PHAssetResourceCreationOptions()
-                v.originalFilename = pairedURL.lastPathComponent
-                req.addResource(with: .pairedVideo, fileURL: pairedURL, options: v)
-            }
-            if created > .distantPast { req.creationDate = created }
-            req.isFavorite = favorite
-            if let location { req.location = location }
-            box.localId = req.placeholderForCreatedAsset?.localIdentifier
-        }
+        try await PHPhotoLibrary.shared().performChanges(PhotoChanges.create(
+            main: mainURL, paired: pairedURL, isVideo: isVideo, created: created, favorite: favorite,
+            location: location, box: box))
         if let localId = box.localId, let record {
             backup.adopt(localId: localId, record: record)
         }
@@ -364,4 +350,34 @@ final class SpaceSaver {
 
 private final class PlaceholderBox: @unchecked Sendable {
     var localId: String?
+}
+
+/// Change blocks for `PHPhotoLibrary.performChanges`, built outside the main actor. Photos runs
+/// them on its own queue; a closure written inline in a @MainActor class inherits main-actor
+/// isolation, and Swift 6 traps when it runs elsewhere (the free-up-space crash, 2026-11-23).
+private enum PhotoChanges {
+    static func delete(_ ids: [String]) -> @Sendable () -> Void {
+        {
+            PHAssetChangeRequest.deleteAssets(PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil))
+        }
+    }
+
+    static func create(main: URL, paired: URL?, isVideo: Bool, created: Date, favorite: Bool,
+                       location: CLLocation?, box: PlaceholderBox) -> @Sendable () -> Void {
+        {
+            let req = PHAssetCreationRequest.forAsset()
+            let opts = PHAssetResourceCreationOptions()
+            opts.originalFilename = main.lastPathComponent
+            req.addResource(with: isVideo ? .video : .photo, fileURL: main, options: opts)
+            if let paired {
+                let v = PHAssetResourceCreationOptions()
+                v.originalFilename = paired.lastPathComponent
+                req.addResource(with: .pairedVideo, fileURL: paired, options: v)
+            }
+            if created > .distantPast { req.creationDate = created }
+            req.isFavorite = favorite
+            if let location { req.location = location }
+            box.localId = req.placeholderForCreatedAsset?.localIdentifier
+        }
+    }
 }

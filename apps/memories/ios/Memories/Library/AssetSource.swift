@@ -263,6 +263,8 @@ final class AssetListStore: AssetSource {
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private(set) var hasLoaded = false
+    /// From the first page of a sentence search.
+    private(set) var interpretation: SearchInterpretation?
     @ObservationIgnored private var nextPage: Int? = 1
     @ObservationIgnored private let fetch: Fetch
     @ObservationIgnored private let hub = ListenerHub()
@@ -302,6 +304,7 @@ final class AssetListStore: AssetSource {
         defer { isLoading = false }
         do {
             let result = try await fetch(page)
+            if page == 1 { interpretation = result.interpretation }
             assets.append(contentsOf: result.assets)
             nextPage = result.nextPage
             errorMessage = nil

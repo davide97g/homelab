@@ -91,6 +91,17 @@ struct DTODecodingTests {
         #expect(res.first?.data.year == 2021)
     }
 
+    /// memories-search: Immich's response plus `memories` (null fields from a fallback too).
+    @Test func sentenceSearch() throws {
+        let json = #"{"assets":{"count":0,"total":0,"items":[],"nextPage":"2","nextCursor":null},"memories":{"query":"q","model":"qwen3:4b","seconds":3.1,"fallback":false,"people":["marci"],"personIds":["p1"],"missingPeople":[],"visual":"eating","place":["city","Rome"],"media":"any","favorite":false,"when":"06/2022","takenAfter":"2022-06-01T00:00:00.000Z","takenBefore":null,"endpoint":"smart"}}"#
+        let res = try JSONDecoder().decode(SentenceSearchResponseDto.self, from: Data(json.utf8))
+        #expect(res.assets.nextPage == "2")
+        #expect(res.memories?.people == ["marci"])
+        #expect(res.memories?.place?.last == "Rome")
+        let plain = try JSONDecoder().decode(SentenceSearchResponseDto.self, from: Data(#"{"assets":{"count":0,"total":0,"items":[],"nextPage":null,"nextCursor":null}}"#.utf8))
+        #expect(plain.memories == nil)
+    }
+
     @Test func uploadCheck() throws {
         let json = #"{"results":[{"id":"L|single","action":"reject","reason":"duplicate","assetId":"srv","isTrashed":false},{"id":"M|single","action":"accept"}]}"#
         let res = try decode(AssetBulkUploadCheckResponseDto.self, json)

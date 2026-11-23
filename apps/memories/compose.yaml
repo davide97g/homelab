@@ -18,10 +18,75 @@ services:
       - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro
     environment:
       IMMICH_UPSTREAM: http://immich_server:2283
+      RELAY_UPSTREAM: http://memories-upload:8080
+      SEARCH_UPSTREAM: http://memories-search:8080
     # Loopback only: cloudflared runs on the host and is the one caller.
     # The LAN keeps using :2283 directly.
     ports:
       - "127.0.0.1:2284:80"
+    networks:
+      - immich
+
+  # Chunked uploads: Cloudflare caps one request at 100 MB, so the iPhone app sends big
+  # files in pieces to <api>/memories/upload/... and this puts them back together and posts
+  # them to Immich. See upload-relay/relay.py. Not published: only the proxy reaches it.
+  memories-upload:
+    image: python:3.13-alpine
+    container_name: memories-upload
+    restart: unless-stopped
+    command: ["python", "-u", "/app/relay.py"]
+    volumes:
+      - ./upload-relay/relay.py:/app/relay.py:ro
+      # On the data volume, not /home: pieces of a 10 GB video add up, and a UGOS update
+      # wipes /home (2026-11-08).
+      - /volume1/docker/memories-upload:/data
+    environment:
+      IMMICH_UPSTREAM: http://immich_server:2283
+    networks:
+      - immich
+
+  # Search with a sentence: POST <api>/memories/search -> LLM plan -> Immich smart/metadata
+  # search. See search/search.py. The LLM is swappable: any OpenAI-compatible endpoint.
+  #   cloud example: LLM_URL=https://api.deepseek.com/v1 LLM_KEY=... LLM_MODEL=deepseek-chat
+  #                  LLM_JSON=object LLM_EXTRA={}
+  # Keys go in ./search.env (not in git), which overrides the defaults below.
+  memories-search:
+    image: python:3.13-alpine
+    container_name: memories-search
+    restart: unless-stopped
+    command: ["python", "-u", "/app/search.py"]
+    volumes:
+      - ./search/search.py:/app/search.py:ro
+    environment:
+      IMMICH_UPSTREAM: http://immich_server:2283
+      LLM_URL: http://memories-llm:11434/v1
+      LLM_MODEL: qwen3:4b
+      LLM_JSON: schema
+      # Qwen3 "thinks" by default and spends the whole answer on it.
+      LLM_EXTRA: '{"reasoning_effort": "none"}'
+      LLM_TIMEOUT: "15"
+    env_file:
+      - path: ./search.env
+        required: false
+    networks:
+      - immich
+
+  # Small local LLM that turns a search sentence ("foto di marci che mangia") into Immich
+  # filters for memories-search. CPU only (i3-1315U); the model stays loaded. Loopback port
+  # only for poking at it from the NAS shell.
+  memories-llm:
+    image: ollama/ollama:0.40.17
+    container_name: memories-llm
+    restart: unless-stopped
+    volumes:
+      - /volume1/docker/ollama:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    mem_limit: 6g
+    ports:
+      - "127.0.0.1:11434:11434"
     networks:
       - immich
 

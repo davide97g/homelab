@@ -36,6 +36,8 @@ struct RootView: View {
         // Automatic "free up space" asks only in the foreground (iOS shows its own prompt).
         .onChange(of: scenePhase, initial: true) { _, phase in
             guard phase == .active, app.phase == .ready else { return }
+            // Every time the app comes forward, so backup never waits for a library change.
+            app.backup.appBecameActive()
             Task {
                 try? await Task.sleep(for: .seconds(4))
                 app.spaceSaver.maybeAutoClean()
