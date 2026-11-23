@@ -8,7 +8,7 @@ history from before the merge, under `apps/`.
 
 | Path | What |
 |---|---|
-| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/), [site](apps/site/) |
+| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/), [site](apps/site/), [status](apps/status/) |
 | [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
 | [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md) |
 | [`hosts/`](hosts/) | Per-host notes: [the NAS](hosts/nas.md) |
@@ -36,6 +36,7 @@ On the box, `~` is laid out as:
 | Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
 | Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
 | JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | server: push to `main`. APK: `scripts/deploy-tv.sh` |
+| Status page: public uptime, 90 days | `apps/status` | Cloudflare Worker; probes and publisher on the mini PC | `status.davideghiotto.it` | `apps/status/worker/deploy.sh` |
 | Landing page: the homelab explained simply | `apps/site` | mini PC, `~/homelab-site` | `homelab.davideghiotto.it` | `apps/site/deploy/deploy.sh` |
 | Dirette YouTube: Ciamioncino Ring Road | `apps/youtube-live` | mini PC, Dokploy | none | [local image and OBS recording](apps/youtube-live/) |
 | Local AI: Ollama, LiteLLM (Open WebUI off since 2026-11-03) | `apps/local-ai` | mini PC, Dokploy | `llm.davideghiotto.it` | push to `main` |
