@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stato · Homelab di Davide</title>
+<meta name="description" content="Cosa funziona adesso nel homelab di Davide, e come è andata negli ultimi 90 giorni.">
+<meta name="theme-color" content="#f5f5f7">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='%2334c759'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f5f5f7; --card: #fff; --ink: #1d1d1f; --muted: #6e6e73; --soft: #86868b;
+    --line: #d2d2d7; --link: #0066cc;
+    --ok: #34c759; --ok-ink: #248a3d; --minor: #a8c93a; --warn: #ff9f0a; --warn-ink: #b25000;
+    --down: #ff3b30; --down-ink: #d70015; --none: #e3e3e8;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Tight", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.47 var(--font); letter-spacing: -0.022em; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 56px 16px 72px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 40px; line-height: 1.1; letter-spacing: -0.03em; margin: 0; font-weight: 700; }
+  header a { font-size: 15px; }
+
+  .banner { margin: 32px 0 40px; border-radius: 20px; padding: 22px 26px; color: #fff; background: var(--soft); }
+  .banner strong { display: block; font-size: 22px; letter-spacing: -0.02em; }
+  .banner span { display: block; margin-top: 2px; font-size: 15px; opacity: .92; }
+  .banner.ok { background: var(--ok); }
+  .banner.warn { background: var(--warn); }
+  .banner.down { background: var(--down); }
+
+  .legend { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 14px; margin: 0 4px 10px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin: 36px 4px 10px; }
+  .card { background: var(--card); border-radius: 20px; overflow: hidden; }
+  .row { padding: 20px 24px 16px; }
+  .row + .row { border-top: 1px solid #ececf0; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .name { font-weight: 600; }
+  .name a { color: inherit; }
+  .state { font-size: 15px; font-weight: 500; white-space: nowrap; }
+  .state.ok { color: var(--ok-ink); } .state.warn { color: var(--warn-ink); }
+  .state.down { color: var(--down-ink); } .state.none { color: var(--soft); }
+  .bars { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 2px; height: 34px; margin-top: 12px; }
+  .bars i { display: block; border-radius: 2px; background: var(--none); position: relative; }
+  .bars i.ok { background: var(--ok); } .bars i.minor { background: var(--minor); }
+  .bars i.warn { background: var(--warn); } .bars i.down { background: var(--down); }
+  .bars i:hover, .bars i:focus { opacity: .7; outline: none; }
+  .foot { display: flex; align-items: center; gap: 12px; margin-top: 8px; color: var(--soft); font-size: 13px; }
+  .foot .rule { flex: 1; height: 1px; background: #ececf0; }
+  .foot .pct { color: var(--muted); }
+
+  .tip { position: fixed; z-index: 10; pointer-events: none; background: var(--ink); color: #fff; font-size: 13px; line-height: 1.35; padding: 8px 10px; border-radius: 10px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); display: none; }
+
+  footer { margin-top: 48px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+  footer p { margin: 0 0 8px; max-width: 62ch; }
+
+  @media (max-width: 640px) {
+    .wrap { padding-top: 32px; }
+    h1 { font-size: 30px; }
+    .row { padding: 16px 16px 14px; }
+    .bars { height: 28px; gap: 1px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Stato del homelab</h1>
+    <a href="https://homelab.davideghiotto.it/">Cos'è il homelab →</a>
+  </header>
+
+  <div class="banner" id="banner"><strong>Carico lo stato…</strong><span>&nbsp;</span></div>
+
+  <div class="legend"><span id="updated">&nbsp;</span><span id="range">Ultimi 90 giorni</span></div>
+  <main id="groups"></main>
+
+  <footer>
+    <p>Ogni minuto il server di casa apre ciascuna pagina come farebbe un visitatore, passando da internet. Ogni cinque minuti manda qui il risultato.</p>
+    <p>Questa pagina non gira sul server di casa: se lui si spegne, lei resta su e lo dice.</p>
+    <p>Una barra è un giorno. Verde vuol dire che ha sempre risposto, il grigio che quel giorno non stavo ancora controllando.</p>
+  </footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+(function () {
+  "use strict";
+  var STALE_AFTER = 15 * 60;              // seconds without a snapshot before we call the box silent
+  var GROUP_ORDER = ["Media", "AI", "Giochi", "App", "Siti"];
+  var fmtDay = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", year: "numeric" });
+  var fmtTime = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" });
+  var fmtWhen = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  var $ = function (id) { return document.getElementById(id); };
+
+  function pct(x) {
+    if (x == null) return "—";
+    var p = x * 100;
+    var s = p >= 99.995 ? "100" : p >= 99 ? p.toFixed(2) : p.toFixed(1);
+    return s.replace(".", ",") + "%";
+  }
+  function dayClass(u) {
+    if (u == null) return "";
+    if (u >= 0.9995) return "ok";
+    if (u >= 0.99) return "minor";
+    if (u >= 0.95) return "warn";
+    return "down";
+  }
+  var STATE = {
+    up: ["ok", "Funziona"], degraded: ["warn", "A singhiozzo"],
+    down: ["down", "Non risponde"], unknown: ["none", "Non so"]
+  };
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function render(data) {
+    var now = Date.now() / 1000;
+    var stale = !data.generated_at || now - data.generated_at > STALE_AFTER;
+    var services = data.services || [];
+    var narrow = window.matchMedia("(max-width: 640px)").matches;
+    var showDays = narrow ? 30 : 90;
+    $("range").textContent = "Ultimi " + showDays + " giorni";
+
+    var down = 0, degraded = 0;
+    services.forEach(function (s) {
+      if (stale) s.status = "unknown";
+      if (s.status === "down") down++;
+      if (s.status === "degraded") degraded++;
+    });
+
+    var b = $("banner"), strong = b.querySelector("strong"), span = b.querySelector("span");
+    if (stale) {
+      b.className = "banner down";
+      strong.textContent = "Il server di casa non si fa sentire";
+      span.textContent = data.generated_at
+        ? "Ultimo segnale alle " + fmtWhen.format(new Date(data.generated_at * 1000)) + ". Probabilmente è spento o senza internet, e con lui tutto quello che c'è qui sotto."
+        : "Non ho ancora ricevuto nessun dato.";
+    } else if (down) {
+      b.className = "banner down";
+      strong.textContent = down === 1 ? "Un servizio non risponde" : down + " servizi non rispondono";
+      span.textContent = "Gli altri funzionano. Me ne arriva avviso, ci sto guardando.";
+    } else if (degraded) {
+      b.className = "banner warn";
+      strong.textContent = "Qualcosa va a singhiozzo";
+      span.textContent = "Negli ultimi minuti alcune pagine non hanno sempre risposto.";
+    } else {
+      b.className = "banner ok";
+      strong.textContent = "Funziona tutto";
+      span.textContent = services.length + " servizi, tutti raggiungibili da internet adesso.";
+    }
+    $("updated").textContent = data.generated_at
+      ? "Aggiornato alle " + fmtTime.format(new Date(data.generated_at * 1000))
+      : "";
+
+    var groups = {};
+    services.forEach(function (s) { (groups[s.group] = groups[s.group] || []).push(s); });
+    var names = Object.keys(groups).sort(function (a, b) {
+      var ia = GROUP_ORDER.indexOf(a), ib = GROUP_ORDER.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+    });
+
+    var root = $("groups");
+    root.textContent = "";
+    names.forEach(function (g) {
+      root.appendChild(el("h2", null, g));
+      var card = el("section", "card");
+      groups[g].forEach(function (s) {
+        var row = el("div", "row");
+        var top = el("div", "top");
+        var name = el("div", "name");
+        var a = el("a", null, s.name); a.href = s.url; a.rel = "noopener";
+        name.appendChild(a);
+        var st = STATE[s.status] || STATE.unknown;
+        top.appendChild(name);
+        top.appendChild(el("div", "state " + st[0], st[1]));
+        row.appendChild(top);
+
+        var days = (s.days || []).slice(-showDays);
+        var bars = el("div", "bars");
+        bars.style.setProperty("--n", days.length || 1);
+        days.forEach(function (d) {
+          var i = el("i", dayClass(d.uptime));
+          i.tabIndex = 0;
+          i.dataset.tip = fmtDay.format(new Date(d.date + "T12:00:00")) + "\n" +
+            (d.uptime == null ? "Nessun dato" : pct(d.uptime) + " del tempo raggiungibile");
+          bars.appendChild(i);
+        });
+        row.appendChild(bars);
+
+        var foot = el("div", "foot");
+        foot.appendChild(el("span", null, showDays + " giorni fa"));
+        foot.appendChild(el("span", "rule"));
+        foot.appendChild(el("span", "pct", s.uptime == null ? "nessun dato" : pct(s.uptime)));
+        foot.appendChild(el("span", "rule"));
+        foot.appendChild(el("span", null, "Oggi"));
+        row.appendChild(foot);
+        card.appendChild(row);
+      });
+      root.appendChild(card);
+    });
+  }
+
+  // One tooltip for every bar.
+  var tip = $("tip");
+  function show(e) {
+    var t = e.target;
+    if (!t.dataset || !t.dataset.tip) return;
+    var r = t.getBoundingClientRect();
+    tip.textContent = t.dataset.tip;
+    tip.style.whiteSpace = "pre";
+    tip.style.display = "block";
+    var x = Math.min(Math.max(r.left + r.width / 2, tip.offsetWidth / 2 + 8), window.innerWidth - tip.offsetWidth / 2 - 8);
+    tip.style.left = x + "px";
+    tip.style.top = r.top + "px";
+  }
+  function hide() { tip.style.display = "none"; }
+  document.addEventListener("mouseover", show);
+  document.addEventListener("focusin", show);
+  document.addEventListener("mouseout", hide);
+  document.addEventListener("focusout", hide);
+  window.addEventListener("scroll", hide, { passive: true });
+
+  var last = null;
+  function load() {
+    fetch("/status.json", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (d) { last = d; render(d); })
+      .catch(function () { if (last) render(last); });
+  }
+  load();
+  setInterval(load, 60 * 1000);
+  window.matchMedia("(max-width: 640px)").addEventListener("change", function () { if (last) render(last); });
+})();
+</script>
+</body>
+</html>

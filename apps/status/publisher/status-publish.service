@@ -1,0 +1,7 @@
+[Unit]
+Description=Publish the homelab status snapshot to status.davideghiotto.it
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/ops/status/publish.py
+TimeoutStartSec=2min

@@ -21,7 +21,7 @@ services:
     image: prom/prometheus:v3.15.1
     container_name: homelab-prometheus
     labels:
-      homelab.configs-hash: "d24e38f187d2"
+      homelab.configs-hash: "680fb67e0b42"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -297,6 +297,24 @@ services:
     networks:
       - monitoring
 
+  # Probes the public hostnames for the status page (job blackbox-public).
+  blackbox:
+    image: prom/blackbox-exporter:v0.27.0
+    container_name: homelab-blackbox
+    labels:
+      homelab.configs-hash: "83affb8fb807"
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    configs:
+      - source: blackbox_yml
+        target: /etc/blackbox/blackbox.yml
+    networks:
+      - monitoring
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
   # Turns firing Prometheus rules into Telegram messages. No port: only
   # Prometheus talks to it, over the stack network.
   alertmanager:
@@ -355,6 +373,67 @@ configs:
               - targets: ["alertmanager:9093"]
 
       scrape_configs:
+        # The public status page (apps/status). Every public hostname, probed
+        # from the box the way a visitor reaches it: public DNS, Cloudflare,
+        # back down the tunnel. `service` and `group` are what the page shows;
+        # adding a line here is all it takes to add a row there.
+        - job_name: blackbox-public
+          scrape_interval: 60s
+          scrape_timeout: 15s
+          metrics_path: /probe
+          params:
+            module: [http_2xx]
+          static_configs:
+            - targets: ["https://cinema.davideghiotto.it/"]
+              labels: {service: "Cinema", group: "Media"}
+            - targets: ["https://memories.davideghiotto.it/"]
+              labels: {service: "Memories", group: "Media"}
+            - targets: ["https://accounts.davideghiotto.it/"]
+              labels: {service: "Accounts", group: "Media"}
+            - targets: ["https://manga.davideghiotto.it/"]
+              labels: {service: "Manga", group: "Media"}
+            - targets: ["https://llm.davideghiotto.it/"]
+              labels: {service: "LLM API", group: "AI"}
+            - targets: ["https://aftergrowth.davideghiotto.it/"]
+              labels: {service: "Aftergrowth", group: "Giochi"}
+            - targets: ["https://ciamioncino.davideghiotto.it/"]
+              labels: {service: "Ciamioncino", group: "Giochi"}
+            - targets: ["https://zootycoon.davideghiotto.it/"]
+              labels: {service: "Zoolandia", group: "Giochi"}
+            - targets: ["https://isoworld.davideghiotto.it/"]
+              labels: {service: "Isoworld", group: "Giochi"}
+            - targets: ["https://touchgrass.davideghiotto.it/"]
+              labels: {service: "Touchgrass", group: "Giochi"}
+            - targets: ["https://calorico.davideghiotto.it/"]
+              labels: {service: "Calorico", group: "App"}
+            - targets: ["https://thumb.davideghiotto.it/"]
+              labels: {service: "Thumb Studio", group: "App"}
+            - targets: ["https://cassette.davideghiotto.it/"]
+              labels: {service: "Cassette", group: "App"}
+            - targets: ["https://echo.davideghiotto.it/"]
+              labels: {service: "Echo", group: "App"}
+            - targets: ["https://homelab.davideghiotto.it/"]
+              labels: {service: "Homelab", group: "Siti"}
+            - targets: ["https://videogiochi.davideghiotto.it/"]
+              labels: {service: "Videogiochi", group: "Siti"}
+            - targets: ["https://slowgram.davideghiotto.it/"]
+              labels: {service: "Slowgram", group: "Siti"}
+            - targets: ["https://buriko.davideghiotto.it/"]
+              labels: {service: "Buriko", group: "Siti"}
+            - targets: ["https://get-riddle.davideghiotto.it/"]
+              labels: {service: "Riddle", group: "Siti"}
+            - targets: ["https://keybordy.davideghiotto.it/"]
+              labels: {service: "Keybordy", group: "Siti"}
+            - targets: ["https://jazsbo.davideghiotto.it/"]
+              labels: {service: "Jazsbo", group: "Siti"}
+          relabel_configs:
+            - source_labels: [__address__]
+              target_label: __param_target
+            - source_labels: [__param_target]
+              target_label: instance
+            - target_label: __address__
+              replacement: blackbox:9115
+
         - job_name: prometheus
           static_configs:
             - targets: ["localhost:9090"]
@@ -678,6 +757,19 @@ configs:
                 severity: warning
               annotations:
                 summary: backup.prom is not being read — is the backup timer installed?
+
+  blackbox_yml:
+    content: |
+      modules:
+        http_2xx:
+          prober: http
+          timeout: 12s
+          http:
+            preferred_ip_protocol: ip4
+            follow_redirects: true
+            # 2xx only. A tunnel with its origin down answers 502/530, which is
+            # exactly what this has to catch.
+            valid_status_codes: []
 
   # Compose fills in the two ${...}; Go templates ({{ }}) pass through untouched.
   alertmanager_yml:

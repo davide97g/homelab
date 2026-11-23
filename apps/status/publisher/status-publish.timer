@@ -1,0 +1,9 @@
+[Unit]
+Description=Publish the status page snapshot every 5 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
