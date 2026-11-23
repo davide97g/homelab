@@ -25,7 +25,10 @@
 #   tick.tsv      at  note                          the last run
 #   nas.tsv       free_kb  at
 #
-# Nothing is ever deleted, here or on the NAS. Same transport as xfer-nas.sh
+# Once a file is md5-verified on the NAS it is deleted here, after its movie
+# (Radarr) or episode (Sonarr) is unmonitored so nothing grabs it again -- see
+# nas-sync-cleanup.py. DELETE_AFTER=0 turns that off. Nothing is ever deleted on
+# the NAS. Same transport as xfer-nas.sh
 # and for the same reason (the NAS's rsync rejects every path): resume by
 # appending the missing tail over ssh, then md5 on both ends.
 #
@@ -45,6 +48,9 @@ QUIET_MIN="${QUIET_MIN:-5}"
 HEADROOM_GB="${HEADROOM_GB:-5}"
 # Network retries per file per run; a file that still fails waits for the next run.
 RETRIES="${RETRIES:-3}"
+# Delete the local copy (and unmonitor it) once verified on the NAS.
+DELETE_AFTER="${DELETE_AFTER:-1}"
+CLEANUP="${CLEANUP:-$(dirname "$(readlink -f "$0")")/nas-sync-cleanup.py}"
 
 LOG="$HOME_DIR/nas-sync.log"
 LOCK="$HOME_DIR/.nas-sync.lock"
@@ -65,6 +71,16 @@ recent() {
   tail -n 30 "$CTL/recent.tsv" | put "$CTL/recent.tsv"
 }
 enabled() { [ "$(cat "$FLAG" 2>/dev/null)" = on ]; }
+
+# Unmonitor and delete one sent file. A failure (an *arr down) keeps the file;
+# the sweep after the queue tries again on every run.
+cleanup() {
+  [ "$DELETE_AFTER" = 1 ] || return 0
+  local out rc
+  out=$(LIB="$LIB" python3 "$CLEANUP" "$1" 2>&1); rc=$?
+  say "clean $1 -- $out"
+  [ "$rc" -eq 0 ] || recent failed "$1" "sent, but not deleted here: $out"
+}
 
 nas_dir() { case "$1" in movies) echo Movies ;; *) echo "$1" ;; esac; }
 remote_of() { local rel=$1; echo "$NAS_ROOT/$(nas_dir "${rel%%/*}")/${rel#*/}"; }
@@ -234,6 +250,7 @@ while IFS=$'\t' read -r size rel state; do
       printf '%s\n' "$rel" >> "$DONE"
       say "done  $rel"
       recent "done" "$rel" "$size bytes, md5 verified"
+      cleanup "$rel"
       sent=$((sent + 1))
       ;;
     130)
@@ -251,6 +268,13 @@ while IFS=$'\t' read -r size rel state; do
 done < <(cat "$CTL/queue.tsv")
 
 rm -f "$CTL/current.tsv"
+# Sent files still here: a cleanup that failed before, or sent before
+# DELETE_AFTER existed.
+if [ "$DELETE_AFTER" = 1 ]; then
+  sort -u "$DONE" | while IFS= read -r rel; do
+    [ -f "$LIB/$rel" ] && cleanup "$rel"
+  done
+fi
 build_queue
 nas_free_kb > /dev/null || true
 if enabled; then

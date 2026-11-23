@@ -26,6 +26,7 @@ delete `control/baseline.txt`; the next run writes a new one.
 | File | Where it goes | Role |
 |---|---|---|
 | `nas-sync.sh` | `~/ops/xfer-nas/` | The copier. Resume by appending the missing tail over ssh, md5 on both ends. |
+| `nas-sync-cleanup.py` | `~/ops/xfer-nas/` | After a verified copy: unmonitor in Radarr/Sonarr, delete locally. |
 | `nas-sync.timer` | `~/.config/systemd/user/` | Every 2 minutes. |
 | `nas-sync.path` | same | Runs it the moment the switch file changes, so *on* starts at once. |
 | `nas-sync.service` | same | Oneshot, no timeout; a flock in the script prevents overlap. |
@@ -49,8 +50,13 @@ baseline, leaves the switch off, and enables the timer and the path unit.
 
 ## Things to know
 
-- Nothing is ever deleted, here or on the NAS. A Radarr *upgrade* is a new file with a new name, so
-  it is sent, and the old one stays on the NAS next to it until removed by hand.
+- Once a file is md5-verified on the NAS it is **deleted here** (since 2026-11-19): `nas-sync-cleanup.py`
+  first unmonitors its movie in Radarr or its episode(s) in Sonarr, then removes the file and any
+  folder it leaves empty. Unmonitoring comes first because Radarr's *unmonitor deleted movies* is
+  off, so a monitored movie with no file gets grabbed again. If the *arr is unreachable the file
+  stays and every later run retries. `DELETE_AFTER=0` in the unit's environment turns it off.
+- Nothing is ever deleted on the NAS. A Radarr *upgrade* of an unmonitored movie does not happen;
+  for one still monitored, the new file is sent and the old one stays on the NAS until removed by hand.
 - A file whose md5 does not match is emptied on the NAS and resent on the next run.
 - The NAS full (less than 5 GB headroom after the file) skips that file with `full` in the recent
   list; smaller files after it still go.
