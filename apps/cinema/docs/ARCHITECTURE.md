@@ -48,6 +48,7 @@ src/
 │   ├── queries.ts         TanStack Query hooks + query keys
 │   ├── playback.ts        PlaybackInfo negotiation + session reporting
 │   └── availability.ts    is the file actually reachable (see § 5)
+├── lib/discover/          Discover: Seerr through accounts (see § 3, "Discover")
 ├── components/            ui/ (primitives), media/, layout/
 ├── features/player/       VideoPlayer, PlayerControls, usePlaybackSession
 ├── routes/                one file per screen
@@ -91,6 +92,17 @@ for the header pill. Sessions without a `NowPlayingItem` are idle clients, not v
 shows other people's sessions to an administrator** — a normal account sees its own, or gets a 403.
 The query therefore does not retry and the pill renders nothing on failure, so a non-admin account
 loses the feature rather than the page.
+
+**Discover.** The titles that are *not* in the library come from Seerr (TMDB data, plus whether
+each one is requested, downloading or here). The browser never talks to Seerr: `lib/discover/`
+calls `accounts.davideghiotto.it/api/discover/*` with the Jellyfin token it already holds, and
+accounts maps that token to the same person's Seerr user and calls Seerr with its API key acting
+as them (`X-API-User`). So there is no second sign-in, no Seerr key in a client, and Seerr's own
+per-user permissions decide who may request what. A title Seerr reports as available carries the
+NAS Jellyfin's item id (`mediaInfo.jellyfinMediaId`), which is how "Watch" links back into the
+library. The Android TV app does the same from `it/davideghiotto/cinema/discover/` in the
+Findroid fork; the iPhone app can use the same endpoints with the token it already has.
+apps/accounts' README lists them. Artwork is loaded straight from `image.tmdb.org`.
 
 ---
 

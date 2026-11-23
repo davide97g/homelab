@@ -94,6 +94,29 @@ installed the phone opens it, without the app the same URL is the web approval p
 
 Allowed device clients: `cinema-tv`, `memories-tv` (`DEVICE_CLIENTS` in `server/src/auth.ts`).
 
+### Discover (cinema → Seerr)
+
+`/api/discover/*` is cinema's Discover section. Every cinema client calls it with the Jellyfin
+token it already holds (`Authorization: Bearer <jellyfin token>`), so nobody signs in to Seerr.
+accounts asks Jellyfin whose token it is, finds the Seerr user with that `jellyfinUserId`
+(importing them from Jellyfin with Seerr's default permissions the first time), and calls Seerr
+with `SEERR_API_KEY` plus `X-API-User: <their id>`. Seerr's own permissions, quotas and
+auto-approve rules therefore apply unchanged; accounts only decides who is asking.
+
+| What | Call |
+|---|---|
+| Who Seerr thinks you are | `GET /discover/me` → `{id, displayName, canRequest:{movie,tv}, autoApprove:{movie,tv}}` |
+| Rows | `GET /discover/discover/{trending\|movies\|tv\|movies/upcoming\|tv/upcoming}?page=1` |
+| Search | `GET /discover/search?query=…&page=1` |
+| Details | `GET /discover/{movie\|tv}/{tmdbId}` (+ `/recommendations`, `/similar`, `/season/{n}`) |
+| Your requests | `GET /discover/request?take=20` (always pinned to you: `requestedBy` is overwritten) |
+| Request | `POST /discover/request` `{mediaType, mediaId, seasons?}`; quality, folder and profile are Seerr's defaults (HD ITA) |
+| Withdraw | `DELETE /discover/request/{id}` (Seerr allows it only for your own pending request) |
+
+Any other path is a 404. Responses lose emails, tokens and internal URLs on the way out.
+Token → Jellyfin user and Jellyfin user → Seerr user are cached for 5 minutes, so a permission
+changed in Seerr shows up within that.
+
 ## Develop
 
 ```sh

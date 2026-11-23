@@ -15,6 +15,7 @@ export function MobileNav() {
         Home
       </Item>
       <Item to="/search">Search</Item>
+      <Item to="/discover">Discover</Item>
       {views?.map((view) => (
         <Item key={view.Id} to={`/library/${view.Id}`}>
           {view.Name ?? 'Library'}

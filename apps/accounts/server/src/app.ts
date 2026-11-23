@@ -8,6 +8,7 @@ import { env } from './env.ts'
 import { adminRoutes } from './routes/admin.ts'
 import { appRoutes } from './routes/apps.ts'
 import { deviceRoutes } from './routes/device.ts'
+import { discoverRoutes } from './routes/discover.ts'
 import { inviteRoutes } from './routes/invites.ts'
 import { meRoutes } from './routes/me.ts'
 import { wellKnownRoutes } from './routes/wellknown.ts'
@@ -32,11 +33,13 @@ const api = new Hono<AppEnv>()
     await pool.query('select 1')
     return c.json({ ok: true })
   })
-  .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
   // Which social sign-ins exist, so a client draws only buttons that work.
   .get('/providers', (c) => c.json(SOCIAL))
+  .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
   // Authenticated by the phone app's own upstream token, not a session.
   .route('/device', deviceRoutes)
+  // Authenticated by the caller's Jellyfin token; cinema's Discover, backed by Seerr.
+  .route('/discover', discoverRoutes)
   .use(async (c, next) => {
     const r = await auth.api.getSession({ headers: c.req.raw.headers })
     c.set('user', r?.user ?? null)

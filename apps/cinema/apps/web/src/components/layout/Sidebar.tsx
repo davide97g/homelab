@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Clapperboard, Film, Home, Library, ListVideo, LogOut, Search, Tv } from 'lucide-react'
+import { Clapperboard, Compass, Film, Home, Library, ListVideo, LogOut, Search, Tv } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto'
 import { useAuth } from '@/lib/jellyfin/auth'
@@ -43,9 +43,14 @@ export function Sidebar() {
       </form>
 
       <nav className="flex flex-col gap-6 overflow-y-auto no-scrollbar">
-        <NavItem to="/" icon={Home} end>
-          Home
-        </NavItem>
+        <div className="flex flex-col gap-1">
+          <NavItem to="/" icon={Home} end>
+            Home
+          </NavItem>
+          <NavItem to="/discover" icon={Compass}>
+            Discover
+          </NavItem>
+        </div>
 
         {!!views?.length && (
           <Group label="Library">

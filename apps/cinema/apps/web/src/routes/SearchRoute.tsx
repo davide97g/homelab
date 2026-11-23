@@ -5,6 +5,9 @@ import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-ite
 import { StickerSkeleton } from '@/components/ui/sticker-skeleton'
 import { MediaCard } from '@/components/media/MediaCard'
 import { MediaRow } from '@/components/media/MediaRow'
+import { DiscoverRow } from '@/components/discover/DiscoverCard'
+import { useDiscoverSearch } from '@/lib/discover/queries'
+import { MediaStatus } from '@/lib/discover/types'
 import { useItems, useSuggestions } from '@/lib/jellyfin/queries'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +53,11 @@ export function SearchRoute() {
   // With an empty field the page is not blank: it offers the library instead.
   const suggestions = useSuggestions(12)
   const results = data?.items ?? []
+
+  // Beyond the library: titles nobody has fetched yet, one tap from a request.
+  // Whatever is already here is in the grid above, so it is left out.
+  const outside = useDiscoverSearch(urlQuery.trim())
+  const requestable = outside.data?.filter((r) => r.mediaInfo?.status !== MediaStatus.Available)
 
   return (
     <div className="flex flex-col gap-7">
@@ -120,6 +128,13 @@ export function SearchRoute() {
           ) : (
             <NoResults term={term} />
           )}
+
+          <DiscoverRow
+            title="Not in your library"
+            results={requestable?.filter((r) => filter === 0 || r.mediaType === (filter === 1 ? 'movie' : 'tv'))}
+            isLoading={outside.isLoading && term.length > 1}
+            seeAllTo={`/discover?q=${encodeURIComponent(term)}`}
+          />
         </>
       ) : (
         <MediaRow

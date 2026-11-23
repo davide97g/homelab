@@ -53,6 +53,14 @@ const schema = z.object({
   IMMICH_PUBLIC_URL: z.string().default('https://memories.davideghiotto.it/immich'),
 
   /**
+   * Seerr (ex Jellyseerr), for cinema's Discover. It runs on the mini PC; the NAS reaches it
+   * through its public name (Tailscale :5055 is firewalled), e.g. https://discover.davideghiotto.it
+   */
+  SEERR_URL: optional,
+  /** Seerr → Settings → General → API Key. Acts as each user through X-API-User. */
+  SEERR_API_KEY: optional,
+
+  /**
    * Sign in with Google. A "Web application" OAuth client whose redirect URI is
    * `${APP_URL}/api/auth/callback/google`. Unset: no Google button anywhere.
    */

@@ -40,13 +40,26 @@ reinstall. The same menu adds and edits questions at the current moment; edits a
 browser until "Copy JSON" is committed over the file. `src/features/quiz/quiz.test.ts` is the first
 `bun test`. Web only; the native players do not have it.
 
+**Discover (2026-11-23).** A Discover item in the rail: Seerr's trending, popular and upcoming
+rows, a search over all of TMDB, and "Your requests" with where each one stands. A title's page
+says whether it is in the library (Watch opens the library item), downloading, or awaiting
+approval, and offers Request; a series offers its seasons, already-taken ones ticked off.
+Your own pending request can be withdrawn. The library Search page adds a "Not in your library"
+row below its results. Requests use Seerr's defaults (HD ITA profile), and each person's Seerr
+permissions apply: whoever has no Seerr account yet is imported from Jellyfin on first visit.
+Backed by `accounts` (`/api/discover`), see ARCHITECTURE § 3. Verified against the live Seerr
+through a local harness (rows, details, seasons, search, scrubbing, the path allowlist); no
+request was submitted from the test.
+
 **Next, in rough order of value:**
 
-1. **Quality selector.** Same mechanism as the track pickers — `usePlaybackSession`'s
+1. **Discover on the iPhone.** Same endpoints, same Jellyfin token, as the TV now does (Android
+   section).
+2. **Quality selector.** Same mechanism as the track pickers — `usePlaybackSession`'s
    `renegotiate`, with `maxStreamingBitrate`. Send `MediaSourceId` with it: without one the server
    ignores the stream indexes in `PlaybackInfo` and silently answers with the defaults.
-2. **Virtualised grid.** Fine to ~500 items; past that, TanStack Virtual.
-3. **Tests.** Only the quiz has any (`bun test`). `availability.ts` and the ticks/format helpers are
+3. **Virtualised grid.** Fine to ~500 items; past that, TanStack Virtual.
+4. **Tests.** Only the quiz has any (`bun test`). `availability.ts` and the ticks/format helpers are
    where a bug would be quiet rather than loud.
 
 Chunk sizes are settled: the SDK is one shared 165 kB chunk, `index` is 332 kB and `PlayerRoute`
@@ -123,6 +136,19 @@ so a device revoked from accounts lands back on the code instead of an empty hom
 `cinema-tv` emulator against a local accounts and a throwaway Jellyfin 10.11: approve, home,
 revoke, back to the code. `-PaccountsUrl=http://10.0.2.2:3190` points a debug build at a local
 accounts. Not yet on the Philips set, and accounts itself is not deployed.
+
+**Discover on the TV (2026-11-23).** A fourth tab, Discover, after Libraries
+(`it/davideghiotto/cinema/discover/`): "Your requests", trending, popular and upcoming rows of
+TMDB posters with the same "In library / Downloading / Awaiting approval" badge as the web. A
+title's screen offers Watch (opens the library's own movie or show screen), Request, a season list
+to toggle for a series, Withdraw for your own pending request, and "More like this". It calls
+`accounts` `/api/discover` with the Jellyfin token the TV already holds, like apps/web. No search:
+typing on a remote is the web's and the phone's job. TV lists pivot the focused child to a third of
+the screen, which pushed the title off the top as soon as Request took focus, so the title screen
+scrolls a child only when it is out of view. Verified on the `cinema-tv` emulator against the live
+accounts and Seerr: rows, a film, a series' season toggle, Watch into the library. No request was
+submitted from the test. The emulator needs `-dns-server 1.1.1.1`: with the Mac's resolver, adding
+the server after sign-in timed out.
 
 **What the emulator caught, and the compiler could not:** TV's selected tab was white on white —
 upstream paints the pill `Color.White` and its label `colorScheme.onPrimary`, which under Reel is

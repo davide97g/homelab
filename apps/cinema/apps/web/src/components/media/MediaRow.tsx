@@ -15,21 +15,59 @@ type Props = {
   seeAllTo?: string
 }
 
-/**
- * A titled row that scrolls. Arrows appear on hover and page by a viewport of
- * track, so a click always lands on a fresh set instead of nudging one card.
- */
+/** A titled row of library cards. */
 export function MediaRow({ title, items, isLoading, shape = 'poster', seeAllTo }: Props) {
+  const width = shape === 'thumb' ? 'w-64' : 'w-40'
+  return (
+    <ScrollRow
+      title={title}
+      seeAllTo={seeAllTo}
+      isLoading={isLoading}
+      isEmpty={!items?.length}
+      skeleton={(i) => (
+        <StickerSkeleton
+          key={i}
+          shape={shape === 'thumb' ? 'video' : 'poster'}
+          delay={i * 80}
+          className={cn(width, 'shrink-0 rounded-lg')}
+        />
+      )}
+    >
+      {items?.map((item) => (
+        <MediaCard key={item.Id} item={item} shape={shape} className={cn(width, 'shrink-0 snap-start')} />
+      ))}
+    </ScrollRow>
+  )
+}
+
+/**
+ * The row itself, for any kind of card: a heading and a track that scrolls.
+ * Arrows appear on hover and page by a viewport of track, so a click always
+ * lands on a fresh set instead of nudging one card.
+ */
+export function ScrollRow({
+  title,
+  seeAllTo,
+  isLoading,
+  isEmpty,
+  skeleton,
+  children,
+}: {
+  title: string
+  seeAllTo?: string
+  isLoading?: boolean
+  isEmpty: boolean
+  skeleton: (index: number) => React.ReactNode
+  children: React.ReactNode
+}) {
   const trackRef = useRef<HTMLDivElement>(null)
-  if (!isLoading && !items?.length) return null
+  if (!isLoading && isEmpty) return null
 
   const page = (direction: 1 | -1) => {
     const track = trackRef.current
     if (!track) return
     track.scrollBy({ left: direction * track.clientWidth * 0.9, behavior: 'smooth' })
   }
-
-  const width = shape === 'thumb' ? 'w-64' : 'w-40'
 
   return (
     <section className="group/row flex flex-col gap-3">
@@ -49,23 +87,7 @@ export function MediaRow({ title, items, isLoading, shape = 'poster', seeAllTo }
         ref={trackRef}
         className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth no-scrollbar"
       >
-        {isLoading
-          ? Array.from({ length: 8 }).map((_, i) => (
-              <StickerSkeleton
-                key={i}
-                shape={shape === 'thumb' ? 'video' : 'poster'}
-                delay={i * 80}
-                className={cn(width, 'shrink-0 rounded-lg')}
-              />
-            ))
-          : items?.map((item) => (
-              <MediaCard
-                key={item.Id}
-                item={item}
-                shape={shape}
-                className={cn(width, 'shrink-0 snap-start')}
-              />
-            ))}
+        {isLoading ? Array.from({ length: 8 }).map((_, i) => skeleton(i)) : children}
       </div>
     </section>
   )

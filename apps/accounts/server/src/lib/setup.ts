@@ -5,6 +5,7 @@ import { type AppId, appAccess, user as userTable } from '../db/schema.ts'
 import { env, isProd } from '../env.ts'
 import * as immich from '../upstream/immich.ts'
 import * as jellyfin from '../upstream/jellyfin.ts'
+import * as seerr from '../upstream/seerr.ts'
 
 /**
  * What the admin page's Setup tab shows: every moving part this service needs,
@@ -127,6 +128,34 @@ async function upstreamChecks(app: AppId): Promise<Check[]> {
   return out
 }
 
+/** Discover in cinema: Seerr through its API key (admin user 1 answers /auth/me). */
+async function seerrCheck(): Promise<Check> {
+  const fix = `Seerr → Impostazioni → Generali → Chiave API. In ${ENV_FILE}:\nSEERR_URL=https://discover.davideghiotto.it\nSEERR_API_KEY=…\npoi:\n${RESTART}`
+  if (!seerr.seerrEnabled())
+    return {
+      id: 'seerr',
+      group: 'Cinema',
+      status: 'warn',
+      title: 'Discover non configurato',
+      detail: 'Senza SEERR_URL e SEERR_API_KEY la sezione Discover di cinema non carica e non si possono chiedere titoli.',
+      fix,
+    }
+  try {
+    const me = await seerr.asUser(1, '/auth/me')
+    if (me.status !== 200) throw new Error(`HTTP ${me.status}`)
+    return { id: 'seerr', group: 'Cinema', status: 'ok', title: 'Discover: Seerr raggiungibile', detail: env.SEERR_URL ?? '' }
+  } catch (e) {
+    return {
+      id: 'seerr',
+      group: 'Cinema',
+      status: 'error',
+      title: 'Seerr non risponde alla chiave API',
+      detail: e instanceof Error ? e.message : String(e),
+      fix,
+    }
+  }
+}
+
 export async function setupChecks(): Promise<Check[]> {
   const checks: Check[] = []
 
@@ -163,7 +192,7 @@ export async function setupChecks(): Promise<Check[]> {
 
   // Upstreams, in parallel.
   const [cinema, memories] = await Promise.all([upstreamChecks('cinema'), upstreamChecks('memories')])
-  checks.push(...cinema, ...memories)
+  checks.push(...cinema, ...memories, await seerrCheck())
 
   // Universal links: the QR on a TV opens the phone app only with these.
   const apple = (env.APPLE_APP_LINKS ?? '').split(';').map((p) => p.trim()).filter(Boolean)

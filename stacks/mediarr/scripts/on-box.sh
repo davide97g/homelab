@@ -5,6 +5,7 @@
 #   ./scripts/on-box.sh bazarr-setup.py
 #   ./scripts/on-box.sh jellyseerr-repoint.py <jellyfin-api-key> <jellyfin-url>
 #   ./scripts/on-box.sh jellyseerr-telegram.py <bot-token> [chat-id]
+#   ./scripts/on-box.sh seerr-defaults.py
 #
 # These talk to APIs that are only published on the box's LAN interface, and
 # read keys out of the containers themselves, so they have to execute there.

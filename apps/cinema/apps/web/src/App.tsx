@@ -2,6 +2,8 @@ import { Suspense, lazy, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { useAuth } from '@/lib/jellyfin/auth'
+import { DiscoverItemRoute } from '@/routes/DiscoverItemRoute'
+import { DiscoverRoute } from '@/routes/DiscoverRoute'
 import { HomeRoute } from '@/routes/HomeRoute'
 import { ItemRoute } from '@/routes/ItemRoute'
 import { LibraryRoute } from '@/routes/LibraryRoute'
@@ -63,6 +65,8 @@ export default function App() {
         <Route path="/library/:viewId" element={<LibraryRoute />} />
         <Route path="/item/:itemId" element={<ItemRoute />} />
         <Route path="/search" element={<SearchRoute />} />
+        <Route path="/discover" element={<DiscoverRoute />} />
+        <Route path="/discover/:mediaType/:tmdbId" element={<DiscoverItemRoute />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
