@@ -1,6 +1,6 @@
 import { APIError, betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { admin, bearer, deviceAuthorization, emailOTP } from 'better-auth/plugins'
+import { admin, bearer, deviceAuthorization, emailOTP, jwt } from 'better-auth/plugins'
 import { and, eq, gt, isNull } from 'drizzle-orm'
 import { db } from './db/client.ts'
 import * as schema from './db/schema.ts'
@@ -69,6 +69,26 @@ export const auth = betterAuth({
         const known = await db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.email, email.toLowerCase()))
         if (!known.length && !isAdminEmail(email) && !(await liveInvite(email))) return
         await sendCode(email, otp)
+      },
+    }),
+    // Cassette (phase 3) does not use the broker: it has no upstream account to sign
+    // anyone into. Its web app trades the shared cookie for a 15-minute JWT at
+    // GET /api/auth/token and its API checks the signature against /api/auth/jwks.
+    // RS256 rather than the default EdDSA so the API verifies these exactly as it
+    // verifies Clerk's. A ban or a revoked session stops new tokens at once; one
+    // already handed out lives out its 15 minutes.
+    jwt({
+      disableSettingJwtHeader: true,
+      jwks: { keyPairConfig: { alg: 'RS256', modulusLength: 2048 } },
+      jwt: {
+        issuer: env.APP_URL,
+        audience: env.APP_URL,
+        expirationTime: '15m',
+        definePayload: ({ user }) => ({
+          email: user.email,
+          email_verified: user.emailVerified,
+          name: user.name,
+        }),
       },
     }),
     deviceAuthorization({

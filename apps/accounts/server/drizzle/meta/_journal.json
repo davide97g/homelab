@@ -8,6 +8,13 @@
       "when": 1794397269249,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795434676675,
+      "tag": "0001_slow_punisher",
+      "breakpoints": true
     }
   ]
 }

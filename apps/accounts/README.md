@@ -134,5 +134,12 @@ keeps 14 of them.
    (`TEST_RUNNER_ACCOUNTS_TEST_URL=http://localhost:3190`). Universal links need the deployed AASA.
    Native clients must not keep cookies: a stored Better Auth cookie on a request with no `Origin`
    is refused (CSRF check), so their session is bearer-only.
-3. Cassette (separate repo): drop Clerk for the Better Auth `jwt` plugin. The FastAPI side only
-   changes its JWKS URL and issuer.
+3. **Cassette: done in code** (separate repo), as a door *beside* Clerk rather than instead of it.
+   No broker: cassette has no upstream account to sign anyone into. The `jwt` plugin hands out a
+   15-minute RS256 JWT at `GET /api/auth/token` (cookie or bearer), with `iss` and `aud` both
+   `APP_URL` and `email`, `email_verified`, `name` in the payload; cassette's API verifies it against
+   `GET /api/auth/jwks` and opens the library whose verified email matches. Needs
+   `https://cassette.davideghiotto.it` in `TRUSTED_ORIGINS` (CORS with credentials). The signing key
+   lives in the `jwks` table, encrypted with `BETTER_AUTH_SECRET`: rotating that secret invalidates
+   it. Not an app in `APPS`, so there is no per-person grant for it yet — anyone with an account
+   here can open a cassette library, which is no wider than cassette's own open Google sign-up.

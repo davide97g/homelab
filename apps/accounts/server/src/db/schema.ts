@@ -35,6 +35,22 @@ export const user = pgTable('user', {
   ...timestamps,
 })
 
+/**
+ * The jwt plugin's signing keys. Cassette verifies the short-lived JWTs that
+ * `/api/auth/token` hands out against `/api/auth/jwks`, so it never has to ask
+ * this service who a request is from. Private keys are encrypted with
+ * BETTER_AUTH_SECRET by the plugin itself.
+ */
+export const jwks = pgTable('jwks', {
+  id: text('id').primaryKey(),
+  publicKey: text('public_key').notNull(),
+  privateKey: text('private_key').notNull(),
+  alg: text('alg'),
+  crv: text('crv'),
+  createdAt: at('created_at').notNull(),
+  expiresAt: at('expires_at'),
+})
+
 export const session = pgTable(
   'session',
   {
