@@ -34,12 +34,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.CodecProfile
+import org.jellyfin.sdk.model.api.CodecType
 import org.jellyfin.sdk.model.api.DeviceOptionsDto
 import org.jellyfin.sdk.model.api.DeviceProfile
+import org.jellyfin.sdk.model.api.DlnaProfileType
+import org.jellyfin.sdk.model.api.EncodingContext
 import org.jellyfin.sdk.model.api.GeneralCommandType
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.MediaStreamProtocol
 import org.jellyfin.sdk.model.api.MediaType
 import org.jellyfin.sdk.model.api.PlayMethod
 import org.jellyfin.sdk.model.api.PlaybackInfoDto
@@ -47,11 +52,15 @@ import org.jellyfin.sdk.model.api.PlaybackOrder
 import org.jellyfin.sdk.model.api.PlaybackProgressInfo
 import org.jellyfin.sdk.model.api.PlaybackStartInfo
 import org.jellyfin.sdk.model.api.PlaybackStopInfo
+import org.jellyfin.sdk.model.api.ProfileCondition
+import org.jellyfin.sdk.model.api.ProfileConditionType
+import org.jellyfin.sdk.model.api.ProfileConditionValue
 import org.jellyfin.sdk.model.api.PublicSystemInfo
 import org.jellyfin.sdk.model.api.RepeatMode
 import org.jellyfin.sdk.model.api.SortOrder as ItemSortOrder
 import org.jellyfin.sdk.model.api.SubtitleDeliveryMethod
 import org.jellyfin.sdk.model.api.SubtitleProfile
+import org.jellyfin.sdk.model.api.TranscodingProfile
 import org.jellyfin.sdk.model.api.UserConfiguration
 import timber.log.Timber
 
@@ -336,6 +345,94 @@ class JellyfinRepositoryImpl(
             )
             sources.addAll(database.getSources(itemId).map { it.toFindroidSource(database) })
             sources
+        }
+
+    override suspend fun getSdrTranscode(itemId: UUID, mediaSourceId: String): FindroidSource? =
+        withContext(Dispatchers.IO) {
+            if (!appPreferences.getValue(appPreferences.playerHdrToSdr)) return@withContext null
+            try {
+                // Playback is negotiated, not built: a profile that accepts only SDR video makes
+                // the server transcode an HDR source and tone-map it (hevc-rangetype=SDR in the
+                // TranscodingUrl), the way the official clients get SDR out of an HDR file.
+                val sdrOnly =
+                    listOf(
+                        ProfileCondition(
+                            condition = ProfileConditionType.EQUALS_ANY,
+                            property = ProfileConditionValue.VIDEO_RANGE_TYPE,
+                            value = "SDR",
+                            isRequired = false,
+                        )
+                    )
+                val bitrate = 20_000_000
+                val source =
+                    jellyfinApi.mediaInfoApi
+                        .getPostedPlaybackInfo(
+                            itemId,
+                            PlaybackInfoDto(
+                                userId = jellyfinApi.userId!!,
+                                mediaSourceId = mediaSourceId,
+                                maxStreamingBitrate = bitrate,
+                                enableDirectPlay = false,
+                                enableDirectStream = false,
+                                enableTranscoding = true,
+                                allowVideoStreamCopy = false,
+                                allowAudioStreamCopy = true,
+                                deviceProfile =
+                                    DeviceProfile(
+                                        name = "Cinema SDR",
+                                        maxStaticBitrate = bitrate,
+                                        maxStreamingBitrate = bitrate,
+                                        codecProfiles =
+                                            listOf("hevc", "h264").map { codec ->
+                                                CodecProfile(
+                                                    type = CodecType.VIDEO,
+                                                    codec = codec,
+                                                    conditions = sdrOnly,
+                                                    applyConditions = emptyList(),
+                                                )
+                                            },
+                                        containerProfiles = emptyList(),
+                                        directPlayProfiles = emptyList(),
+                                        transcodingProfiles =
+                                            listOf(
+                                                TranscodingProfile(
+                                                    container = "mp4",
+                                                    type = DlnaProfileType.VIDEO,
+                                                    videoCodec = "hevc,h264",
+                                                    audioCodec = "aac,ac3,eac3",
+                                                    protocol = MediaStreamProtocol.HLS,
+                                                    context = EncodingContext.STREAMING,
+                                                    maxAudioChannels = "6",
+                                                    minSegments = 1,
+                                                    breakOnNonKeyFrames = true,
+                                                    conditions = emptyList(),
+                                                )
+                                            ),
+                                        subtitleProfiles =
+                                            listOf(
+                                                SubtitleProfile(
+                                                    "srt",
+                                                    SubtitleDeliveryMethod.EXTERNAL,
+                                                ),
+                                                SubtitleProfile(
+                                                    "ass",
+                                                    SubtitleDeliveryMethod.EXTERNAL,
+                                                ),
+                                            ),
+                                    ),
+                            ),
+                        )
+                        .content
+                        .mediaSources
+                        .firstOrNull { it.id == mediaSourceId }
+                val url = source?.transcodingUrl ?: return@withContext null
+                source
+                    .toFindroidSource(this@JellyfinRepositoryImpl, itemId)
+                    .copy(path = getBaseUrl() + url)
+            } catch (e: Exception) {
+                Timber.e(e, "SDR transcode negotiation failed")
+                null
+            }
         }
 
     override suspend fun getStreamUrl(itemId: UUID, mediaSourceId: String): String =

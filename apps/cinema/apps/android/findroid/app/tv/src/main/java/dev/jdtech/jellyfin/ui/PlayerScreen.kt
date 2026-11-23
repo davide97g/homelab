@@ -32,12 +32,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.PlayerView
@@ -57,6 +60,7 @@ import dev.jdtech.jellyfin.ui.components.player.VideoPlayerOverlay
 import dev.jdtech.jellyfin.ui.components.player.VideoPlayerSeeker
 import dev.jdtech.jellyfin.ui.components.player.VideoPlayerState
 import dev.jdtech.jellyfin.ui.components.player.rememberVideoPlayerState
+import dev.jdtech.jellyfin.ui.dialogs.VideoPlayerTrackSelectorDialog
 import dev.jdtech.jellyfin.utils.handleDPadKeyEvents
 import it.davideghiotto.cinema.player.SeekButtons
 import it.davideghiotto.cinema.player.SeekController
@@ -138,7 +142,9 @@ fun PlayerScreen(
         }
     }
 
-    // TODO: implement the track selection dialogs
+    // Cinema: the audio / subtitle picker, as a dialog over the player.
+    var trackDialog by remember { mutableStateOf<Int?>(null) }
+
     /*
     resultRecipient.onNavResult { result ->
         when (result) {
@@ -258,12 +264,41 @@ fun PlayerScreen(
                     quiz = quiz,
                     state = videoPlayerState,
                     focusRequester = focusRequester,
+                    onSelectTracks = { trackDialog = it },
                     // navigator = navigator,
                 )
             },
         )
         QuizOverlay(quiz = quiz, onResume = { quiz.close(viewModel.player) })
     }
+
+    trackDialog?.let { trackType ->
+        Dialog(onDismissRequest = { trackDialog = null }) {
+            VideoPlayerTrackSelectorDialog(
+                trackType = trackType,
+                tracks = getTracks(viewModel.player, trackType),
+                onSelect = { index ->
+                    selectTrack(viewModel.player, trackType, index)
+                    trackDialog = null
+                },
+            )
+        }
+    }
+}
+
+/** [index] is a group index from [getTracks], or -1 for "none". */
+private fun selectTrack(player: Player, trackType: @C.TrackType Int, index: Int) {
+    val parameters = player.trackSelectionParameters.buildUpon()
+    if (index == -1) {
+        parameters.clearOverridesOfType(trackType).setTrackTypeDisabled(trackType, true)
+    } else {
+        parameters
+            .setOverrideForType(
+                TrackSelectionOverride(player.currentTracks.groups[index].mediaTrackGroup, 0)
+            )
+            .setTrackTypeDisabled(trackType, false)
+    }
+    player.trackSelectionParameters = parameters.build()
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -277,6 +312,8 @@ fun VideoPlayerControls(
     quiz: QuizController,
     state: VideoPlayerState,
     focusRequester: FocusRequester,
+    // Cinema: opens the audio / subtitle picker (upstream left both buttons unwired on TV).
+    onSelectTracks: (trackType: @C.TrackType Int) -> Unit,
     // navigator: DestinationsNavigator,
 ) {
     val onPlayPauseToggle = { shouldPlay: Boolean ->
@@ -312,21 +349,13 @@ fun VideoPlayerControls(
                     icon = painterResource(id = R.drawable.ic_speaker),
                     state = state,
                     isPlaying = isPlaying,
-                    onClick = {
-                        // val tracks = getTracks(player, C.TRACK_TYPE_AUDIO)
-                        // navigator.navigate(VideoPlayerTrackSelectorDialogDestination(C.TRACK_TYPE_AUDIO,
-                        // tracks))
-                    },
+                    onClick = { onSelectTracks(C.TRACK_TYPE_AUDIO) },
                 )
                 VideoPlayerMediaButton(
                     icon = painterResource(id = R.drawable.ic_closed_caption),
                     state = state,
                     isPlaying = isPlaying,
-                    onClick = {
-                        // val tracks = getTracks(player, C.TRACK_TYPE_TEXT)
-                        // navigator.navigate(VideoPlayerTrackSelectorDialogDestination(C.TRACK_TYPE_TEXT,
-                        // tracks))
-                    },
+                    onClick = { onSelectTracks(C.TRACK_TYPE_TEXT) },
                 )
             }
         },

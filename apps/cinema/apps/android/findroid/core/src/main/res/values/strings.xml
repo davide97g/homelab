@@ -118,4 +118,6 @@
     <string name="cinema_match">%1$d%% match</string>
     <string name="cinema_play">Play</string>
     <string name="cinema_details">Details</string>
+    <!-- Cinema: the TV tab that browses Seerr through accounts. -->
+    <string name="cinema_discover">Discover</string>
 </resources>

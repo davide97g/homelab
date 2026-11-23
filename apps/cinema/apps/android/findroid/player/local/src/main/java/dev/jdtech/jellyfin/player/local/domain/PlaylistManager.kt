@@ -6,6 +6,7 @@ import dev.jdtech.jellyfin.models.FindroidChapter
 import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
+import dev.jdtech.jellyfin.models.FindroidSource
 import dev.jdtech.jellyfin.models.FindroidSourceType
 import dev.jdtech.jellyfin.models.FindroidSources
 import dev.jdtech.jellyfin.player.core.domain.models.ExternalSubtitle
@@ -18,6 +19,7 @@ import javax.inject.Inject
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.MediaStreamType
+import org.jellyfin.sdk.model.api.VideoRangeType
 import timber.log.Timber
 
 class PlaylistManager @Inject internal constructor(private val repository: JellyfinRepository) {
@@ -207,16 +209,31 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
         Timber.d("Converting FindroidItem ${this.id} to PlayerItem")
 
         val mediaSources = repository.getMediaSources(id, true)
-        val mediaSource =
+        val chosenSource =
             if (mediaSourceIndex == null) {
                 mediaSources.firstOrNull { it.type == FindroidSourceType.LOCAL } ?: mediaSources[0]
             } else {
                 mediaSources[mediaSourceIndex]
             }
+        // Cinema: an HDR source direct-played on the Philips TV comes out grey even with the TV
+        // in HDR mode, so it plays as a stream the server has tone-mapped to SDR instead.
+        val sdrSource =
+            if (chosenSource.type == FindroidSourceType.REMOTE && chosenSource.isHdr()) {
+                repository.getSdrTranscode(id, chosenSource.id)
+            } else {
+                null
+            }
+        val mediaSource = sdrSource ?: chosenSource
+        Timber.d(
+            "Source ${mediaSource.id}: ${if (sdrSource != null) "SDR transcode" else "direct"}"
+        )
         val externalSubtitles =
             mediaSource.mediaStreams
                 .filter { mediaStream ->
-                    mediaStream.isExternal &&
+                    // A transcoded stream carries no embedded subtitles: the server serves
+                    // every text track as its own file instead.
+                    (mediaStream.isExternal ||
+                        (sdrSource != null && mediaStream.isDeliveredExternally)) &&
                         mediaStream.type == MediaStreamType.SUBTITLE &&
                         !mediaStream.path.isNullOrBlank()
                 }
@@ -263,6 +280,14 @@ class PlaylistManager @Inject internal constructor(private val repository: Jelly
             chapters = chapters.toPlayerChapters(),
             trickplayInfo = trickplayInfo,
         )
+    }
+
+    private fun FindroidSource.isHdr(): Boolean = mediaStreams.any {
+        it.type == MediaStreamType.VIDEO &&
+            it.videoRangeType != null &&
+            it.videoRangeType != VideoRangeType.SDR &&
+            it.videoRangeType != VideoRangeType.UNKNOWN &&
+            it.videoRangeType != VideoRangeType.DOVI_WITH_SDR
     }
 
     private fun List<FindroidChapter>.toPlayerChapters(): List<PlayerChapter> {

@@ -25,6 +25,7 @@ import dev.jdtech.jellyfin.ui.PlayerScreen
 import dev.jdtech.jellyfin.utils.base64ToByteArray
 import dev.jdtech.jellyfin.utils.toBase64Str
 import it.davideghiotto.cinema.accounts.AccountsLoginScreen
+import it.davideghiotto.cinema.discover.DiscoverItemScreen
 import java.util.UUID
 import kotlinx.parcelize.parcelableCreator
 import kotlinx.serialization.Serializable
@@ -73,6 +74,8 @@ data class LibraryRoute(
 @Serializable data class ShowRoute(val itemId: String)
 
 @Serializable data class SeasonRoute(val seasonId: String)
+
+@Serializable data class DiscoverItemRoute(val mediaType: String, val tmdbId: Int)
 
 @Serializable data class PlayerRoute(val itemId: String, val itemKind: String)
 
@@ -182,6 +185,23 @@ fun NavigationRoot(
                         PlayerRoute(itemId = itemId.toString(), itemKind = itemKind.serialName)
                     )
                 },
+                navigateToDiscoverItem = { mediaType, tmdbId ->
+                    navController.navigate(DiscoverItemRoute(mediaType, tmdbId))
+                },
+            )
+        }
+        composable<DiscoverItemRoute> { backStackEntry ->
+            val route: DiscoverItemRoute = backStackEntry.toRoute()
+            DiscoverItemScreen(
+                mediaType = route.mediaType,
+                tmdbId = route.tmdbId,
+                navigateToItem = { mediaType, tmdbId ->
+                    navController.navigate(DiscoverItemRoute(mediaType, tmdbId))
+                },
+                navigateToMovie = { itemId ->
+                    navController.navigate(MovieRoute(itemId.toString()))
+                },
+                navigateToShow = { itemId -> navController.navigate(ShowRoute(itemId.toString())) },
             )
         }
         composable<LibraryRoute> { backStackEntry ->

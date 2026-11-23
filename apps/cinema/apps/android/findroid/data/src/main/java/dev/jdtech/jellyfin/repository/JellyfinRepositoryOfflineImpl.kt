@@ -212,6 +212,9 @@ class JellyfinRepositoryOfflineImpl(
         TODO("Not yet implemented")
     }
 
+    override suspend fun getSdrTranscode(itemId: UUID, mediaSourceId: String): FindroidSource? =
+        null
+
     override suspend fun getSegments(itemId: UUID): List<FindroidSegment> =
         withContext(Dispatchers.IO) { database.getSegments(itemId).map { it.toFindroidSegment() } }
 

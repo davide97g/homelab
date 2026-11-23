@@ -90,6 +90,13 @@ interface JellyfinRepository {
 
     suspend fun getStreamUrl(itemId: UUID, mediaSourceId: String): String
 
+    /**
+     * Cinema: an HLS stream of [mediaSourceId] that the server tone-maps to SDR, or null when the
+     * setting is off or the server will not transcode. For HDR sources on screens that show a
+     * direct-played HDR10 stream washed out.
+     */
+    suspend fun getSdrTranscode(itemId: UUID, mediaSourceId: String): FindroidSource?
+
     suspend fun getSegments(itemId: UUID): List<FindroidSegment>
 
     suspend fun getTrickplayData(itemId: UUID, width: Int, index: Int): ByteArray?

@@ -51,6 +51,7 @@ import dev.jdtech.jellyfin.ui.components.PillBorderIndicator
 import dev.jdtech.jellyfin.ui.components.ProfileButton
 import dev.jdtech.jellyfin.viewmodels.MainViewModel
 import it.davideghiotto.cinema.design.CinemaColors
+import it.davideghiotto.cinema.discover.DiscoverScreen
 import java.util.UUID
 import org.jellyfin.sdk.model.api.BaseItemKind
 
@@ -61,6 +62,7 @@ fun MainScreen(
     navigateToMovie: (itemId: UUID) -> Unit,
     navigateToShow: (itemId: UUID) -> Unit,
     navigateToPlayer: (itemId: UUID, itemKind: BaseItemKind) -> Unit,
+    navigateToDiscoverItem: (mediaType: String, tmdbId: Int) -> Unit,
     mainViewModel: MainViewModel = hiltViewModel(),
 ) {
     val delegatedUiState by mainViewModel.uiState.collectAsState()
@@ -74,6 +76,7 @@ fun MainScreen(
         navigateToMovie = navigateToMovie,
         navigateToShow = navigateToShow,
         navigateToPlayer = navigateToPlayer,
+        navigateToDiscoverItem = navigateToDiscoverItem,
     )
 }
 
@@ -81,6 +84,8 @@ enum class TabDestination(@param:DrawableRes val icon: Int, @param:StringRes val
     Search(CoreR.drawable.ic_search, CoreR.string.search),
     Home(CoreR.drawable.ic_home, CoreR.string.title_home),
     Libraries(CoreR.drawable.ic_library, CoreR.string.libraries),
+    // Cinema: Seerr's Discover, through accounts. Last, so upstream's indexes stay put.
+    Discover(CoreR.drawable.ic_compass, CoreR.string.cinema_discover),
     // LiveTV(CoreR.drawable.ic_tv, CoreR.string.live_tv)
 }
 
@@ -92,6 +97,7 @@ private fun MainScreenLayout(
     navigateToMovie: (itemId: UUID) -> Unit,
     navigateToShow: (itemId: UUID) -> Unit,
     navigateToPlayer: (itemId: UUID, itemKind: BaseItemKind) -> Unit,
+    navigateToDiscoverItem: (mediaType: String, tmdbId: Int) -> Unit,
 ) {
     var focusedTabIndex by rememberSaveable { mutableIntStateOf(1) }
     var activeTabIndex by rememberSaveable { mutableIntStateOf(focusedTabIndex) }
@@ -202,6 +208,12 @@ private fun MainScreenLayout(
             2 -> {
                 MediaScreen(navigateToLibrary = navigateToLibrary, isLoading = { isLoading = it })
             }
+            3 -> {
+                DiscoverScreen(
+                    navigateToItem = navigateToDiscoverItem,
+                    isLoading = { isLoading = it },
+                )
+            }
         }
     }
 }
@@ -217,6 +229,7 @@ private fun MainScreenLayoutPreview() {
             navigateToMovie = {},
             navigateToShow = {},
             navigateToPlayer = { _, _ -> },
+            navigateToDiscoverItem = { _, _ -> },
         )
     }
 }

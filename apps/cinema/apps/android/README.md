@@ -109,6 +109,34 @@ a Timber tree, so every log line was silent; `it.davideghiotto.cinema.log.FileLo
 logcat + a 2 MB rotated file (`files/logs/cinema.log`) and records uncaught exceptions to it before
 the process dies. The first line says version, model, SDK and ABI.
 
+**HDR plays as server tone-mapped SDR.** The set switches to "Segnale HDR" for a direct-played
+HDR10 file and still shows it grey and washed out. So `PlaylistManager` asks
+`getSdrTranscode()` for any remote source whose video range is not SDR: a PlaybackInfo with a
+profile that accepts only `VideoRangeType=SDR`, which makes Jellyfin transcode to HLS with
+`hevc-rangetype=SDR` and tone-map (`tonemap_opencl`, bt2390) on the NAS. Embedded text subtitles
+come back as External delivery URLs; the stream carries one audio track (the user's default). The
+switch is `pref_player_hdr_to_sdr`, default on, with no UI yet.
+
+**Discover is a TV tab.** `it.davideghiotto.cinema.discover` browses and requests titles from
+Seerr through accounts' `/api/discover`, authenticated by the Jellyfin token the app already holds
+(`JellyfinApi.api.accessToken`); the accounts base URL is `AccountsClient.BASE_URL`, so
+`-PaccountsUrl` points it at a local accounts too. The tab is appended after Libraries so
+upstream's tab indexes stay put. Testing it on the `cinema-tv` AVD: start the emulator with
+`-dns-server 1.1.1.1`, or adding the server after sign-in times out.
+
+**Audio and subtitle buttons work on TV.** Upstream left both player buttons as commented-out
+stubs (they navigated with compose-destinations, since removed). `PlayerScreen` now opens
+`VideoPlayerTrackSelectorDialog` in a `Dialog` and applies a `TrackSelectionOverride` itself.
+
+**The set runs the release build too.** The JARVIS dock opens `it.davideghiotto.cinema`, the
+release one, so a fix installed only as debug never reaches what gets watched. Ship both:
+`./gradlew :app:tv:assembleLibreRelease` is signed with this Mac's debug key, so
+`adb install -r app/tv/build/outputs/apk/libre/release/tv-libre-armeabi-v7a-release.apk` upgrades
+it in place.
+
+An agent shell has no Local Network permission either; it can still deploy by writing a
+`.command` file that runs `tv.sh deploy --no-build --no-logs` and `open -a Terminal` on it.
+
 Getting ADB onto the set at all (network debugging resets on reboot, the Local Network permission
 trap with adb servers started from Orca) is written up in
 `~/personal/projects/cassette/apps/tv/README.md`, "Getting ADB onto the TV".

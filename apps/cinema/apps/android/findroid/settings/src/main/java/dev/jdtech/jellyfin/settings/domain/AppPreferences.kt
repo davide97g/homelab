@@ -27,6 +27,8 @@ class AppPreferences @Inject constructor(val sharedPreferences: SharedPreference
     // Player
     val playerBackend = Preference("pref_player_backend", "exoplayer")
     val playerBrightness = Preference("pref_player_brightness", -1.0f)
+    // Cinema: HDR sources play as a server tone-mapped SDR stream (see getSdrTranscode).
+    val playerHdrToSdr = Preference("pref_player_hdr_to_sdr", true)
 
     // Player - mpv
     val playerMpv = Preference("pref_player_mpv", false)

@@ -14,8 +14,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,8 +47,11 @@ data class VideoPlayerTrackSelectorDialogResult(val trackType: @C.TrackType Int,
 fun VideoPlayerTrackSelectorDialog(
     trackType: @C.TrackType Int,
     tracks: Array<Track>,
-    // resultNavigator: ResultBackNavigator<VideoPlayerTrackSelectorDialogResult>,
+    // Cinema: the result goes straight back to the player screen instead of through a navigator.
+    onSelect: (index: Int) -> Unit = {},
 ) {
+    val selectedFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { selectedFocus.requestFocus() } }
     val dialogTitle =
         when (trackType) {
             C.TRACK_TYPE_AUDIO -> PlayerLocalR.string.select_audio_track
@@ -67,10 +74,10 @@ fun VideoPlayerTrackSelectorDialog(
             ) {
                 items(tracks) { track ->
                     Surface(
-                        onClick = {
-                            // resultNavigator.navigateBack(result =
-                            // VideoPlayerTrackSelectorDialogResult(trackType, track.id))
-                        },
+                        onClick = { onSelect(track.id) },
+                        modifier =
+                            if (track.selected) Modifier.focusRequester(selectedFocus)
+                            else Modifier,
                         enabled = track.supported,
                         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(4.dp)),
                         colors =
