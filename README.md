@@ -10,8 +10,9 @@ history from before the merge, under `apps/`.
 |---|---|
 | [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/), [site](apps/site/), [status](apps/status/) |
 | [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
-| [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md) |
-| [`hosts/`](hosts/) | Per-host notes: [the NAS](hosts/nas.md) |
+| [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md), [web apps](docs/web-apps.md) |
+| [`hosts/`](hosts/) | Per-host notes and installers: [the NAS](hosts/nas.md); for the box, [firewall](hosts/debian/firewall/), [backup](hosts/debian/backup/), [nas-sync](hosts/debian/nas-sync/), [host-metrics](hosts/debian/host-metrics/) |
+| [`cloudflare/`](cloudflare/) | Tunnel ingress for both tunnels, applied with [`tools/cloudflare`](tools/cloudflare/) |
 | [`hardware/`](hardware/) | The 3D-printed [M6 stand](hardware/m6-stand/) |
 | `.env` | Credentials, gitignored. [`.env.example`](.env.example) lists the keys |
 
@@ -124,125 +125,37 @@ Monitoring stack in [`apps/monitoring/`](apps/monitoring/) — Grafana on `:3001
 `grafana.davideghiotto.it` was removed on 2026-09-19. The hub at `monitoring.davideghiotto.it`
 is the public entrance.
 
-Web apps run as Dokploy apps, each published on the tunnel and deployed by its own CI rather
-than by Dokploy's auto-deploy — `calorico.davideghiotto.it`, `thumb.davideghiotto.it`,
-`ral-api.davideghiotto.it` and `wedding.davideghiotto.it` (with its guest-list dashboard on
-`wedding-admin.davideghiotto.it`) today, all four moved here off a Hetzner VPS on 2026-09-15,
-which emptied it. `maestro.davideghiotto.it` ([repo](https://github.com/davide97g/maestro)) was
-built here on 2026-09-17 rather than ported: a compose app, SQLite on the `maestro-data` volume,
-no CI yet, so it is released with one `compose.deploy` call. It carries an LLM API key, so it has
-its own email/password login (Better Auth, self-hosted) and registration is invite-only —
-`SIGNUP_MODE`/`SIGNUP_CODE` in its Dokploy environment. It is not behind Access. All are **compose** apps except ral-gate, a Dockerfile **application**,
-which changes the API endpoints but nothing else.
-`buriko.davideghiotto.it` is the landing page for [buriko](https://github.com/davide97g/brick), added
-2026-09-30: a compose app (`buriko-pv8lun`, compose path `./site/compose.yml`) building an nginx
-image of the static `site/public/`. No CI and no deploy hostname; after a push to that repo's `main`
-it is released with one `compose.deploy` call.
-`autocratico.davideghiotto.it` is [autocratico](https://github.com/davide97g/autocratico), the
-personal paperwork register, added 2026-10-03: a compose app (`autocratico-3sar53`, compose path
-`./deploy/compose.homelab.yml`) bound to `127.0.0.1:8790` and published straight from the tunnel,
-no Traefik domain. **Behind Access** (app `autocratico`: `email-access` plus a service-token policy
-`autocratico-shortcut` for the iOS share-sheet shortcut), and the server also checks the Access JWT
-and its own paired-device tokens. Data is a bind mount of `~/autocratico/data` (plain files plus a
-local git history), nightly tarballs in `~/backups/autocratico`. The container runs headless
-Claude Code (`CLAUDE_CODE_OAUTH_TOKEN`) and the `@autocratico_bot` Telegram bot by long polling.
-No CI; released with one `compose.deploy` call. Runbook: that repo's `docs/deploy-homelab.md`.
-`get-autocratico.davideghiotto.it` is autocratico's public landing page, added 2026-10-03: a second
-compose app in the same project (`autocratico-site-msw6em`, compose path `./deploy/compose.site.yml`),
-nginx serving the static `apps/site` build on `127.0.0.1:8791`, tunnel straight to it, no Traefik
-domain, **not** behind Access. No CI; released with one `compose.deploy` call.
-`echo.davideghiotto.it` is the public voice-clone demo of [echo](https://github.com/davide97g/echo),
-added 2026-10-12: compose app `echo-demo-qxdnww` in project `echo`, compose path `./demo/compose.yml`,
-branch `demo-site`. One container (FastAPI + Qwen3-TTS 0.6B and Whisper on CPU, capped at 8 CPUs and
-6 GB) on `127.0.0.1:8795`, tunnel straight to it, no Traefik domain, **not** behind Access. Data is a
-bind mount of `~/echo-demo` (mode 700): Davide's reference clip (biometric, copied by hand, never in
-git), rendered lines and the ~3 GB model cache. Visitor recordings are never written to disk. No CI;
-released with one `compose.deploy` call (`DOKPLOY_COMPOSE_ID_ECHO_DEMO` in `.env`). Runbook: that
-repo's `demo/README.md`.
-`slowgram.davideghiotto.it` is the landing page (plus `/privacy/` and `/support/` for the App Store
-listing) of [Slowgram](https://github.com/davide97g/slowgram), added 2026-10-24: compose app
-`slowgram-site-a3rjn4` in project `slowgram`, compose path `./site/compose.yml`, built like buriko's —
-nginx image of the static `site/public/`, Dokploy domain on service `web` port 80, tunnel to
-`http://localhost:80`. Private repo, visible to the Dokploy GitHub app. Not behind Access. No CI; a
-release is one `compose.deploy` call (`DOKPLOY_COMPOSE_ID_SLOWGRAM_SITE` in `.env`).
-`aftergrowth.davideghiotto.it` is [Aftergrowth](https://github.com/davide97g/aftergrowth), the cozy
-sky-island witch game, added 2026-10-25: compose app `aftergrowth-wxf9t7` in project `aftergrowth`,
-compose path `./deploy/compose.yml`. One Node container (the built game plus the WebSocket island hub
-on `/net`), service `aftergrowth` port 8787 behind a Dokploy domain, tunnel to `http://localhost:80`.
-Public repo, not behind Access: players are anonymous browser identities. State is one JSON file on
-the `aftergrowth-data` volume. CI deploys through `deploy-aftergrowth.davideghiotto.it`
-(`api/compose\.(deploy|one)` only). Runbook: that repo's `deploy/README.md`.
-`touchgrass.davideghiotto.it` is [touchgrass](https://github.com/davide97g/touchgrass), the anime grassland walk in WebGL,
-added 2026-11-06: **not** a Dokploy app — a static site needs no build pipeline here. Plain compose in
-`~/touchgrass` (project `touchgrass`, container `touchgrass-web`, `nginx:1.30.6-alpine`, read-only) bound
-to `127.0.0.1:8796`, tunnel straight to it, no Traefik domain, not behind Access. It sits on Docker's
-default `bridge` because creating a network failed with *all predefined address pools have been fully
-subnetted* — worth fixing (`default-address-pools` in `daemon.json`) before the next stack needs one.
-The site is a read-only bind mount of `~/touchgrass/site`; a release is that repo's `deploy/deploy.sh`
-(build on the Mac, `rsync --delay-updates`, nginx reload). No CI.
-`mirai.davideghiotto.it` is a website proposal for Mirai Sushi (Montecchio Maggiore), added
-2026-11-10, repo `~/personal/projects/mirai` (local only, not on GitHub yet). Built like touchgrass: plain
-compose in `~/mirai` (project `mirai`, container `mirai-web`, `nginx:1.30.6-alpine`, read-only, default
-`bridge`) bound to `127.0.0.1:8797`, tunnel straight to it, not behind Access, `noindex` until the
-restaurant approves. A release is that repo's `deploy/deploy.sh` (build on the Mac, rsync, nginx reload).
-`isoworld.davideghiotto.it` is the landing page of [isoworld](https://github.com/davide97g/isoworld),
-the pixel-art farming game, added 2026-11-16 (full game on itch.io; the page frames a short guided
-taster, `play.html?taster`). Built like touchgrass: plain compose in `~/isoworld` (project `isoworld`,
-container `isoworld-web`, `nginx:1.30.6-alpine`, read-only, default `bridge`) bound to
-`127.0.0.1:8798`, tunnel straight to it, not behind Access. A release is that repo's
-`deploy/deploy.sh` (build on the Mac, rsync, nginx reload). No CI.
-`nimbus.davideghiotto.it` is a website proposal for Nimbus Pub (Vicenza), added 2026-11-17, repo
-`~/personal/projects/nimbus` (Astro, local only). Built like touchgrass: plain compose in `~/nimbus`
-(project `nimbus`, container `nimbus-web`, `nginx:1.30.6-alpine`, read-only, default `bridge`) bound to
-`127.0.0.1:8799`, tunnel straight to it, not behind Access, `noindex` (preview build) until the pub
-approves. A release is that repo's `deploy/deploy.sh` (build on the Mac, rsync, nginx reload). No CI.
-Since 2026-11-17 it also runs `nimbus-api` (`node:24.22.2-alpine`, `server/index.mjs`, no deps) in
-`nimbus-web`'s network namespace (`network_mode: service:web`, no new subnet): nginx proxies `/api/` to
-`127.0.0.1:8787`. It stores personalised-card requests (SQLite + photos) in `~/nimbus/data`, read at
-`/admin` with the password in `~/nimbus/.env` (`ADMIN_PASSWORD`, mode 600, not in the repo). Back up
-`~/nimbus/data` if the pub starts using it for real.
-`ciamioncino.davideghiotto.it` is [Ciamioncino](https://github.com/davide97g/ciamioncino), the cozy
-off-road driving game (Godot 4.7 web build + online multiplayer), added 2026-11-18. Built like nimbus:
-plain compose in `~/ciamioncino` (project `ciamioncino`): `ciamioncino-web` (`nginx:1.30.6-alpine`,
-read-only, default `bridge`) bound to `127.0.0.1:8800`, tunnel straight to it, not behind Access, and
-`ciamioncino-game` (Godot 4.7.2 headless relay, image built on the box from `~/ciamioncino/server`) in
-nginx's network namespace (`network_mode: service:web`); nginx proxies `/ws` (WebSocket) to
-`127.0.0.1:9080`. No data. A release is that repo's `deploy/deploy.sh`. No CI.
-`zootycoon.davideghiotto.it` is Zoolandia ([repo](https://github.com/davide97g/zoolandia), private),
-the zoo management game (Godot 4.7 web build), added 2026-11-21: compose app `zoolandia-xr8c3b`
-(composeId `WyPIzGNDoNoUeMU3Kis36`) in project `zoolandia`, compose path `./deploy/compose.yml`,
-branch `main`. The image builds the Godot web export itself (`deploy/Dockerfile`: Godot editor and
-web template fetched once, kept in the layer cache) and serves it with nginx on `127.0.0.1:8801`,
-default `bridge`, tunnel straight to it, no Traefik domain, not behind Access. No data. **Push to
-`main` deploys**: the repo's `.github/workflows/deploy.yml` calls `compose.deploy` through
-`deploy-zootycoon.davideghiotto.it` (`api/compose\.(deploy|one)` only) and waits for Dokploy.
-`videogiochi.davideghiotto.it` is the landing page of Davide's game remakes, added 2026-11-23, repo
-`~/personal/projects/videogiochi` (Astro, local only). Plain compose in `~/videogiochi`: one
-`nginx:1.30.6-alpine` (read-only, default `bridge`) serving the static build on `127.0.0.1:8802`,
-tunnel straight to it, not behind Access. No data. A release is that repo's `deploy/deploy.sh`
-(build on the Mac, rsync, nginx reload). No CI.
-`homelab.davideghiotto.it` is this homelab's own landing page ([`apps/site`](apps/site/)), added
-2026-11-23: what is connected, for people who are not into networking. Built like touchgrass: plain
-compose in `~/homelab-site` (project `homelab-site`, container `homelab-site-web`, `nginx:1.30.6-alpine`,
-read-only, default `bridge`) bound to `127.0.0.1:8803`, tunnel straight to it, not behind Access. No data,
-no build. A release is `apps/site/deploy/deploy.sh` (rsync, nginx reload). No CI.
-`lumii.davideghiotto.it` is LUMII Montecchio's restaurant app (`apps/lumii-*` in
-[zeroshot](https://github.com/davide97g/zeroshot)), added 2026-11-06: compose app `lumii-grjqvu`
-(composeId `uarKwudQqkZPe_cue7rqe`) in project `lumii`, compose path `./docker-compose.lumii.yml`,
-branch `main`. App + Postgres 18 + nightly `pg_dump` (volume
-`lumii-backups`, 14 days). Dokploy domain on service `lumii-app` port 3000, tunnel to
-`http://localhost:80`, not behind Access (customers sign in by email code). Its compose network
-has an explicit subnet (`LUMII_SUBNET`, default `10.213.0.0/24`) because Docker's address pools
-are used up here (see touchgrass above). Secrets in its Dokploy Environment tab. No CI; a release
-is one `compose.deploy` call.
-`atlante.davideghiotto.it` is the backend for [Atlante](https://github.com/davide97g/atlante),
-the self-hosted maps app, built here on 2026-09-19 rather than ported. A compose app: Fastify API,
-PostGIS with the Italy OSM index, Valhalla and Martin. The heavy artefacts — the PMTiles basemap
-and the Valhalla routing graph, ~4 GB — are built on the Mac and rsynced to `~/atlante/`, which is
-bind-mounted; nothing large is ever built on this box. Its own
-[`DEPLOY.md`](https://github.com/davide97g/atlante/blob/main/DEPLOY.md) is the runbook. Not behind
-Access: a native iOS client cannot pass an Access challenge, so Clerk bearer tokens are the gate
-and every route except `/health` requires one. No CI yet — released with one `compose.deploy` call.
+### Web apps
+
+Public web apps on the box, each behind its own tunnel hostname. How each one is built, published
+and released, with its traps: [`docs/web-apps.md`](docs/web-apps.md). The live set of hostnames
+is [`cloudflare/tunnels.json`](cloudflare/tunnels.json); what is up right now is
+[status.davideghiotto.it](https://status.davideghiotto.it).
+
+| Hostname (`.davideghiotto.it`) | What | Runs as | Access | Release |
+|---|---|---|---|---|
+| `calorico`, `thumb`, `ral-api`, `wedding`, `wedding-admin` | Apps moved off the Hetzner VPS on 2026-09-15 | Dokploy compose (ral-gate: application) | no | own CI |
+| `maestro` | Maestro, invite-only login (Better Auth) | Dokploy compose, SQLite volume | no | `compose.deploy` |
+| `atlante` | Atlante maps backend: Fastify, PostGIS, Valhalla, Martin | Dokploy compose, `~/atlante` bind mount | no, Clerk tokens | `compose.deploy` |
+| `get-riddle` | Riddle's landing page | Dokploy compose, nginx | no | `compose.deploy` |
+| `buriko` | Buriko's landing page | Dokploy compose, nginx | no | `compose.deploy` |
+| `autocratico` | Autocratico, the paperwork register (now redirects to `app.autocratico.it`, same origin `:8790`) | Dokploy compose, `~/autocratico/data` | **yes** | `compose.deploy` |
+| `get-autocratico` | Its landing page (now redirects to `autocratico.it`) | Dokploy compose, nginx `:8791` | no | `compose.deploy` |
+| `echo` | Echo voice-clone demo | Dokploy compose `:8795`, `~/echo-demo` | no | `compose.deploy` |
+| `slowgram` | Slowgram landing, privacy, support | Dokploy compose, nginx | no | `compose.deploy` |
+| `aftergrowth` | Aftergrowth, the sky-island game | Dokploy compose, `aftergrowth-data` volume | no | own CI |
+| `zootycoon` | Zoolandia, the zoo game | Dokploy compose, nginx `:8801` | no | own CI |
+| `lumii` | LUMII Montecchio's restaurant app | Dokploy compose, Postgres + nightly dump | no | `compose.deploy` |
+| `touchgrass` | Touchgrass, WebGL walk | plain compose `~/touchgrass`, nginx `:8796` | no | `deploy/deploy.sh` |
+| `mirai` | Website proposal for Mirai Sushi, `noindex` | plain compose `~/mirai`, `:8797` | no | `deploy/deploy.sh` |
+| `isoworld` | Isoworld landing and taster, with a save API | plain compose `~/isoworld`, `:8798` | no | `deploy/deploy.sh` |
+| `nimbus` | Website proposal for Nimbus Pub, `noindex`, with a card-request API | plain compose `~/nimbus`, `:8799` | no | `deploy/deploy.sh` |
+| `ciamioncino` | Ciamioncino, Godot web build and multiplayer relay | plain compose `~/ciamioncino`, `:8800` | no | `deploy/deploy.sh` |
+| `videogiochi` | Game remakes landing | plain compose `~/videogiochi`, `:8802` | no | `deploy/deploy.sh` |
+| `homelab` | This homelab, explained simply ([`apps/site`](apps/site/)) | plain compose `~/homelab-site`, `:8803` | no | `apps/site/deploy/deploy.sh` |
+
+`compose.deploy` means one Dokploy API call after a push to that repo's `main`, since the app has
+no CI of its own; the ids are in `.env` (`DOKPLOY_COMPOSE_ID_*`).
 
 [`porting-to-homelab.md`](docs/porting-to-homelab.md) is the runbook for moving the next one:
 the order of operations, the Dokploy and Cloudflare API calls, and the traps. The
@@ -294,8 +207,9 @@ container is gone from the box, and its code was deleted from the repo; it lives
 [`daf3ffb`](https://github.com/davide97g/homelab/tree/daf3ffb/archive/dashboard). [`apps/hub`](apps/hub/) replaced it.
 
 `cloudflared` runs as a systemd service with a dashboard-managed token, so no inbound port
-is forwarded to the box. Public hostnames are configured in Cloudflare Zero Trust, not on
-disk.
+is forwarded to the box. Its public hostnames are kept in [`cloudflare/tunnels.json`](cloudflare/tunnels.json)
+and applied with [`tools/cloudflare/tunnels.py`](tools/cloudflare/) (since 2026-11-23); Access
+applications are still managed in the Zero Trust dashboard.
 
 ## Always-on
 
@@ -350,217 +264,13 @@ into a config broke at once, the dashboard included.
 
 ## The NAS
 
-Ilario's UGREEN NASync **DXP4800 Pro** — `DXP4800PRO-21AF`, Linux 6.18.15, UGOS Pro.
-It is **at his house, not on this LAN**. There is no route to it except Tailscale.
-
-| | |
-|---|---|
-| Tailscale IP | `${NAS_TAILNET_IP}` (node `dxp4800pro-21af`) |
-| Account there | `davide` |
-| Alias | `ssh nas`, on both the Mac and the box |
-| Storage | `/volume1` 11 T (new pool, 2026-10-01); `/volume2` 939 G, docker configs only |
-| Home quota | `/home/davide` is capped at **25 G** — not a place to put a library |
-| Shares | `/volume1/docker`, `/volume1/media/{Movies,tv}`, `/volume1/test` (empty). Owned by `ilario`; `davide` writes through an ACL (`setfacl u:davide:rwx`, default ACL too) |
-
-An older `Host nas` in the Mac's `~/.ssh/config` pointed at `192.168.15.129` as user
-`ilario`, from when the NAS was on this LAN. That address answers nothing now and the
-entry was replaced rather than kept alongside.
-
-### Two tailnets, one shared node
-
-The Mac and the box are on `ghiotto.davidenko@gmail.com`; the NAS and Ilario's phone are
-on `<nas-owner-email>`. A client joins one tailnet at a time, so the NAS is **shared in**
-to ours rather than us switching accounts. Both halves of that matter — switching the Mac
-to his tailnet works, but then the box and the Pi drop out of view.
-
-| Node | Tailnet | Address |
-|---|---|---|
-| `debian` (this box) | ghiotto | `${BOX_TAILNET_IP}` |
-| `vvtgg3pwlh` (Mac) | ghiotto | `${MAC_TAILNET_IP}` |
-| `dxp4800pro-21af` | Ilario, shared in | `${NAS_TAILNET_IP}` |
-
-Tailscale was installed on the box on 2026-09-14 with `--accept-dns=false`, deliberately:
-Docker containers inherit the host's `/etc/resolv.conf`, and there is no reason to put
-MagicDNS in that path for a file transfer.
-
-**The link is direct, not relayed.** `tailscale ping nas` opens on `via DERP(fra)` for the
-first two or three packets and then upgrades to `via <home-wan-ip>:33337` at ~2 ms from
-the box. If it ever *stays* on DERP, throughput will be a fraction of the line rate and
-that is the thing to investigate. Our side traverses cleanly — `netcheck` reports UDP yes,
-`MappingVariesByDestIP: false`, and UPnP on the FRITZ!Box.
-
-Set **Disable key expiry** on the NAS node in the Tailscale console. A node that expires
-needs someone physically at Ilario's house to re-authenticate a container.
-
-### Its Jellyfin, on the public internet
-
-The NAS runs its own Jellyfin — **`nasilario`, 12.1.0**, a Docker container whose
-`8096` is published on the host as **`:8899`** (`ss` shows no `8096`; the container sits on
-`172.17.0.2`). It is not the box's `jellyfin` container and shares nothing with it.
-
-Upgraded 2026-09-15 from `ugreen/jellyfin:10.10.7` to the **official `jellyfin/jellyfin:12.1`**:
-UGREEN publishes no image past 10.10.7 and `ugreen/jellyfin` is not a public Docker Hub repo,
-so there is nothing newer to pull under that name. The app is still the UGOS app-store one —
-compose file `/volume1/@appstore/com.ugreen.docker.jellyfin/docker-compose.yaml`, previous
-version kept beside it as `docker-compose.yaml.bak-10.10.7`. A UGOS app update may push the
-vendor image back; the tag in that file is what to check first. Config backup before the jump:
-`/volume1/test/jellyfin-config-backup-20260915.tar.gz` (156M) — 12.x migrates the database
-forward and cannot be rolled back without restoring it.
-
-**Drive compose with `-p jellyfin`.** The containers are named `jellyfin-app-1`, not
-`comugreendockerjellyfin-app-1`; a bare `docker compose` in that directory derives the project
-name from the directory, silently builds a *second* stack and fails on the `8899` bind while
-the real one keeps running.
-
-It answers on **`https://cinema.davideghiotto.it`** with no Tailscale on the client, over
-a **second tunnel of its own, `nas-ilario`** — the NAS dials Cloudflare directly, so a
-stream crosses Ilario's uplink once and never touches this box.
-
-That hostname serves [Cinema](apps/cinema/), the custom front end, from the `cinema-web`
-container on `:8898`. **Jellyfin itself is no longer published on its own hostname**: as of
-2026-09-17 `jellyfin.davideghiotto.it` is gone from both the tunnel and DNS, and Jellyfin is
-reached under `https://cinema.davideghiotto.it/jf` — which is a complete Jellyfin base URL, so
-native clients take it verbatim and the admin UI is at `/jf/web/`. On the LAN it is still
-`:8899` as before.
-
-To put the old hostname back: add an ingress rule `jellyfin.davideghiotto.it` ->
-`http://localhost:8899` (before the catch-all) and a proxied CNAME to the tunnel.
-
-**There is no second Cinema any more.** From 2026-09-19 the mini PC ran its own Jellyfin (`:8097`)
-and `cinema-web` (`:8898`) as `home-cinema.davideghiotto.it`, for the library the then-full NAS
-could not hold. All of it — containers, volumes, the Dokploy app, the tunnel route and the DNS
-record — was removed on 2026-10-10; the NAS is the only Jellyfin.
-
-| | |
-|---|---|
-| Tunnel | `nas-ilario`, `<nas-tunnel-uuid>` |
-| Ingress | `cinema.davideghiotto.it` -> `http://localhost:8898`, `memories.davideghiotto.it` -> `http://localhost:2284` (2026-11-10, [memories](apps/memories/)), managed in Zero Trust |
-| DNS | proxied CNAME to `c5449ef2-….cfargotunnel.com` |
-| Binary | `/usr/local/bin/cloudflared` (2026.9.1), `--no-autoupdate` |
-| Config | `/usr/local/etc/cloudflared/{config.yml,<id>.json}`, root-owned `600`, dir `700` |
-| Service | `/etc/systemd/system/cloudflared.service`, enabled, `Restart=always` |
-
-```sh
-ssh nas
-sudo systemctl status cloudflared
-sudo journalctl -u cloudflared -f
-```
-
-The credentials file is derived from the tunnel token: it is base64 JSON, and `a`/`t`/`s`
-map to `AccountTag`/`TunnelID`/`TunnelSecret`. Running from that file rather than `--token`
-keeps the secret out of `ps`, where any account on the NAS could read it.
-
-#### Why it is a root service on the root filesystem
-
-The first version of this ran as a systemd **user** service out of `/home/davide`, with
-`loginctl enable-linger` (which, usefully, a user may set for themselves). A real reboot
-killed it, and the journal says why:
-
-```
-18:56:43  boot
-18:56:53  systemd --user starts, enumerates ~/.config/systemd/user, finds nothing
-18:56:59  /home mounts — six seconds too late
-```
-
-The user manager reaches `default.target` in 499 ms against a `/home` that is not mounted
-yet, so an enabled unit living there is never seen. Nothing is wrong with the unit; it
-works the moment the volume appears. **Anything that must survive a reboot on this NAS
-therefore belongs on the root overlay (`/`), not on the storage pool.** `/usr/local` is
-part of `/`, so the service has no `/home` reference at all and no mount ordering to get
-right. The user unit, the linger and the `/home` copies of the binary and credentials are
-all gone — one connector, one supervisor.
-
-For a while the mini PC covered the gap with a cron watchdog that sshed in to start the
-tunnel. That is deleted: the NAS depends on nothing but itself.
-
-#### sudo on this NAS
-
-`davide` is in the `admin` group, which is in sudoers — `sudo -n -l` answering *"a password
-is required"* rather than *"may not run sudo"* is how to tell. The password is
-`NAS_PASSWORD` in [`.env`](.env), and it is **not** either of the UGOS web-UI passwords.
-
-Its sudo refuses a piped password with `no password was provided`, which reads like a
-delivery bug and is a tty requirement. Two ways through:
-
-```sh
-ssh -t nas 'sudo …'                     # interactive, prompts in your terminal
-printf '%s\n' "$NAS_PASSWORD" | ssh nas 'bash ~/.sudo-run.sh <cmd>'   # scripted
-```
-
-`~/.sudo-run.sh` reads the password from stdin into `SUDO_ASKPASS`, so it never reaches a
-file or a command line. Note also that `bash -s` cannot be fed a script and a password on
-the same stdin — the `read` eats the next line of the script.
-
-**Check the permissions on anything written into `/home` there.** The share's default ACL
-made the first unit file `-rwxrwxrwx`, which systemd complains about and honours anyway — a
-world-writable unit is an invitation to run someone else's command as `davide`.
-
-**Nothing in front of it but Jellyfin's own login.** `grafana` and `mediarr` sit behind
-Cloudflare Access; this does not, because native Jellyfin clients on a TV or phone cannot
-complete an Access login — only browsers can. The library it serves is Ilario's.
-
-### Transferring to it
-
-`~/ops/xfer-nas/xfer-nas.sh` on the box. Defaults to one film; point it anywhere with `SRC`.
-Films go to `/volume1/media/Movies` (capital M), series to `/volume1/media/tv`. Measured
-2026-10-01 over Tailscale: ~24 MB/s, so a 56 GB 4K film is ~40 min plus ~8 min of md5.
-
-```sh
-ssh -t homelab "NAS_DEST=/volume1/media/Movies ~/ops/xfer-nas/xfer-nas.sh"
-ssh -t homelab "SRC='/path/to/folder' NAS_DEST=/volume1/media/Movies ~/ops/xfer-nas/xfer-nas.sh"
-```
-
-```
-progress    tail -f ~/ops/xfer-nas/xfer-nas.log
-live rate   tail -c 200 ~/ops/xfer-nas/xfer-nas.log.raw
-last line   cat ~/ops/xfer-nas/xfer-nas.status
-attach      tmux attach -t xfer-nas     (ctrl-b then d to detach)
-stop        tmux kill-session -t xfer-nas
-```
-
-**rsync does not work against this NAS.** UGOS ships a UGREEN build of rsync 3.4.1 that
-always behaves as a daemon: every destination is rejected with `invalid path`, including
-the user's own `/home/davide`, and `/etc/rsyncd.json` is root-only with no modules defined,
-so `rsync -e ssh nas::` gets no server greeting either. Nothing about this is fixable from
-the `davide` account. If Ilario ever enables the rsync service in UGOS, retest — rsync is
-the better tool. Until then the script does resume by hand:
-
-```
-remote size N  ->  tail -c +N+1 local | ssh nas 'cat >> remote'
-```
-
-`tail -c +N` is byte-exact, so an interrupted file continues where it stopped instead of
-restarting. Progress comes from `dd status=progress`, which avoids depending on `pv`
-(not installed, and installing it needs the box's sudo password). Files go smallest-first,
-so a subtitle proves the path before a multi-gigabyte file commits to it. Every file is
-md5'd on both sides at the end.
-
-FTP was considered and passed over: ports 21, 20 and 990 are all closed on the NAS, and
-neither `lftp` nor `ftp` is on the box — two changes to get started against zero. Worth
-revisiting if throughput ever disappoints, since `lftp` has `REST` resume, `--rate-limit`,
-and `pget -n` for parallel segments. Plaintext is not a concern inside Tailscale.
-
-**Going through the box, not the Mac, is the point.** The files already live on the box.
-Mac → NAS means pulling each one off the box and pushing it back out — twice the bytes over
-the same uplink. It halves the work and removes Wi-Fi and laptop sleep from the equation.
-
-### What it actually runs at
-
-First real transfer, 2026-09-14: 6.9 G in **6m 14s**, ~20 MB/s average and 22.4 MB/s
-sustained, single attempt, no retries, both md5s matched.
-
-That is ~180 Mbps, comfortably above the 121 Mbps `networkQuality` reported for this
-uplink — so treat that figure as pessimistic rather than as the ceiling. The transfer did
-**not** collapse the way UGREEN's own web uploader did, and no rate cap was needed. If a
-future transfer does start collapsing, the fix is a `--rate-limit`-style cap at roughly
-85–90% of whatever the line is doing: capping below line rate keeps the router's upstream
-buffer empty and raises the average. Measured bufferbloat here is real — idle latency
-28.8 ms, 229.2 ms under load.
-
-### Not possible as things stand
-
-The movie library is **301 G** and `/volume1` has **~233 G** free after the first film. The
-whole library does not fit. Individual films do.
+Ilario's UGREEN DXP4800 Pro, **at his house**, reachable only over Tailscale (`ssh nas`). It runs
+the only Jellyfin (behind [Cinema](apps/cinema/) at `cinema.davideghiotto.it`), Immich (behind
+[Memories](apps/memories/)) and [Accounts](apps/accounts/), each published through its own tunnel
+`nas-ilario`, so streams never cross this box. New library files reach it through
+[`hosts/debian/nas-sync`](hosts/debian/nas-sync/); the box's nightly backup lands on it too.
+Everything else — tailnets, Jellyfin's history, sudo there, transfers, rsync that does not work,
+measured throughput — is in [`hosts/nas.md`](hosts/nas.md).
 
 [`observability-plan.md`](docs/observability-plan.md) is the running plan for logs, NAS
 monitoring and the hub at `monitoring.davideghiotto.it`: what is live, what is left, and

@@ -1,0 +1,328 @@
+{
+  "mini-pc": {
+    "ingress": [
+      {
+        "service": "http://localhost:80",
+        "hostname": "cassette.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "path": "^/api/deploy/(compose/)?[A-Za-z0-9_-]+$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-cassette.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:5055",
+        "hostname": "netflix.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "finance.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8096",
+        "hostname": "streaming.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:5055",
+        "hostname": "discover.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "calorico.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-calorico.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "thumb.davideghiotto.it"
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-thumb.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "ral-api.davideghiotto.it"
+      },
+      {
+        "path": "^/api/application\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-ral.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "wedding.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "wedding-admin.davideghiotto.it"
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-wedding.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:8787",
+        "hostname": "jarvis.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "maestro.davideghiotto.it"
+      },
+      {
+        "path": "^/loki/api/v1/push$",
+        "service": "http://localhost:3100",
+        "hostname": "loki-push.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:3003",
+        "hostname": "monitoring.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "atlante.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:8765",
+        "hostname": "riddle.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "get-riddle.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "riddle-demo.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "path": "^/(v1/)?(chat/completions|messages|responses)$",
+        "service": "http://localhost:4001",
+        "hostname": "llm.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:4000",
+        "hostname": "llm.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-homelab.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:3000",
+        "hostname": "dokploy.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "yt-notifier.davideghiotto.it"
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-yt-notifier.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "buriko.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8790",
+        "hostname": "autocratico.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8791",
+        "hostname": "get-autocratico.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8793",
+        "hostname": "demo-autocratico.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8791",
+        "hostname": "autocratico.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8791",
+        "hostname": "www.autocratico.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8790",
+        "hostname": "app.autocratico.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8794",
+        "hostname": "prive.autocratico.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8793",
+        "hostname": "demo.autocratico.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "get-cassette.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "keybordy.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "contexto.davideghiotto.it"
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-contexto.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:8795",
+        "hostname": "echo.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8792",
+        "hostname": "zeroswaptest.davideghiotto.it"
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "slowgram.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "aftergrowth.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-aftergrowth.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "jazsbo.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-jazsbo.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8796",
+        "hostname": "touchgrass.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:80",
+        "hostname": "lumii.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8797",
+        "hostname": "mirai.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8798",
+        "hostname": "isoworld.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8799",
+        "hostname": "nimbus.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8800",
+        "hostname": "ciamioncino.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8801",
+        "hostname": "zootycoon.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "path": "^/api/compose\\.(deploy|one)$",
+        "service": "http://localhost:3000",
+        "hostname": "deploy-zootycoon.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8802",
+        "hostname": "videogiochi.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:8803",
+        "hostname": "homelab.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http_status:404"
+      }
+    ],
+    "warp-routing": {
+      "enabled": false
+    }
+  },
+  "nas": {
+    "ingress": [
+      {
+        "service": "http://localhost:8898",
+        "hostname": "cinema.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:2284",
+        "hostname": "memories.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http://localhost:2290",
+        "hostname": "accounts.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
+        "service": "http_status:404"
+      }
+    ],
+    "warp-routing": {
+      "enabled": false
+    }
+  }
+}

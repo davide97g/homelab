@@ -17,7 +17,7 @@ not in the baseline and not in `done.txt` is queued, smallest first, once it has
 Per file, not per folder, unlike `xfer-nas-auto.sh` before it: a new episode lands in a season
 folder that already exists, and only the episode is new.
 
-To send an older title anyway, use `xfer-nas.sh` by hand (root README, *Transferring to it*); while
+To send an older title anyway, use `xfer-nas.sh` by hand ([`hosts/nas.md`](../../nas.md), *Transferring to it*); while
 its tmux session runs, nas-sync waits. To re-baseline (everything present now becomes "old"):
 delete `control/baseline.txt`; the next run writes a new one.
 
