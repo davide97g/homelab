@@ -5,6 +5,7 @@ import { and, eq, gt, isNull } from 'drizzle-orm'
 import { db } from './db/client.ts'
 import * as schema from './db/schema.ts'
 import { env, isProd } from './env.ts'
+import { appleClientSecret } from './lib/apple.ts'
 import { sendCode } from './lib/mail.ts'
 import { acceptInvite } from './lib/invites.ts'
 
@@ -32,16 +33,49 @@ async function liveInvite(email: string) {
 
 const isAdminEmail = (email: string) => env.ADMIN_EMAILS.includes(email.toLowerCase())
 
+const google =
+  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+    ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, prompt: 'select_account' as const }
+    : null
+const apple =
+  env.APPLE_CLIENT_ID && env.APPLE_TEAM_ID && env.APPLE_KEY_ID && env.APPLE_PRIVATE_KEY
+    ? {
+        clientId: env.APPLE_CLIENT_ID,
+        clientSecret: appleClientSecret({
+          teamId: env.APPLE_TEAM_ID,
+          keyId: env.APPLE_KEY_ID,
+          clientId: env.APPLE_CLIENT_ID,
+          privateKey: env.APPLE_PRIVATE_KEY,
+        }),
+        // An id token minted for the web (Services ID) or for a native app.
+        audience: [env.APPLE_CLIENT_ID, ...env.APPLE_APP_BUNDLE_IDS],
+      }
+    : null
+
+/** Which social buttons to draw: here, and in every app that signs in through this service. */
+export const SOCIAL = { google: !!google, apple: !!apple }
+
 /**
- * One account per person, one 6-digit code by email to sign in, no passwords.
- * Nobody signs up on their own: an account is born from an admin's invite (or
- * from ADMIN_EMAILS, the bootstrap).
+ * One account per person, no passwords: a 6-digit code by email, or Google or
+ * Apple where they are configured. Nobody signs up on their own, whichever door
+ * they use: an account is born from an admin's invite (or from ADMIN_EMAILS, the
+ * bootstrap), and the user-create hook below refuses everyone else — a Google
+ * sign-in by a stranger fails exactly like a code for a stranger's email.
  */
 export const auth = betterAuth({
   baseURL: env.APP_URL,
   basePath: '/api/auth',
   secret: env.BETTER_AUTH_SECRET,
-  trustedOrigins: [env.APP_URL, ...env.TRUSTED_ORIGINS],
+  // Apple answers the sign-in with a form POST from its own origin.
+  trustedOrigins: [env.APP_URL, ...env.TRUSTED_ORIGINS, ...(apple ? ['https://appleid.apple.com'] : [])],
+  socialProviders: { ...(google ? { google } : {}), ...(apple ? { apple } : {}) },
+  account: {
+    // Somebody invited by email who later presses "Continue with Google" with
+    // that same address is the same person: Google and Apple both verify the
+    // email they hand over, so their sign-in joins the existing account rather
+    // than being refused as a duplicate.
+    accountLinking: { enabled: true, trustedProviders: ['google', 'apple', 'email-otp'] },
+  },
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   session: {
     // A TV signs in once and stays: 1 year, sliding.
@@ -72,7 +106,7 @@ export const auth = betterAuth({
       },
     }),
     // Cassette (phase 3) does not use the broker: it has no upstream account to sign
-    // anyone into. Its web app trades the shared cookie for a 15-minute JWT at
+    // anyone into, and this is its only sign-in. Its web app trades the shared cookie for a 15-minute JWT at
     // GET /api/auth/token and its API checks the signature against /api/auth/jwks.
     // RS256 rather than the default EdDSA so the API verifies these exactly as it
     // verifies Clerk's. A ban or a revoked session stops new tokens at once; one
@@ -88,6 +122,7 @@ export const auth = betterAuth({
           email: user.email,
           email_verified: user.emailVerified,
           name: user.name,
+          image: user.image ?? null,
         }),
       },
     }),

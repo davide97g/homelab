@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
-import { auth } from './auth.ts'
+import { auth, SOCIAL } from './auth.ts'
 import type { AppEnv } from './context.ts'
 import { pool } from './db/client.ts'
 import { env } from './env.ts'
@@ -33,6 +33,8 @@ const api = new Hono<AppEnv>()
     return c.json({ ok: true })
   })
   .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
+  // Which social sign-ins exist, so a client draws only buttons that work.
+  .get('/providers', (c) => c.json(SOCIAL))
   // Authenticated by the phone app's own upstream token, not a session.
   .route('/device', deviceRoutes)
   .use(async (c, next) => {

@@ -1,5 +1,6 @@
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { EmailCode } from '@/components/EmailCode.tsx'
+import { SocialButtons } from '@/components/SocialButtons.tsx'
 import { Shell } from '@/components/ui.tsx'
 import { safeNext } from '@/lib/api.ts'
 import { useSession } from '@/lib/session.tsx'
@@ -25,6 +26,7 @@ export function Login() {
     <Shell>
       <h1 className="mb-1 text-2xl font-bold">Accedi</h1>
       <p className="mb-8 text-sm text-muted">Un account per Cinema, Memories e il resto di casa.</p>
+      <SocialButtons next={next} />
       <EmailCode
         onDone={async () => {
           await refresh()

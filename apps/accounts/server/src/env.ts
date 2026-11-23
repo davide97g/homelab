@@ -52,6 +52,25 @@ const schema = z.object({
   IMMICH_API_KEY: optional,
   IMMICH_PUBLIC_URL: z.string().default('https://memories.davideghiotto.it/immich'),
 
+  /**
+   * Sign in with Google. A "Web application" OAuth client whose redirect URI is
+   * `${APP_URL}/api/auth/callback/google`. Unset: no Google button anywhere.
+   */
+  GOOGLE_CLIENT_ID: optional,
+  GOOGLE_CLIENT_SECRET: optional,
+  /**
+   * Sign in with Apple. CLIENT_ID is the Services ID (web), with return URL
+   * `${APP_URL}/api/auth/callback/apple`; TEAM_ID, KEY_ID and PRIVATE_KEY (the
+   * .p8, newlines as \n) sign the client secret at boot (lib/apple.ts).
+   * Unset: no Apple button anywhere.
+   */
+  APPLE_CLIENT_ID: optional,
+  APPLE_TEAM_ID: optional,
+  APPLE_KEY_ID: optional,
+  APPLE_PRIVATE_KEY: optional,
+  /** Bundle ids of native apps that send Apple id tokens straight here (cassette's iPhone app). */
+  APPLE_APP_BUNDLE_IDS: list,
+
   /** Universal links: "DA596D32QB.it.davideghiotto.cinema=/cinema/*;DA596D32QB.it.davideghiotto.memories=/memories/*" */
   APPLE_APP_LINKS: optional,
   /** Android App Links: "it.davideghiotto.cinema=AA:BB:...;other.pkg=..." */

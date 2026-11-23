@@ -1,6 +1,7 @@
 # accounts
 
-Single sign-on for the homelab: **one account per person, a 6-digit code by email, no passwords**.
+Single sign-on for the homelab: **one account per person, a 6-digit code by email or Google or
+Apple, no passwords**.
 Admins invite people and choose which apps they get. TVs sign in with a code or a QR that a phone
 approves.
 
@@ -36,6 +37,24 @@ Live at **`https://accounts.davideghiotto.it`** since 2026-11-12, on the NAS nex
   user, or rotates the Immich password.
 - **No open sign-up.** A user row is only created for an email with a live invite, or one listed in
   `ADMIN_EMAILS` (the bootstrap). A code is only mailed to known, invited or admin emails.
+
+## Google and Apple
+
+Optional, each on its own: the buttons appear (here and in cassette) only for a provider whose
+variables are set, and `GET /api/providers` says which. **Invite-only still holds**: the user-create
+hook refuses an email with no invite whichever door it came through, and a Google or Apple account
+whose verified email matches an existing user is linked to it (`accountLinking.trustedProviders`).
+
+- **Google**: Google Cloud console → APIs & Services → Credentials → OAuth client ID → *Web
+  application*. Authorized redirect URI `https://accounts.davideghiotto.it/api/auth/callback/google`.
+  Scopes are only `openid email profile`, so the consent screen can be published to *In production*
+  without verification — leave it in *Testing* and only listed test users can sign in.
+- **Apple**: developer.apple.com → Identifiers → a *Services ID* (that is `APPLE_CLIENT_ID`) with
+  Sign in with Apple on, domain `accounts.davideghiotto.it`, return URL
+  `https://accounts.davideghiotto.it/api/auth/callback/apple`; Keys → a key with Sign in with Apple
+  (`APPLE_KEY_ID`, the `.p8` into `APPLE_PRIVATE_KEY` with newlines as `\n`); `APPLE_TEAM_ID` is the
+  team. The client secret is a JWT signed from that key at boot (`lib/apple.ts`), valid six months:
+  every deploy restarts the clock, and a container left up longer stops Apple sign-ins until restarted.
 
 ## Admin page
 
