@@ -1,0 +1,23 @@
+Memories is a photo library for people who keep their photos on their own server instead of someone else's cloud.
+
+Point it at your self-hosted Immich server and your whole library is on your iPhone: every photo and video, in a timeline you can pinch from years down to single days.
+
+BROWSE
+- Years, months and all photos, with a grid from 3 to 13 columns
+- Albums, people, places and memories from past years
+- Smart search: type "sunset" or "dog on the beach" and find it
+
+BACK UP
+- Photos and videos taken on this iPhone upload to your server in the background
+- At home it talks to the server directly over Wi-Fi, so big videos skip the Internet
+
+FREE UP SPACE
+- Once a photo is confirmed on your server, Memories can remove it from the iPhone
+- Anything still only on the phone is never touched
+- Save to iPhone brings a photo back whenever you want it
+
+PRIVATE BY DESIGN
+- No account with us, no ads, no analytics, no tracking
+- Your photos go to your server and nowhere else
+
+Memories needs a server: it works with Immich, the open-source photo server you run at home or on a NAS.

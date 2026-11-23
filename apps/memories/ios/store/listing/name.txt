@@ -1,0 +1,6 @@
+Memories: Your Photo Server
+
+Fallbacks, in order, if App Store Connect says the name is taken (30 chars max):
+Memories - Home Photo Library
+Memories for Home Servers
+Memories Photo Backup

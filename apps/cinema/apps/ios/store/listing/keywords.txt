@@ -1,0 +1,1 @@
+jellyfin,self-hosted,media server,nas,movies,tv shows,player,homelab,streaming,library,offline

@@ -1,0 +1,6 @@
+Cinema: Home Media Player
+
+Fallbacks, in order, if App Store Connect says the name is taken (30 chars max):
+Cinema - Your Movie Server
+Cinema for Home Servers
+Cinema Home Theater

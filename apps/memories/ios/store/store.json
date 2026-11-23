@@ -1,0 +1,8 @@
+{
+  "bundle_id": "it.davideghiotto.memories",
+  "sku": "memories-ios",
+  "version": "1.0.0",
+  "primary_category": "PHOTO_AND_VIDEO",
+  "secondary_category": "UTILITIES",
+  "content_rights": "DOES_NOT_USE_THIRD_PARTY_CONTENT"
+}

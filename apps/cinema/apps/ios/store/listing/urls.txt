@@ -1,0 +1,4 @@
+Support URL:        https://github.com/davide97g/homelab/issues
+Privacy Policy URL: https://github.com/davide97g/homelab/blob/main/apps/cinema/PRIVACY.md
+
+No marketing URL: the listing has none.

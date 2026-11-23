@@ -1,0 +1,21 @@
+Cinema plays the movies and TV shows on your own media server.
+
+Point it at your self-hosted Jellyfin server and your library is on your iPhone and iPad: pick up where you left off, see what's next in a series, and browse every library you have.
+
+WATCH
+- Continue watching and Next Up, right on the home screen
+- Native playback with subtitles and audio track selection
+- Picture in Picture and AirPlay
+
+YOUR LIBRARY
+- Movies, shows, seasons and episodes with artwork and details
+- Search across everything on the server
+- Download episodes to watch offline
+
+PRIVATE BY DESIGN
+- No ads, no analytics, no tracking
+- The app talks to your server and nowhere else
+
+Cinema needs a server: it works with Jellyfin, the free open-source media server you run at home or on a NAS. It does not provide any content.
+
+Cinema is based on Swiftfin and is licensed under the Mozilla Public License 2.0. Source: https://github.com/davide97g/homelab/tree/main/apps/cinema/apps/ios

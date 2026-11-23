@@ -1,0 +1,1 @@
+self-hosted,immich,nas,backup,photo library,homelab,private,gallery,albums,storage,server
