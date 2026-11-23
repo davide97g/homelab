@@ -8,7 +8,7 @@ history from before the merge, under `apps/`.
 
 | Path | What |
 |---|---|
-| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/) |
+| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/), [site](apps/site/) |
 | [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
 | [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md) |
 | [`hosts/`](hosts/) | Per-host notes: [the NAS](hosts/nas.md) |
@@ -36,6 +36,7 @@ On the box, `~` is laid out as:
 | Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
 | Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
 | JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | server: push to `main`. APK: `scripts/deploy-tv.sh` |
+| Landing page: the homelab explained simply | `apps/site` | mini PC, `~/homelab-site` | `homelab.davideghiotto.it` | `apps/site/deploy/deploy.sh` |
 | Dirette YouTube: Ciamioncino Ring Road | `apps/youtube-live` | mini PC, Dokploy | none | [local image and OBS recording](apps/youtube-live/) |
 | Local AI: Ollama, LiteLLM (Open WebUI off since 2026-11-03) | `apps/local-ai` | mini PC, Dokploy | `llm.davideghiotto.it` | push to `main` |
 | AdGuard Home, DNS ad blocking for the house | `apps/adguard` | mini PC, Dokploy; the FRITZ!Box forwards to it | none, UI at `http://debian:3053` | push to `main` |
@@ -216,6 +217,16 @@ web template fetched once, kept in the layer cache) and serves it with nginx on 
 default `bridge`, tunnel straight to it, no Traefik domain, not behind Access. No data. **Push to
 `main` deploys**: the repo's `.github/workflows/deploy.yml` calls `compose.deploy` through
 `deploy-zootycoon.davideghiotto.it` (`api/compose\.(deploy|one)` only) and waits for Dokploy.
+`videogiochi.davideghiotto.it` is the landing page of Davide's game remakes, added 2026-11-23, repo
+`~/personal/projects/videogiochi` (Astro, local only). Plain compose in `~/videogiochi`: one
+`nginx:1.30.6-alpine` (read-only, default `bridge`) serving the static build on `127.0.0.1:8802`,
+tunnel straight to it, not behind Access. No data. A release is that repo's `deploy/deploy.sh`
+(build on the Mac, rsync, nginx reload). No CI.
+`homelab.davideghiotto.it` is this homelab's own landing page ([`apps/site`](apps/site/)), added
+2026-11-23: what is connected, for people who are not into networking. Built like touchgrass: plain
+compose in `~/homelab-site` (project `homelab-site`, container `homelab-site-web`, `nginx:1.30.6-alpine`,
+read-only, default `bridge`) bound to `127.0.0.1:8803`, tunnel straight to it, not behind Access. No data,
+no build. A release is `apps/site/deploy/deploy.sh` (rsync, nginx reload). No CI.
 `lumii.davideghiotto.it` is LUMII Montecchio's restaurant app (`apps/lumii-*` in
 [zeroshot](https://github.com/davide97g/zeroshot)), added 2026-11-06: compose app `lumii-grjqvu`
 (composeId `uarKwudQqkZPe_cue7rqe`) in project `lumii`, compose path `./docker-compose.lumii.yml`,

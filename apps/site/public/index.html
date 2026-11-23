@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Homelab di Davide</title>
+    <meta name="description" content="Un mini PC e un NAS che tengono i nostri film, le foto e la musica. Cosa fanno e come ci si arriva, spiegato app per app." />
+    <meta name="theme-color" content="#f5f5f7" />
+    <meta name="color-scheme" content="light" />
+    <link rel="canonical" href="https://homelab.davideghiotto.it/" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Homelab di Davide" />
+    <meta property="og:description" content="Un mini PC e un NAS che tengono i nostri film, le foto e la musica." />
+    <meta property="og:url" content="https://homelab.davideghiotto.it/" />
+    <link rel="preload" href="./assets/fonts/inter-tight.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="./assets/site.css?v=3" />
+    <script src="./assets/site.js?v=3" defer></script>
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true">
+  <symbol id="i-device-mobile" viewBox="0 0 256 256"><path d="M176,16H80A24,24,0,0,0,56,40V216a24,24,0,0,0,24,24h96a24,24,0,0,0,24-24V40A24,24,0,0,0,176,16ZM72,64H184V192H72Zm8-32h96a8,8,0,0,1,8,8v8H72V40A8,8,0,0,1,80,32Zm96,192H80a8,8,0,0,1-8-8v-8H184v8A8,8,0,0,1,176,224Z"/></symbol>
+  <symbol id="i-television" viewBox="0 0 256 256"><path d="M216,64H147.31l34.35-34.34a8,8,0,1,0-11.32-11.32L128,60.69,85.66,18.34A8,8,0,0,0,74.34,29.66L108.69,64H40A16,16,0,0,0,24,80V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V80A16,16,0,0,0,216,64ZM40,80H144V200H40ZM216,200H160V80h56V200Zm-16-84a12,12,0,1,1-12-12A12,12,0,0,1,200,116Zm0,48a12,12,0,1,1-12-12A12,12,0,0,1,200,164Z"/></symbol>
+  <symbol id="i-laptop" viewBox="0 0 256 256"><path d="M232,168h-8V72a24,24,0,0,0-24-24H56A24,24,0,0,0,32,72v96H24a8,8,0,0,0-8,8v16a24,24,0,0,0,24,24H216a24,24,0,0,0,24-24V176A8,8,0,0,0,232,168ZM48,72a8,8,0,0,1,8-8H200a8,8,0,0,1,8,8v96H48ZM224,192a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8v-8H224ZM152,88a8,8,0,0,1-8,8H112a8,8,0,0,1,0-16h32A8,8,0,0,1,152,88Z"/></symbol>
+  <symbol id="i-cloud-check" viewBox="0 0 256 256"><path d="M247.93,124.52C246.11,77.54,207.07,40,160.06,40A88.1,88.1,0,0,0,81.29,88.67h0A87.48,87.48,0,0,0,72,127.73,8.18,8.18,0,0,1,64.57,136,8,8,0,0,1,56,128a103.66,103.66,0,0,1,5.34-32.92,4,4,0,0,0-4.75-5.18A64.09,64.09,0,0,0,8,152c0,35.19,29.75,64,65,64H160A88.09,88.09,0,0,0,247.93,124.52Zm-50.27-6.86-48,48a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L144,148.69l42.34-42.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+  <symbol id="i-hard-drives" viewBox="0 0 256 256"><path d="M208,40H48A16,16,0,0,0,32,56v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V56A16,16,0,0,0,208,40ZM180,92a12,12,0,1,1,12-12A12,12,0,0,1,180,92Z"/><path d="M208,136H48a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A16,16,0,0,0,208,136Zm-28,52a12,12,0,1,1,12-12A12,12,0,0,1,180,188Z"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 256 256"><path d="M104,104h48v48H104Zm136,48a8,8,0,0,1-8,8H216v40a16,16,0,0,1-16,16H160v16a8,8,0,0,1-16,0V216H112v16a8,8,0,0,1-16,0V216H56a16,16,0,0,1-16-16V160H24a8,8,0,0,1,0-16H40V112H24a8,8,0,0,1,0-16H40V56A16,16,0,0,1,56,40H96V24a8,8,0,0,1,16,0V40h32V24a8,8,0,0,1,16,0V40h40a16,16,0,0,1,16,16V96h16a8,8,0,0,1,0,16H216v32h16A8,8,0,0,1,240,152ZM168,96a8,8,0,0,0-8-8H96a8,8,0,0,0-8,8v64a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8Z"/></symbol>
+  <symbol id="i-book-open-text" viewBox="0 0 256 256"><path d="M232,48H168a32,32,0,0,0-32,32v87.73a8.17,8.17,0,0,1-7.47,8.25,8,8,0,0,1-8.53-8V80A32,32,0,0,0,88,48H24a8,8,0,0,0-8,8V200a8,8,0,0,0,8,8H96a24,24,0,0,1,24,23.94,7.9,7.9,0,0,0,5.12,7.55A8,8,0,0,0,136,232a24,24,0,0,1,24-24h72a8,8,0,0,0,8-8V56A8,8,0,0,0,232,48ZM208,168H168.27a8.17,8.17,0,0,1-8.25-7.47,8,8,0,0,1,8-8.53h39.73a8.17,8.17,0,0,1,8.25,7.47A8,8,0,0,1,208,168Zm0-32H168.27a8.17,8.17,0,0,1-8.25-7.47,8,8,0,0,1,8-8.53h39.73a8.17,8.17,0,0,1,8.25,7.47A8,8,0,0,1,208,136Zm0-32H168.27A8.17,8.17,0,0,1,160,96.53,8,8,0,0,1,168,88h39.73A8.17,8.17,0,0,1,216,95.47,8,8,0,0,1,208,104Z"/></symbol>
+  <symbol id="i-microphone" viewBox="0 0 256 256"><path d="M80,128V64a48,48,0,0,1,96,0v64a48,48,0,0,1-96,0Zm128,0a8,8,0,0,0-16,0,64,64,0,0,1-128,0,8,8,0,0,0-16,0,80.11,80.11,0,0,0,72,79.6V240a8,8,0,0,0,16,0V207.6A80.11,80.11,0,0,0,208,128Z"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 256 256"><path d="M208,144a15.78,15.78,0,0,1-10.42,14.94L146,178l-19,51.62a15.92,15.92,0,0,1-29.88,0L78,178l-51.62-19a15.92,15.92,0,0,1,0-29.88L78,110l19-51.62a15.92,15.92,0,0,1,29.88,0L146,110l51.62,19A15.78,15.78,0,0,1,208,144ZM152,48h16V64a8,8,0,0,0,16,0V48h16a8,8,0,0,0,0-16H184V16a8,8,0,0,0-16,0V32H152a8,8,0,0,0,0,16Zm88,32h-8V72a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16h8v8a8,8,0,0,0,16,0V96h8a8,8,0,0,0,0-16Z"/></symbol>
+  <symbol id="i-chart-line-up" viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM200,192H56a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v76.69l34.34-34.35a8,8,0,0,1,11.32,0L128,132.69,172.69,88H144a8,8,0,0,1,0-16h48a8,8,0,0,1,8,8v48a8,8,0,0,1-16,0V99.31l-50.34,50.35a8,8,0,0,1-11.32,0L104,131.31l-40,40V176H200a8,8,0,0,1,0,16Z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 256 256"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32Zm-8,128H176V88a8,8,0,0,0-8-8H96V48H208Z"/></symbol>
+  <symbol id="i-globe-hemisphere-west" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm88,104a87.62,87.62,0,0,1-6.4,32.94l-44.7-27.49a15.92,15.92,0,0,0-6.24-2.23l-22.82-3.08a16.11,16.11,0,0,0-16,7.86h-8.72l-3.8-7.86a15.91,15.91,0,0,0-11-8.67l-8-1.73L96.14,104h16.71a16.06,16.06,0,0,0,7.73-2l12.25-6.76a16.62,16.62,0,0,0,3-2.14l26.91-24.34A15.93,15.93,0,0,0,166,49.1l-.36-.65A88.11,88.11,0,0,1,216,128ZM40,128a87.53,87.53,0,0,1,8.54-37.8l11.34,30.27a16,16,0,0,0,11.62,10l21.43,4.61L96.74,143a16.09,16.09,0,0,0,14.4,9h1.48l-7.23,16.23a16,16,0,0,0,2.86,17.37l.14.14L128,205.94l-1.94,10A88.11,88.11,0,0,1,40,128Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 256 256"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"/></symbol>
+</svg>
+
+    <header class="nav">
+      <a class="brand" href="#top">homelab</a>
+      <nav aria-label="Sezioni">
+        <a href="#casa">Il mini PC e il NAS</a>
+        <a href="#app">Le app</a>
+        <a class="nav-cta" href="#contatti">Scrivimi</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <!-- HERO -->
+      <section class="hero">
+        <h1 class="reveal">Film, foto e musica.<br /><span class="soft">Su due computer di casa.</span></h1>
+        <p class="lead reveal">Un mini PC a casa mia e un NAS a casa di Ilario. Qui sotto, cosa fa ciascuno.</p>
+        <a class="more reveal" href="#app">Vedi le app</a>
+
+        <figure class="map reveal">
+          <svg class="map-h" viewBox="0 0 900 250" aria-hidden="true">
+            <g class="wire">
+              <path d="M200 45 C 290 45, 290 125, 340 125" />
+              <path d="M200 125 L 340 125" />
+              <path d="M200 205 C 290 205, 290 125, 340 125" />
+              <path d="M480 125 C 580 125, 580 72, 680 72" />
+              <path d="M480 125 C 580 125, 580 182, 680 182" />
+            </g>
+            <g class="pulse">
+              <path pathLength="100" d="M200 45 C 290 45, 290 125, 340 125" />
+              <path pathLength="100" d="M200 125 L 340 125" style="animation-delay:-1.3s" />
+              <path pathLength="100" d="M200 205 C 290 205, 290 125, 340 125" style="animation-delay:-2.6s" />
+              <path pathLength="100" d="M480 125 C 580 125, 580 72, 680 72" style="animation-delay:-.7s" />
+              <path pathLength="100" d="M480 125 C 580 125, 580 182, 680 182" style="animation-delay:-2s" />
+            </g>
+            <use href="#i-device-mobile" x="56" y="25" width="40" height="40" class="dev" />
+            <use href="#i-television" x="56" y="105" width="40" height="40" class="dev" />
+            <use href="#i-laptop" x="56" y="185" width="40" height="40" class="dev" />
+            <text x="108" y="51">Telefono</text>
+            <text x="108" y="131">TV</text>
+            <text x="108" y="211">Computer</text>
+
+            <rect x="340" y="80" width="140" height="90" rx="22" class="cf" />
+            <use href="#i-cloud-check" x="390" y="90" width="40" height="40" class="cf-ico" />
+            <text x="410" y="154" text-anchor="middle">Cloudflare</text>
+
+            <rect x="680" y="40" width="190" height="64" rx="18" class="box-dark" />
+            <use href="#i-cpu" x="696" y="56" width="32" height="32" class="ico-lime" />
+            <text x="740" y="68" class="on-dark">Mini PC</text>
+            <text x="740" y="86" class="on-dark sub">a casa mia</text>
+
+            <rect x="680" y="150" width="190" height="64" rx="18" class="box-dark" />
+            <use href="#i-hard-drives" x="696" y="166" width="32" height="32" class="ico-blue" />
+            <text x="740" y="178" class="on-dark">NAS</text>
+            <text x="740" y="196" class="on-dark sub">a casa di Ilario</text>
+            <path d="M775 104 V150" class="tie" />
+          </svg>
+
+          <svg class="map-v" viewBox="0 0 340 390" aria-hidden="true">
+            <g class="wire">
+              <path d="M60 92 C 60 130, 170 120, 170 160" />
+              <path d="M170 92 L 170 160" />
+              <path d="M280 92 C 280 130, 170 120, 170 160" />
+              <path d="M170 248 C 170 290, 85 280, 85 318" />
+              <path d="M170 248 C 170 290, 255 280, 255 318" />
+            </g>
+            <g class="pulse">
+              <path pathLength="100" d="M60 92 C 60 130, 170 120, 170 160" />
+              <path pathLength="100" d="M170 92 L 170 160" style="animation-delay:-1.3s" />
+              <path pathLength="100" d="M280 92 C 280 130, 170 120, 170 160" style="animation-delay:-2.6s" />
+              <path pathLength="100" d="M170 248 C 170 290, 85 280, 85 318" style="animation-delay:-.7s" />
+              <path pathLength="100" d="M170 248 C 170 290, 255 280, 255 318" style="animation-delay:-2s" />
+            </g>
+            <use href="#i-device-mobile" x="40" y="12" width="40" height="40" class="dev" />
+            <use href="#i-television" x="150" y="12" width="40" height="40" class="dev" />
+            <use href="#i-laptop" x="260" y="12" width="40" height="40" class="dev" />
+            <text x="60" y="76" text-anchor="middle">Telefono</text>
+            <text x="170" y="76" text-anchor="middle">TV</text>
+            <text x="280" y="76" text-anchor="middle">Computer</text>
+            <rect x="105" y="160" width="130" height="88" rx="22" class="cf" />
+            <use href="#i-cloud-check" x="150" y="170" width="40" height="40" class="cf-ico" />
+            <text x="170" y="233" text-anchor="middle">Cloudflare</text>
+            <rect x="4" y="318" width="160" height="64" rx="18" class="box-dark" />
+            <use href="#i-cpu" x="16" y="334" width="30" height="30" class="ico-lime" />
+            <text x="56" y="346" class="on-dark">Mini PC</text>
+            <text x="56" y="364" class="on-dark sub">a casa mia</text>
+            <rect x="176" y="318" width="160" height="64" rx="18" class="box-dark" />
+            <use href="#i-hard-drives" x="188" y="334" width="30" height="30" class="ico-blue" />
+            <text x="228" y="346" class="on-dark">NAS</text>
+            <text x="228" y="364" class="on-dark sub">da Ilario</text>
+            <path d="M164 350 H176" class="tie" />
+          </svg>
+
+          <figcaption class="legend">
+            <div>
+              <b>Apri l'app</b>
+              <p>Dal telefono, dalla TV o dal computer. Anche quando sei fuori casa.</p>
+            </div>
+            <div>
+              <b>Cloudflare fa da filtro</b>
+              <p>Controlla chi entra e gira la richiesta a casa. Il router non ha porte aperte.</p>
+            </div>
+            <div>
+              <b>Rispondono i computer di casa</b>
+              <p>Il mini PC e il NAS si parlano con Tailscale, una rete privata e cifrata.</p>
+            </div>
+          </figcaption>
+        </figure>
+      </section>
+
+      <!-- THE TWO BOXES -->
+      <section id="casa" class="section">
+        <h2 class="title reveal">Il mini PC e il NAS</h2>
+
+        <div class="boxes">
+          <article class="box box--pc reveal">
+            <div class="box-art" aria-hidden="true"><div class="minipc"><span></span></div></div>
+            <div class="box-body">
+              <h3>Mini PC</h3>
+              <p class="model">GMKtec M6 Ultra, a casa mia</p>
+              <p>Cerca e scarica i film che chiedete, tiene la musica, fa girare l'intelligenza artificiale e i miei siti.</p>
+              <ul class="specs">
+                <li>1 TB di disco</li>
+                <li>40 GB di RAM</li>
+                <li>Sempre acceso</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="box box--nas reveal">
+            <div class="box-art" aria-hidden="true"><div class="nas"><span></span><span></span><span></span><span></span></div></div>
+            <div class="box-body">
+              <h3>NAS</h3>
+              <p class="model">UGREEN DXP4800 Pro, a casa di Ilario</p>
+              <p>Quattro dischi. Qui finiscono i film, le serie e tutte le foto di famiglia.</p>
+              <ul class="specs">
+                <li>11 TB di spazio</li>
+                <li>4 dischi</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- APPS -->
+      <section id="app" class="section">
+        <div class="intro reveal">
+          <p class="eyebrow">Le app</p>
+          <h2>Le ho scritte io, per noi.</h2>
+          <p class="lead">Ci entri con lo stesso account da iPhone, TV e browser.</p>
+        </div>
+
+        <!-- CINEMA -->
+        <article class="app app--cinema">
+          <div class="app-text reveal">
+            <p class="app-name">Cinema</p>
+            <h3>I nostri film e serie, <em>su ogni schermo.</em></h3>
+            <ul class="features">
+              <li>Inizi un film sul telefono e lo finisci sulla TV.</li>
+              <li>Sottotitoli in italiano e inglese, scaricati da soli.</li>
+              <li>Se un film manca, lo chiedi dall'app.</li>
+            </ul>
+            <a class="more" href="https://cinema.davideghiotto.it" rel="noopener">cinema.davideghiotto.it</a>
+          </div>
+
+          <div class="app-visual reveal">
+            <div class="screens">
+              <figure class="display"><img src="./assets/img/cinema-home.webp" width="1600" height="900" loading="lazy" alt="Cinema nel browser: la home con Continua a guardare e i film della libreria" /></figure>
+              <figure class="display display--small"><img src="./assets/img/cinema-discover.webp" width="1200" height="675" loading="lazy" alt="Cinema, sezione Scopri: i film e le serie che si possono richiedere" /></figure>
+            </div>
+          </div>
+
+          <div class="flow-wrap reveal">
+            <p class="flow-title">Quando chiedi un film</p>
+            <ol class="flow" data-flow>
+              <li><b>Lo cerchi</b><span>nella sezione Scopri</span></li>
+              <li><b>Premi Richiedi</b><span>e basta</span></li>
+              <li><b>Il mini PC lo scarica</b><span>vedi a che punto è</span></li>
+              <li><b>Va sul NAS</b><span>e la copia viene controllata</span></li>
+              <li><b>Lo trovi in Cinema</b><span>con i sottotitoli</span></li>
+            </ol>
+            <div class="flow-bar" aria-hidden="true"><i></i></div>
+          </div>
+        </article>
+
+        <!-- MEMORIES -->
+        <article class="app app--memories app--flip">
+          <div class="app-text reveal">
+            <p class="app-name">Memories</p>
+            <h3>Tutte le foto di famiglia, <em>in un posto solo.</em></h3>
+            <ul class="features">
+              <li>Le foto dell'iPhone si salvano sul NAS da sole.</li>
+              <li>Le cerchi scrivendo cosa c'è dentro: «cibo», «cane al mare».</li>
+              <li>Quelle già salvate puoi toglierle dal telefono per fare spazio.</li>
+              <li>Si guardano anche sulla TV.</li>
+            </ul>
+            <a class="more" href="https://memories.davideghiotto.it" rel="noopener">memories.davideghiotto.it</a>
+          </div>
+
+          <div class="app-visual reveal">
+            <div class="phones">
+              <figure class="phone"><img src="./assets/img/memories-library.webp" width="640" height="1392" loading="lazy" alt="Memories su iPhone: la griglia delle foto di novembre, con le foto sfocate per privacy" /></figure>
+              <figure class="phone phone--back"><img src="./assets/img/memories-search.webp" width="640" height="1392" loading="lazy" alt="Memories: la ricerca «cibo» trova le foto dei piatti, sfocate per privacy" /></figure>
+            </div>
+            <p class="note">Le foto sono sfocate per privacy.</p>
+          </div>
+
+          <div class="flow-wrap reveal">
+            <p class="flow-title">Dopo una festa</p>
+            <ol class="flow" data-flow>
+              <li><b>Fai le foto</b><span>come sempre</span></li>
+              <li><b>Torni a casa</b><span>il telefono trova il Wi-Fi</span></li>
+              <li><b>Si salvano sul NAS</b><span>senza aprire l'app</span></li>
+              <li><b>Fai spazio</b><span>sul telefono, se vuoi</span></li>
+              <li><b>Le guardate in TV</b><span>tutti insieme</span></li>
+            </ol>
+            <div class="flow-bar" aria-hidden="true"><i></i></div>
+          </div>
+        </article>
+
+        <!-- CASSETTE: centred, different from the two splits above -->
+        <article class="app app--cassette">
+          <div class="cassette-head reveal">
+            <p class="app-name">Cassette</p>
+            <h3>La musica che ci piace, <em>anche senza internet.</em></h3>
+            <a class="more" href="https://get-cassette.davideghiotto.it" rel="noopener">get-cassette.davideghiotto.it</a>
+          </div>
+          <div class="cassette-phones reveal">
+            <figure class="phone"><img src="./assets/img/cassette-home.webp" width="640" height="1392" loading="lazy" alt="Cassette su iPhone: la home con gli ultimi ascolti e le playlist" /></figure>
+            <figure class="phone phone--lift"><img src="./assets/img/cassette-liked.webp" width="640" height="1392" loading="lazy" alt="Cassette: la lista dei brani preferiti" /></figure>
+          </div>
+          <ul class="cassette-points reveal">
+            <li><b>Cerchi e aggiungi</b>Una canzone o un album intero finisce nella nostra libreria.</li>
+            <li><b>Salvi sul telefono</b>E la ascolti in aereo o in galleria.</li>
+            <li><b>Testo a tempo</b>Le parole scorrono insieme alla musica.</li>
+            <li><b>Il DJ</b>Mette insieme una playlist con quello che hai già.</li>
+          </ul>
+        </article>
+
+        <!-- ACCOUNTS -->
+        <article class="app app--accounts">
+          <div class="app-text reveal">
+            <p class="app-name">Accounts</p>
+            <h3>Un account <em>per tutte le app.</em></h3>
+            <ul class="features">
+              <li>Niente password. Ti arriva un codice di 6 cifre via email.</li>
+              <li>Entra solo chi ho invitato.</li>
+              <li>Sulla TV inquadri un QR con il telefono e sei dentro.</li>
+              <li>Se perdi il telefono, lo scollego da tutte le app in una volta.</li>
+            </ul>
+          </div>
+
+          <div class="app-visual reveal">
+            <div class="acc" data-acc>
+              <div class="acc-phone">
+                <p class="acc-h">Accedi</p>
+                <div class="acc-field"><span class="acc-typed">mario.bianchi@email.it</span></div>
+                <p class="acc-hint">Codice inviato</p>
+                <div class="acc-code" aria-hidden="true">
+                  <span data-d="4"></span><span data-d="8"></span><span data-d="1"></span><span data-d="9"></span><span data-d="0"></span><span data-d="6"></span>
+                </div>
+                <p class="acc-ok"><svg><use href="#i-check" /></svg>Sei dentro</p>
+                <div class="acc-apps">
+                  <span style="--c: var(--cinema)">Cinema</span>
+                  <span style="--c: var(--memories)">Memories</span>
+                  <span style="--c: var(--cassette)">Cassette</span>
+                </div>
+              </div>
+              <div class="acc-tv">
+                <div class="acc-tv-screen">
+                  <svg class="qr" viewBox="0 0 21 21" aria-hidden="true"></svg>
+                  <p>Inquadra con il telefono</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- THE REST -->
+      <section class="section">
+        <h2 class="title reveal">Altre cose che girano in casa</h2>
+        <div class="bento">
+          <article class="cell cell--wide c-jarvis reveal">
+            <svg class="cell-ico"><use href="#i-microphone" /></svg>
+            <h3>Jarvis, sulla TV del salotto</h3>
+            <p>Gli fai una domanda dal telefono e la TV risponde a voce. Le luci Ambilight si accendono mentre parla.</p>
+          </article>
+          <article class="cell c-ai reveal">
+            <svg class="cell-ico"><use href="#i-sparkle" /></svg>
+            <h3>Intelligenza artificiale</h3>
+            <p>Gira sui nostri computer. È lei che capisce cosa c'è nelle foto.</p>
+          </article>
+          <article class="cell c-manga reveal">
+            <svg class="cell-ico"><use href="#i-book-open-text" /></svg>
+            <h3>Manga</h3>
+            <p>Fumetti da leggere sul tablet. Riparti dalla pagina dove ti eri fermato.</p>
+          </article>
+          <article class="cell c-watch reveal">
+            <svg class="cell-ico"><use href="#i-chart-line-up" /></svg>
+            <h3>Monitoraggio</h3>
+            <p>Una pagina con lo stato di tutto. Se un disco si riempie, lo vedo subito.</p>
+          </article>
+          <article class="cell cell--wide c-copy reveal">
+            <svg class="cell-ico"><use href="#i-copy" /></svg>
+            <h3>Ogni film ha la sua copia</h3>
+            <p>I film nuovi passano dal mini PC al NAS. Dal mini PC li cancello solo dopo aver controllato che la copia sia integra.</p>
+          </article>
+          <article class="cell c-web reveal">
+            <svg class="cell-ico"><use href="#i-globe-hemisphere-west" /></svg>
+            <h3>Siti e giochi</h3>
+            <p>Il mini PC ospita anche i miei siti e qualche gioco online.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- CONTACT -->
+      <section id="contatti" class="contact">
+        <div class="contact-inner reveal">
+          <h2>Ne vuoi uno anche tu?</h2>
+          <p>Posso montarne uno per una casa, un ufficio o un locale. Partiamo da cosa ti serve.</p>
+          <a class="btn" href="mailto:dghiotto.careers@gmail.com?subject=Homelab">Scrivimi</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <a href="https://davideghiotto.it" rel="noopener">Davide Ghiotto</a>
+      <span>2026</span>
+    </footer>
+  </body>
+</html>
