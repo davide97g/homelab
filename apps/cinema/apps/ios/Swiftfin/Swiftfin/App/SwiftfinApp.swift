@@ -17,6 +17,10 @@ struct SwiftfinApp: App {
     @ObservedObject
     private var accounts = CinemaAccounts.shared
 
+    /// Cinema: the animated mark over the first second of a cold launch.
+    @State
+    private var launching = true
+
     init() {
         Self.configure()
 
@@ -39,6 +43,11 @@ struct SwiftfinApp: App {
                 }
             }
             .ignoresSafeArea()
+            .overlay {
+                if launching {
+                    CinemaLaunchView { launching = false }
+                }
+            }
             // Cinema is dark-only. This is declarative rather than the window
             // override upstream uses, because that one guards on `keyWindow`
             // and silently does nothing when it runs before a window exists.

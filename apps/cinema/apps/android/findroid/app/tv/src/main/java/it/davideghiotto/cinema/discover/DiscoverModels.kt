@@ -216,3 +216,62 @@ fun seasonStandings(info: MediaInfo?): Map<Int, Standing> {
 fun tmdbImage(path: String?, size: String): String? = path?.let {
     "https://image.tmdb.org/t/p/$size$it"
 }
+
+/**
+ * Where a requested title is between the download and the NAS, as the mini PC reports it
+ * (hosts/debian/nas-sync/nas-pipeline.py, relayed by accounts at /api/discover/progress). Times are
+ * ISO instants in UTC. apps/web has the same shape in src/lib/discover/types.ts.
+ */
+@Serializable
+data class TitleProgress(
+    val title: String? = null,
+    /** queued, downloading, stalled, importing, settling, waiting, sending, verifying, arrived */
+    val stage: String = "queued",
+    val message: String? = null,
+    val download: DownloadProgress? = null,
+    val transfer: TransferProgress? = null,
+    /** When it should be watchable on the NAS. */
+    val eta: String? = null,
+    val files: Int = 0,
+    val filesArrived: Int = 0,
+    val arrivedAt: String? = null,
+)
+
+@Serializable
+data class DownloadProgress(
+    val size: Long = 0,
+    val left: Long = 0,
+    val eta: String? = null,
+    val state: String? = null,
+)
+
+@Serializable
+data class TransferProgress(
+    val bytes: Long = 0,
+    val total: Long = 0,
+    val startsAt: String? = null,
+    val eta: String? = null,
+    val paused: Boolean = false,
+)
+
+@Serializable
+data class ProgressReply(
+    val available: Boolean = false,
+    val stale: Boolean = true,
+    val titles: Map<String, TitleProgress> = emptyMap(),
+)
+
+fun progressKey(type: String, tmdbId: Int) = "$type:$tmdbId"
+
+/**
+ * Requested and not watchable yet, or a series with seasons still coming: the titles worth asking
+ * the pipeline about.
+ */
+fun onItsWay(info: MediaInfo?): Boolean =
+    when (standingOf(info)) {
+        Standing.PENDING,
+        Standing.PROCESSING,
+        Standing.PARTIAL -> true
+        Standing.AVAILABLE -> info?.jellyfinId == null
+        else -> false
+    }

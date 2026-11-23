@@ -43,6 +43,10 @@ class DiscoverClient @Inject constructor(private val jellyfinApi: JellyfinApi) {
     suspend fun myRequests(): List<MediaRequest> =
         get<Page<MediaRequest>>("request?take=20&skip=0&sort=added&filter=all").results
 
+    /** Download and NAS-copy progress for these `type:tmdbId` keys; titles with none are absent. */
+    suspend fun progress(keys: Collection<String>): ProgressReply =
+        get("progress?keys=${keys.sorted().joinToString(",")}")
+
     suspend fun request(type: String, id: Int, seasons: List<Int>?) {
         send(
             "POST",

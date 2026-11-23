@@ -44,6 +44,7 @@ import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import it.davideghiotto.cinema.design.CinemaColors
 import it.davideghiotto.cinema.design.CinemaTokens
+import kotlinx.coroutines.delay
 
 /**
  * Cinema — the Discover tab: everything that is not in the library yet, TMDB through Seerr, with a
@@ -59,6 +60,14 @@ fun DiscoverScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(true) { viewModel.load() }
+
+    // Your requests' download and NAS-copy progress: every 10 s while something moves, else 60 s.
+    LaunchedEffect(state.requests) {
+        while (true) {
+            val moving = viewModel.checkProgress()
+            delay(if (moving) 10_000 else 60_000)
+        }
+    }
     LaunchedEffect(state.isLoading) { isLoading(state.isLoading) }
 
     state.error?.let { error ->
@@ -97,6 +106,7 @@ fun DiscoverScreen(
                     results = state.requests,
                     itemsPadding = itemsPadding,
                     onClick = navigateToItem,
+                    progress = state.progress,
                 )
             }
         }
@@ -118,6 +128,7 @@ internal fun DiscoverRowView(
     itemsPadding: PaddingValues,
     onClick: (mediaType: String, tmdbId: Int) -> Unit,
     modifier: Modifier = Modifier,
+    progress: Map<String, TitleProgress> = emptyMap(),
 ) {
     if (results.isEmpty()) return
     Column(modifier = modifier) {
@@ -132,7 +143,11 @@ internal fun DiscoverRowView(
             contentPadding = itemsPadding,
         ) {
             items(results, key = { "${it.mediaType}-${it.id}" }) { result ->
-                DiscoverCard(result = result, onClick = onClick)
+                DiscoverCard(
+                    result = result,
+                    onClick = onClick,
+                    progress = progress[progressKey(result.mediaType ?: "movie", result.id)],
+                )
             }
         }
     }
@@ -146,6 +161,7 @@ internal fun DiscoverRowView(
 private fun DiscoverCard(
     result: DiscoverResult,
     onClick: (mediaType: String, tmdbId: Int) -> Unit,
+    progress: TitleProgress? = null,
 ) {
     val type = result.mediaType ?: "movie"
     val shape = RoundedCornerShape(CinemaTokens.Radius.xl)
@@ -189,6 +205,7 @@ private fun DiscoverCard(
                     standing = standingOf(result.mediaInfo),
                     modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
                 )
+                ProgressSliver(progress)
             }
         }
         Spacer(modifier = Modifier.height(MaterialTheme.spacings.small))

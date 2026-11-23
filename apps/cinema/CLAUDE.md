@@ -55,7 +55,8 @@ Deploy is a tar over ssh to the NAS, which builds its own image — see `docs/DE
 
 - **Colour, radius, shadow, font and motion values live only in
   `packages/design-tokens/tokens.json`.** `bun run tokens` writes `apps/web/src/styles/tokens.css`,
-  `apps/ios/Swiftfin/Shared/Cinema/CinemaTokens.swift`, and the Kotlin and XML pair under
+  `apps/ios/Swiftfin/Shared/Cinema/CinemaTokens.swift`, the iOS launch screen's
+  `LaunchBackground.colorset`, and the Kotlin and XML pair under
   `apps/android/findroid/core/`. The outputs are committed. Never hand-edit one, and never put a
   hex value in a component — `docs/DESIGN.md` has the design rules.
 - **Never move code between `apps/ios` (MPL-2.0) and `apps/android` (GPLv3).** GPL code entering

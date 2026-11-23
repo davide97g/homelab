@@ -138,6 +138,19 @@ extension TabItem {
         }
     }
 
+    #if os(iOS)
+    // Cinema: TMDB through Seerr, what is not in the library yet (Shared/Cinema/Discover).
+    static var discover: TabItem {
+        TabItem(
+            id: "discover",
+            title: "Discover",
+            systemImage: "sparkles"
+        ) {
+            DiscoverView()
+        }
+    }
+    #endif
+
     static var settings: TabItem {
         TabItem(
             id: "settings",

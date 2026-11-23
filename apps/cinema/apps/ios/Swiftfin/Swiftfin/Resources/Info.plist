@@ -79,10 +79,8 @@
 	<true/>
 	<key>UILaunchScreen</key>
 	<dict>
-		<key>UIImageName</key>
-		<string>jellyfin-blob-blue</string>
-		<key>UIImageRespectsSafeAreaInsets</key>
-		<true/>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
 	</dict>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>

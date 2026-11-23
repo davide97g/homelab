@@ -13,6 +13,18 @@ import SwiftUI
 /// The film glyph, normalised to whatever square it is given.
 struct CinemaFilmMark: Shape {
 
+    /// The glyph's strokes in three groups, so the launch animation can draw them in turn.
+    struct Parts: OptionSet {
+        let rawValue: Int
+
+        static let frame = Parts(rawValue: 1)
+        static let rails = Parts(rawValue: 2)
+        static let perforations = Parts(rawValue: 4)
+        static let all: Parts = [.frame, .rails, .perforations]
+    }
+
+    var parts: Parts = .all
+
     /// Lucide draws on 24 units with a 2-unit stroke; keeping the ratio keeps
     /// the glyph's weight right at every size.
     static let strokeRatio: CGFloat = 2 / 24
@@ -29,28 +41,34 @@ struct CinemaFilmMark: Shape {
 
         var path = Path()
 
-        path.addRoundedRect(
-            in: CGRect(
-                origin: point(2, 2),
-                size: CGSize(width: 20 * unit, height: 20 * unit)
-            ),
-            cornerSize: CGSize(width: 2.18 * unit, height: 2.18 * unit)
-        )
-
-        // The two sprocket rails, then the frame line between them.
-        for x in [CGFloat(7), 17] {
-            path.move(to: point(x, 2))
-            path.addLine(to: point(x, 22))
+        if parts.contains(.frame) {
+            path.addRoundedRect(
+                in: CGRect(
+                    origin: point(2, 2),
+                    size: CGSize(width: 20 * unit, height: 20 * unit)
+                ),
+                cornerSize: CGSize(width: 2.18 * unit, height: 2.18 * unit)
+            )
         }
 
-        path.move(to: point(2, 12))
-        path.addLine(to: point(22, 12))
+        // The two sprocket rails, then the frame line between them.
+        if parts.contains(.rails) {
+            for x in [CGFloat(7), 17] {
+                path.move(to: point(x, 2))
+                path.addLine(to: point(x, 22))
+            }
+
+            path.move(to: point(2, 12))
+            path.addLine(to: point(22, 12))
+        }
 
         // Four perforations, one per rail per half.
-        for (x1, x2) in [(CGFloat(2), CGFloat(7)), (17, 22)] {
-            for y in [CGFloat(7), 17] {
-                path.move(to: point(x1, y))
-                path.addLine(to: point(x2, y))
+        if parts.contains(.perforations) {
+            for (x1, x2) in [(CGFloat(2), CGFloat(7)), (17, 22)] {
+                for y in [CGFloat(7), 17] {
+                    path.move(to: point(x1, y))
+                    path.addLine(to: point(x2, y))
+                }
             }
         }
 

@@ -57,17 +57,15 @@ around 21:40". "Your requests" cards get a slim bar. Polls every 10 s while some
 the file arrives the page refetches until Seerr flips it to available. Data: accounts
 `/api/discover/progress`, fed by the mini PC's `nas-pipeline.service`; the ETA is the download's,
 plus import, nas-sync's 5 quiet minutes and the copy at the measured speed behind the NAS queue.
-TV and iPhone: not yet.
+The TV and the iPhone draw the same panel and card bar (their Discover sections below).
 
 **Next, in rough order of value:**
 
-1. **Discover on the iPhone.** Same endpoints, same Jellyfin token, as the TV now does (Android
-   section).
-2. **Quality selector.** Same mechanism as the track pickers — `usePlaybackSession`'s
+1. **Quality selector.** Same mechanism as the track pickers — `usePlaybackSession`'s
    `renegotiate`, with `maxStreamingBitrate`. Send `MediaSourceId` with it: without one the server
    ignores the stream indexes in `PlaybackInfo` and silently answers with the defaults.
-3. **Virtualised grid.** Fine to ~500 items; past that, TanStack Virtual.
-4. **Tests.** Only the quiz has any (`bun test`). `availability.ts` and the ticks/format helpers are
+2. **Virtualised grid.** Fine to ~500 items; past that, TanStack Virtual.
+3. **Tests.** Only the quiz has any (`bun test`). `availability.ts` and the ticks/format helpers are
    where a bug would be quiet rather than loud.
 
 Chunk sizes are settled: the SDK is one shared 165 kB chunk, `index` is 332 kB and `PlayerRoute`
@@ -107,6 +105,20 @@ device ID, and Swiftfin's usual save path takes it from there. Jellyfin's userna
 below. "Sign In a TV" in Settings, and the TV's QR through the `/cinema/device` universal link, open
 an approval sheet. iOS and tvOS build; the sheet renders. Not run end to end on iOS: the simulator
 cannot be typed into from here, so the flow rests on Memories iOS's live test of the same client.
+
+**Discover (2026-11-23).** A Discover tab after Home (`Shared/Cinema/Discover/`, iOS only):
+search over TMDB, "Your requests" with each one's progress bar, then trending, popular and upcoming
+rows. A title's page offers Watch (the library's own item page), Request, a season list for a
+series, Withdraw for your own pending request, "More like this", and while it is on its way the
+web's four-step progress panel with time left and "Ready to watch around…", polled every 10 s.
+Same `accounts` `/api/discover` and Jellyfin token as the web and the TV. Built and installed on the
+iPhone 14; not yet looked at on it.
+
+**Launch (2026-11-23).** iOS's launch screen is the bare canvas (`LaunchBackground` colour set,
+written by `bun run tokens`) instead of Jellyfin's blue blob, and `CinemaLaunchView` takes over on
+the same frame: the film mark draws itself in, its perforations settle, a red bloom, "Cinema"
+comes up, then it all lifts away (about 1.7 s; Reduce Motion skips to a fade). Checked frame by
+frame in the simulator, installed on the iPhone 14.
 
 **Not verified on hardware.** Branding was (install, launch, screenshot). The home screen, settings
 and player changes are **compile-verified only** — every simulator on this Mac is signed out. The
@@ -163,6 +175,10 @@ upstream paints the pill `Color.White` and its label `colorScheme.onPrimary`, wh
 also white. A role can be right in the abstract and wrong at a use site that assumed something about
 it. And `values-night/themes.xml` is *not* dead once night mode is forced: it is the configuration
 that applies, and its overrides were quietly reintroducing upstream's blue.
+
+**Request progress on the TV (2026-11-23).** A title on its way shows the web's four-step panel
+under its buttons (download, copy to the NAS, time left, "Ready to watch around…"), polled every
+10 s until Watch appears; "Your requests" cards get a slim bar. Installed on the Philips set.
 
 **Next.**
 

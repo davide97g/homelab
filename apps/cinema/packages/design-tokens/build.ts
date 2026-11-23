@@ -20,6 +20,8 @@ const ROOT = new URL('../../', import.meta.url).pathname
 
 const CSS_OUT = `${ROOT}apps/web/src/styles/tokens.css`
 const SWIFT_OUT = `${ROOT}apps/ios/Swiftfin/Shared/Cinema/CinemaTokens.swift`
+// The launch screen is drawn by iOS before any code runs, so its background has to be an asset.
+const IOS_CANVAS_OUT = `${ROOT}apps/ios/Swiftfin/Swiftfin/Resources/Assets.xcassets/LaunchBackground.colorset/Contents.json`
 const KOTLIN_OUT =
   `${ROOT}apps/android/findroid/core/src/main/java/it/davideghiotto/cinema/design/CinemaTokens.kt`
 const ANDROID_XML_OUT = `${ROOT}apps/android/findroid/core/src/main/res/values/cinema_tokens.xml`
@@ -94,6 +96,19 @@ function swiftColor(hex: string) {
   return `Color(.sRGB, red: ${r}, green: ${g}, blue: ${b}, opacity: 1)`
 }
 
+/** An asset-catalogue colour set: Info.plist's UILaunchScreen can only name one of these. */
+function colorset(hex: string) {
+  const [red, green, blue] = channels(hex).map((c) => (c / 255).toFixed(4))
+  return `${JSON.stringify(
+    {
+      colors: [{ color: { 'color-space': 'srgb', components: { alpha: '1.000', red, green, blue } }, idiom: 'universal' }],
+      info: { author: 'packages/design-tokens/build.ts', version: 1 },
+    },
+    null,
+    2,
+  )}\n`
+}
+
 function channels(hex: string) {
   const value = Number.parseInt(hex.slice(1), 16)
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
@@ -145,6 +160,7 @@ function remToPoints(value: string) {
 
 await Bun.write(CSS_OUT, css())
 await Bun.write(SWIFT_OUT, swift())
+await Bun.write(IOS_CANVAS_OUT, colorset(tokens.color.canvas.hex))
 await Bun.write(KOTLIN_OUT, kotlin())
 await Bun.write(ANDROID_XML_OUT, androidXml())
 console.log(`✓ ${tokens.$name} tokens -> web, ios, android`)

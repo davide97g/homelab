@@ -56,6 +56,7 @@ import it.davideghiotto.cinema.design.CinemaTokens
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 
 /**
  * Cinema — one title from Discover. Watch when the library has it, Request when it does not (per
@@ -73,6 +74,15 @@ fun DiscoverItemScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(mediaType, tmdbId) { viewModel.load(mediaType, tmdbId) }
+
+    // While it is on its way, ask the pipeline every 10 s; stops once Watch is there.
+    val onWay = state.details?.let { onItsWay(it.mediaInfo) } == true
+    LaunchedEffect(onWay) {
+        while (onWay) {
+            viewModel.checkProgress()
+            delay(10_000)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         val details = state.details
@@ -287,6 +297,15 @@ private fun DiscoverItemLayout(
                                 text = it,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = CinemaColors.foreground,
+                            )
+                        }
+                        // A partly-there series shows it only while a season is actually moving.
+                        val onWay = onItsWay(details.mediaInfo)
+                        if ((onWay && standing != Standing.PARTIAL) || state.progress != null) {
+                            PipelineProgress(
+                                standing = standing,
+                                progress = state.progress,
+                                modifier = Modifier.padding(top = MaterialTheme.spacings.small),
                             )
                         }
                     }

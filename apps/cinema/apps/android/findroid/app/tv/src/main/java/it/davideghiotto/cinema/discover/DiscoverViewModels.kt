@@ -18,6 +18,8 @@ class DiscoverViewModel @Inject constructor(private val client: DiscoverClient) 
     data class State(
         val requests: List<DiscoverResult> = emptyList(),
         val rows: List<Pair<DiscoverRow, List<DiscoverResult>>> = emptyList(),
+        /** By [progressKey], for the requests still on their way. */
+        val progress: Map<String, TitleProgress> = emptyMap(),
         val isLoading: Boolean = true,
         val error: String? = null,
     )
@@ -52,13 +54,30 @@ class DiscoverViewModel @Inject constructor(private val client: DiscoverClient) 
                             .awaitAll()
                     requests.await() to others
                 }
-            _state.value =
+            _state.update {
                 State(
                     requests = requests,
                     rows = listOf(DiscoverRow.TRENDING to trending) + others,
+                    progress = it.progress,
                     isLoading = false,
                 )
+            }
         }
+    }
+
+    /**
+     * One look at the pipeline for your requests still on their way. The screen calls it on a timer
+     * while it is showing. Returns whether anything is moving, so the timer can slow down.
+     */
+    suspend fun checkProgress(): Boolean {
+        val keys =
+            _state.value.requests
+                .filter { onItsWay(it.mediaInfo) }
+                .map { progressKey(it.mediaType ?: "movie", it.id) }
+        if (keys.isEmpty()) return false
+        val reply = runCatching { client.progress(keys) }.getOrNull() ?: return false
+        _state.update { it.copy(progress = reply.titles) }
+        return reply.titles.values.any { it.stage != "arrived" }
     }
 
     /** Seerr's request list has no titles or art: each one asks for its own details. */
@@ -81,6 +100,7 @@ class DiscoverItemViewModel @Inject constructor(private val client: DiscoverClie
         val details: DiscoverDetails? = null,
         val related: List<DiscoverResult> = emptyList(),
         val me: DiscoverMe? = null,
+        val progress: TitleProgress? = null,
         val picked: Set<Int> = emptySet(),
         val isBusy: Boolean = false,
         val message: String? = null,
@@ -161,6 +181,21 @@ class DiscoverItemViewModel @Inject constructor(private val client: DiscoverClie
                     "Could not withdraw it: ${e.message}"
                 }
             refresh(message)
+        }
+    }
+
+    /**
+     * One look at the pipeline for this title; the screen calls it on a timer while the title is on
+     * its way. Once it has landed on the NAS, Seerr's details again, so Watch shows up by itself.
+     */
+    suspend fun checkProgress() {
+        val key = progressKey(type, id)
+        val reply = runCatching { client.progress(listOf(key)) }.getOrNull() ?: return
+        val progress = reply.titles[key]
+        _state.update { it.copy(progress = progress) }
+        if (progress?.stage == "arrived") {
+            val details = runCatching { client.details(type, id) }.getOrNull() ?: return
+            _state.update { it.copy(details = details) }
         }
     }
 
