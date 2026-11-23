@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly NAS backup, after Immich's own 02:00 database dump and the box's 03:30 backup
+
+[Timer]
+OnCalendar=*-*-* 04:30
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

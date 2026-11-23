@@ -103,6 +103,7 @@ summary=$(restic backup --json --tag nightly \
   --exclude-caches \
   --exclude '/data/home/media' \
   --exclude '/data/home/Downloads' \
+  --exclude '/data/home/nas-backup' \
   --exclude '/data/home/.cache' \
   --exclude '/data/home/.local/share/Trash' \
   --exclude '/data/home/ciamioncino/overpass-db' \

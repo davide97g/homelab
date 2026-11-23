@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up the NAS (Immich, accounts, Jellyfin config) to the mini PC
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/ops/nas-backup/nas-backup.sh
+# The first run moves ~45 GB over Tailscale from Ilario's uplink.
+TimeoutStartSec=10h
+Nice=10
+IOSchedulingClass=idle

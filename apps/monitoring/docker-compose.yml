@@ -21,7 +21,7 @@ services:
     image: prom/prometheus:v3.15.1
     container_name: homelab-prometheus
     labels:
-      homelab.configs-hash: "a318a0fb3771"
+      homelab.configs-hash: "7581f0f9491a"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -749,13 +749,29 @@ configs:
               annotations:
                 summary: no successful backup to the NAS in over 30 hours
 
+            - alert: NasBackupFailed
+              expr: homelab_nas_backup_last_exit_code{instance="homelab"} != 0
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: the nightly NAS backup (Immich, accounts, Jellyfin config) failed — journalctl --user -u homelab-nas-backup
+
+            - alert: NasBackupStale
+              expr: time() - homelab_nas_backup_last_success_timestamp_seconds{instance="homelab"} > 30 * 3600
+              for: 30m
+              labels:
+                severity: warning
+              annotations:
+                summary: no successful NAS backup to the mini PC in over 30 hours — the photos have one copy
+
             - alert: BackupMetricsMissing
-              expr: absent(homelab_backup_last_run_timestamp_seconds{instance="homelab"})
+              expr: absent(homelab_backup_last_run_timestamp_seconds{instance="homelab"}) or absent(homelab_nas_backup_last_run_timestamp_seconds{instance="homelab"})
               for: 2h
               labels:
                 severity: warning
               annotations:
-                summary: backup.prom is not being read — is the backup timer installed?
+                summary: backup.prom or nas-backup.prom is not being read — are both backup timers installed?
 
   blackbox_yml:
     content: |
