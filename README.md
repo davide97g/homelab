@@ -36,6 +36,7 @@ On the box, `~` is laid out as:
 | Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
 | Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
 | JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | server: push to `main`. APK: `scripts/deploy-tv.sh` |
+| Dirette YouTube: Ciamioncino Ring Road | `apps/youtube-live` | mini PC, Dokploy | none | [local image and OBS recording](apps/youtube-live/) |
 | Local AI: Ollama, LiteLLM (Open WebUI off since 2026-11-03) | `apps/local-ai` | mini PC, Dokploy | `llm.davideghiotto.it` | push to `main` |
 | AdGuard Home, DNS ad blocking for the house | `apps/adguard` | mini PC, Dokploy; the FRITZ!Box forwards to it | none, UI at `http://debian:3053` | push to `main` |
 | mediarr: the *arr stack, qBittorrent, Jellyseerr | `stacks/mediarr` | mini PC, `~/mediarr` | none, LAN only | push to `main` |
@@ -184,6 +185,31 @@ taster, `play.html?taster`). Built like touchgrass: plain compose in `~/isoworld
 container `isoworld-web`, `nginx:1.30.6-alpine`, read-only, default `bridge`) bound to
 `127.0.0.1:8798`, tunnel straight to it, not behind Access. A release is that repo's
 `deploy/deploy.sh` (build on the Mac, rsync, nginx reload). No CI.
+`nimbus.davideghiotto.it` is a website proposal for Nimbus Pub (Vicenza), added 2026-11-17, repo
+`~/personal/projects/nimbus` (Astro, local only). Built like touchgrass: plain compose in `~/nimbus`
+(project `nimbus`, container `nimbus-web`, `nginx:1.30.6-alpine`, read-only, default `bridge`) bound to
+`127.0.0.1:8799`, tunnel straight to it, not behind Access, `noindex` (preview build) until the pub
+approves. A release is that repo's `deploy/deploy.sh` (build on the Mac, rsync, nginx reload). No CI.
+Since 2026-11-17 it also runs `nimbus-api` (`node:24.22.2-alpine`, `server/index.mjs`, no deps) in
+`nimbus-web`'s network namespace (`network_mode: service:web`, no new subnet): nginx proxies `/api/` to
+`127.0.0.1:8787`. It stores personalised-card requests (SQLite + photos) in `~/nimbus/data`, read at
+`/admin` with the password in `~/nimbus/.env` (`ADMIN_PASSWORD`, mode 600, not in the repo). Back up
+`~/nimbus/data` if the pub starts using it for real.
+`ciamioncino.davideghiotto.it` is [Ciamioncino](https://github.com/davide97g/ciamioncino), the cozy
+off-road driving game (Godot 4.7 web build + online multiplayer), added 2026-11-18. Built like nimbus:
+plain compose in `~/ciamioncino` (project `ciamioncino`): `ciamioncino-web` (`nginx:1.30.6-alpine`,
+read-only, default `bridge`) bound to `127.0.0.1:8800`, tunnel straight to it, not behind Access, and
+`ciamioncino-game` (Godot 4.7.2 headless relay, image built on the box from `~/ciamioncino/server`) in
+nginx's network namespace (`network_mode: service:web`); nginx proxies `/ws` (WebSocket) to
+`127.0.0.1:9080`. No data. A release is that repo's `deploy/deploy.sh`. No CI.
+`zootycoon.davideghiotto.it` is Zoolandia ([repo](https://github.com/davide97g/zoolandia), private),
+the zoo management game (Godot 4.7 web build), added 2026-11-21: compose app `zoolandia-xr8c3b`
+(composeId `WyPIzGNDoNoUeMU3Kis36`) in project `zoolandia`, compose path `./deploy/compose.yml`,
+branch `main`. The image builds the Godot web export itself (`deploy/Dockerfile`: Godot editor and
+web template fetched once, kept in the layer cache) and serves it with nginx on `127.0.0.1:8801`,
+default `bridge`, tunnel straight to it, no Traefik domain, not behind Access. No data. **Push to
+`main` deploys**: the repo's `.github/workflows/deploy.yml` calls `compose.deploy` through
+`deploy-zootycoon.davideghiotto.it` (`api/compose\.(deploy|one)` only) and waits for Dokploy.
 `lumii.davideghiotto.it` is LUMII Montecchio's restaurant app (`apps/lumii-*` in
 [zeroshot](https://github.com/davide97g/zeroshot)), added 2026-11-06: compose app `lumii-grjqvu`
 (composeId `uarKwudQqkZPe_cue7rqe`) in project `lumii`, compose path `./docker-compose.lumii.yml`,

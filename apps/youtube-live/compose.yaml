@@ -1,0 +1,29 @@
+services:
+  obs:
+    image: youtube-live:local
+    pull_policy: never
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+    group_add: ["992"]
+    environment:
+      STREAM_START: ${STREAM_START:-}
+    tmpfs:
+      - /tmp:mode=1777
+    shm_size: 256m
+    volumes:
+      - ${LIVE_ROOT:-/home/davide/projects/youtube-live}/game:/game
+      - ${LIVE_ROOT:-/home/davide/projects/youtube-live}/maps:/maps:ro
+      - ${LIVE_ROOT:-/home/davide/projects/youtube-live}/state:/state
+      - ${LIVE_ROOT:-/home/davide/projects/youtube-live}/recordings:/recordings
+
+networks:
+  default:
+    # The homelab's automatic Docker address pools are fully allocated.
+    ipam:
+      config:
+        - subnet: 10.213.1.0/28
