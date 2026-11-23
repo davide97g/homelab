@@ -44,6 +44,11 @@ function admin<T>(path: string, init: RequestInit = {}) {
   })
 }
 
+/** Runs one of Seerr's scheduled jobs now, e.g. `jellyfin-recently-added-scan`. */
+export async function runJob(id: string) {
+  await admin<unknown>(`/settings/jobs/${encodeURIComponent(id)}/run`, { method: 'POST' })
+}
+
 /** The Seerr user linked to a Jellyfin user, or null when Seerr has never seen them. */
 export async function userByJellyfinId(jellyfinUserId: string): Promise<SeerrUser | null> {
   const res = await fetch(`${base()}/user/jellyfin/${encodeURIComponent(jellyfinUserId)}`, {

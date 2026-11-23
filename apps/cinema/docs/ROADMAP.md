@@ -51,6 +51,14 @@ Backed by `accounts` (`/api/discover`), see ARCHITECTURE § 3. Verified against 
 through a local harness (rows, details, seasons, search, scrubbing, the path allowlist); no
 request was submitted from the test.
 
+**Request progress (2026-11-23, web).** A title on its way shows four steps (Requested, Download,
+Copy to NAS, Library) with a bar and time left for the step in progress, and "Ready to watch
+around 21:40". "Your requests" cards get a slim bar. Polls every 10 s while something moves; when
+the file arrives the page refetches until Seerr flips it to available. Data: accounts
+`/api/discover/progress`, fed by the mini PC's `nas-pipeline.service`; the ETA is the download's,
+plus import, nas-sync's 5 quiet minutes and the copy at the measured speed behind the NAS queue.
+TV and iPhone: not yet.
+
 **Next, in rough order of value:**
 
 1. **Discover on the iPhone.** Same endpoints, same Jellyfin token, as the TV now does (Android

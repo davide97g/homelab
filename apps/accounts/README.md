@@ -112,6 +112,16 @@ auto-approve rules therefore apply unchanged; accounts only decides who is askin
 | Your requests | `GET /discover/request?take=20` (always pinned to you: `requestedBy` is overwritten) |
 | Request | `POST /discover/request` `{mediaType, mediaId, seasons?}`; quality, folder and profile are Seerr's defaults (HD ITA) |
 | Withdraw | `DELETE /discover/request/{id}` (Seerr allows it only for your own pending request) |
+| Progress | `GET /discover/progress?keys=movie:603,tv:1396` → per title: stage, download and NAS-copy bytes, ETAs |
+
+**Progress and the library refresh.** The mini PC's `nas-pipeline.service`
+(`hosts/debian/nas-sync/nas-pipeline.py`) reads the Radarr/Sonarr download queues and nas-sync's
+state and pushes one JSON every 10-60 s to `/volume1/docker/accounts/pipeline/status.json`, mounted
+here read-only at `/pipeline` (`PIPELINE_STATUS_FILE`). `/discover/progress` serves it per title.
+The same file lists what arrived on the NAS in the last hour: every 15 s accounts tells Jellyfin
+(`POST /Library/Media/Updated`, paths under `JELLYFIN_MEDIA_ROOT=/data`) and then runs Seerr's
+`jellyfin-recently-added-scan` 45 s and 3 min later, so a new film turns "available" with its Watch
+button within minutes. The Setup tab warns when the file is missing or older than 3 minutes.
 
 Any other path is a 404. Responses lose emails, tokens and internal URLs on the way out.
 Token → Jellyfin user and Jellyfin user → Seerr user are cached for 5 minutes, so a permission

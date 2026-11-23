@@ -6,6 +6,7 @@ import { env, isProd } from '../env.ts'
 import * as immich from '../upstream/immich.ts'
 import * as jellyfin from '../upstream/jellyfin.ts'
 import * as seerr from '../upstream/seerr.ts'
+import { isStale, readPipeline } from './pipeline.ts'
 
 /**
  * What the admin page's Setup tab shows: every moving part this service needs,
@@ -156,6 +157,24 @@ async function seerrCheck(): Promise<Check> {
   }
 }
 
+/** The mini PC's progress report, behind Discover's progress bars and the library refresh. */
+async function pipelineCheck(): Promise<Check> {
+  const fix = `Sul mini PC: scp -r hosts/debian/nas-sync homelab:/tmp/ && ssh homelab 'bash /tmp/nas-sync/install.sh'\nControlla: ssh homelab 'systemctl --user status nas-pipeline; journalctl --user -u nas-pipeline -n 20'`
+  const doc = await readPipeline()
+  if (!doc)
+    return {
+      id: 'pipeline',
+      group: 'Cinema',
+      status: 'warn',
+      title: 'Avanzamento download non disponibile',
+      detail: `Manca ${env.PIPELINE_STATUS_FILE}: Discover mostra solo lo stato di Seerr, senza tempi, e Jellyfin aspetta la sua scansione.`,
+      fix,
+    }
+  if (isStale(doc))
+    return { id: 'pipeline', group: 'Cinema', status: 'warn', title: 'Avanzamento download fermo', detail: `Ultimo aggiornamento ${doc.at}`, fix }
+  return { id: 'pipeline', group: 'Cinema', status: 'ok', title: 'Avanzamento download aggiornato', detail: doc.sync.note }
+}
+
 export async function setupChecks(): Promise<Check[]> {
   const checks: Check[] = []
 
@@ -192,7 +211,7 @@ export async function setupChecks(): Promise<Check[]> {
 
   // Upstreams, in parallel.
   const [cinema, memories] = await Promise.all([upstreamChecks('cinema'), upstreamChecks('memories')])
-  checks.push(...cinema, ...memories, await seerrCheck())
+  checks.push(...cinema, ...memories, await seerrCheck(), await pipelineCheck())
 
   // Universal links: the QR on a TV opens the phone app only with these.
   const apple = (env.APPLE_APP_LINKS ?? '').split(';').map((p) => p.trim()).filter(Boolean)

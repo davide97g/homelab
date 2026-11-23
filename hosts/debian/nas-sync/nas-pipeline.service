@@ -1,0 +1,11 @@
+[Unit]
+Description=Report download and NAS-copy progress to the NAS, for cinema's Discover
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u %h/ops/xfer-nas/nas-pipeline.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

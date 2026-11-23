@@ -30,6 +30,7 @@ delete `control/baseline.txt`; the next run writes a new one.
 | `nas-sync.timer` | `~/.config/systemd/user/` | Every 2 minutes. |
 | `nas-sync.path` | same | Runs it the moment the switch file changes, so *on* starts at once. |
 | `nas-sync.service` | same | Oneshot, no timeout; a flock in the script prevents overlap. |
+| `nas-pipeline.py` + `.service` | `~/ops/xfer-nas/`, user unit | Always on. Download queues + this state → one JSON on the NAS for cinema's progress bars; accounts refreshes Jellyfin from it. Read-only. |
 
 `~/ops/xfer-nas/control/` is the whole interface. The hub bind-mounts it at `/nas-sync` and writes
 only `enabled` (replaced by rename, so the script never reads half of it). The script writes the
@@ -55,6 +56,12 @@ baseline, leaves the switch off, and enables the timer and the path unit.
   folder it leaves empty. Unmonitoring comes first because Radarr's *unmonitor deleted movies* is
   off, so a monitored movie with no file gets grabbed again. If the *arr is unreachable the file
   stays and every later run retries. `DELETE_AFTER=0` in the unit's environment turns it off.
+- On the NAS a file grows as `<name>.part` and gets its real name only after the md5 matches
+  (since 2026-11-23): Jellyfin's real-time monitor never sees half a film. A copy begun under the
+  final name before that is renamed to `.part` and resumed.
+- `nas-pipeline.service` keeps the copy speed it measured in `~/ops/xfer-nas/.nas-pipeline-rate`;
+  `journalctl --user -u nas-pipeline` for its errors, `python3 ~/ops/xfer-nas/nas-pipeline.py --once`
+  to print what it would push.
 - Nothing is ever deleted on the NAS. A Radarr *upgrade* of an unmonitored movie does not happen;
   for one still monitored, the new file is sent and the old one stays on the NAS until removed by hand.
 - A file whose md5 does not match is emptied on the NAS and resent on the next run.

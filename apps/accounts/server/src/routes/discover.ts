@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod'
+import { isStale, readPipeline } from '../lib/pipeline.ts'
 import * as jellyfin from '../upstream/jellyfin.ts'
 import { UpstreamError } from '../upstream/http.ts'
 import * as seerr from '../upstream/seerr.ts'
@@ -145,6 +146,21 @@ export const discoverRoutes = new Hono<Vars>()
   .delete('/request/:id{[0-9]+}', async (c) => {
     const r = await seerr.asUser(c.get('seerrUser').id, `/request/${c.req.param('id')}`, { method: 'DELETE' })
     return reply(c, r)
+  })
+
+  /**
+   * Download and NAS-copy progress for some titles (`?keys=movie:603,tv:1396`), from the
+   * mini PC's report. A title missing from `titles` has nothing moving right now.
+   */
+  .get('/progress', async (c) => {
+    const keys = (c.req.query('keys') ?? '')
+      .split(',')
+      .filter((k) => /^(movie|tv):\d+$/.test(k))
+      .slice(0, 50)
+    const doc = await readPipeline()
+    if (!doc) return c.json({ available: false, at: null, stale: true, sync: null, titles: {} })
+    const titles = Object.fromEntries(keys.filter((k) => doc.titles[k]).map((k) => [k, doc.titles[k]]))
+    return c.json({ available: true, at: doc.at, stale: isStale(doc), sync: doc.sync, titles })
   })
 
   .get('/*', async (c) => {

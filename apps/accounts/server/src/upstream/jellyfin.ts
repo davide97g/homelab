@@ -72,6 +72,17 @@ export async function deleteDevice(deviceId: string) {
   await admin(`/Devices?id=${encodeURIComponent(deviceId)}`, { method: 'DELETE' })
 }
 
+/**
+ * Tells Jellyfin these files just appeared, so it scans their folders now instead of
+ * at the next scheduled scan. Paths as Jellyfin sees them (/data/Movies/…).
+ */
+export async function mediaCreated(paths: string[]) {
+  await admin('/Library/Media/Updated', {
+    method: 'POST',
+    body: JSON.stringify({ Updates: paths.map((Path) => ({ Path, UpdateType: 'Created' })) }),
+  })
+}
+
 /** Who a user token belongs to (a phone's own Jellyfin session). */
 export async function whoAmI(accessToken: string) {
   return (await call('jellyfin', `${base()}/Users/Me`, {

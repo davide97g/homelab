@@ -59,6 +59,13 @@ const schema = z.object({
   SEERR_URL: optional,
   /** Seerr → Settings → General → API Key. Acts as each user through X-API-User. */
   SEERR_API_KEY: optional,
+  /**
+   * Download and NAS-copy progress, written by the mini PC (hosts/debian/nas-sync/nas-pipeline.py)
+   * into a folder mounted here read-only. Missing file: Discover shows Seerr's status alone.
+   */
+  PIPELINE_STATUS_FILE: z.string().default('/pipeline/status.json'),
+  /** Where Jellyfin sees the NAS media root ("Movies/…", "tv/…" live under it). */
+  JELLYFIN_MEDIA_ROOT: z.string().default('/data'),
 
   /**
    * Sign in with Google. A "Web application" OAuth client whose redirect URI is

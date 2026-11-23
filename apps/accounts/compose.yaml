@@ -22,6 +22,9 @@ services:
     # Loopback only: cloudflared runs on the host and is the one caller.
     ports:
       - "127.0.0.1:2290:3000"
+    # Download and NAS-copy progress, pushed here by the mini PC (nas-pipeline.py).
+    volumes:
+      - ./pipeline:/pipeline:ro
     networks: [default, immich]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]

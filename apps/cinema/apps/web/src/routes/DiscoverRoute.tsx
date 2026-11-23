@@ -10,9 +10,10 @@ import {
   useDiscoverRow,
   useDiscoverSearch,
   useMyRequests,
+  useProgress,
   type DiscoverRowId,
 } from '@/lib/discover/queries'
-import type { MediaRequest } from '@/lib/discover/types'
+import { MediaStatus, progressKey, type MediaRequest, type TitleProgress } from '@/lib/discover/types'
 
 const ROWS: { id: DiscoverRowId; title: string }[] = [
   { id: 'trending', title: 'Trending this week' },
@@ -110,6 +111,8 @@ function LazyRow({ id, title }: { id: DiscoverRowId; title: string }) {
 function MyRequestsRow() {
   const { data, isLoading } = useMyRequests()
   const requests = (data ?? []).filter((r) => r.media?.tmdbId)
+  const moving = requests.filter((r) => r.media && r.media.status !== MediaStatus.Available)
+  const { data: pipeline } = useProgress(moving.map((r) => ({ type: r.type, id: r.media!.tmdbId })))
   return (
     <ScrollRow
       title="Your requests"
@@ -118,14 +121,14 @@ function MyRequestsRow() {
       skeleton={(i) => <StickerSkeleton key={i} shape="poster" delay={i * 80} className="w-40 shrink-0 rounded-lg" />}
     >
       {requests.map((r) => (
-        <RequestCard key={r.id} request={r} />
+        <RequestCard key={r.id} request={r} progress={pipeline?.titles[progressKey(r.type, r.media!.tmdbId)]} />
       ))}
     </ScrollRow>
   )
 }
 
 /** Seerr's request list has no titles or art: each card asks for its own details. */
-function RequestCard({ request }: { request: MediaRequest }) {
+function RequestCard({ request, progress }: { request: MediaRequest; progress?: TitleProgress }) {
   const { data } = useDiscoverDetails(request.type, request.media?.tmdbId)
   if (!data) return <StickerSkeleton shape="poster" className="w-40 shrink-0 rounded-lg" />
   return (
@@ -138,6 +141,7 @@ function RequestCard({ request }: { request: MediaRequest }) {
         posterPath: data.posterPath,
         mediaInfo: data.mediaInfo ?? request.media,
       }}
+      progress={progress}
       className="w-40 shrink-0 snap-start"
     />
   )

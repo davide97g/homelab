@@ -5,7 +5,8 @@ import { DotList } from '@/components/media/item-meta'
 import { tmdbImage } from '@/lib/discover/client'
 import { discoverPath, discoverTitle, discoverYear } from '@/lib/discover/format'
 import { STANDING_LABEL, standingOf, type Standing } from '@/lib/discover/status'
-import type { DiscoverResult, MediaType } from '@/lib/discover/types'
+import type { DiscoverResult, MediaType, TitleProgress } from '@/lib/discover/types'
+import { ProgressSliver } from './PipelineProgress'
 import { cn } from '@/lib/utils'
 
 /**
@@ -13,7 +14,16 @@ import { cn } from '@/lib/utils'
  * one grammar for "a film" -- and adds the one thing a library card never
  * needs: whether it is here, on its way, or not asked for yet.
  */
-export function DiscoverCard({ result, className }: { result: DiscoverResult; className?: string }) {
+export function DiscoverCard({
+  result,
+  progress,
+  className,
+}: {
+  result: DiscoverResult
+  /** Download / NAS-copy progress, where the caller has it (Your requests). */
+  progress?: TitleProgress
+  className?: string
+}) {
   const type = result.mediaType as MediaType
   const poster = tmdbImage(result.posterPath, 'w342')
   const title = discoverTitle(result)
@@ -48,6 +58,8 @@ export function DiscoverCard({ result, className }: { result: DiscoverResult; cl
         <span className="line-clamp-2 text-sm leading-tight font-semibold">{title}</span>
         <DotList parts={[discoverYear(result)]} className="text-[0.6875rem]" />
       </span>
+
+      <ProgressSliver progress={progress} />
     </Link>
   )
 }

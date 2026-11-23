@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../jellyfin/auth'
 import { discoverFetch } from './client'
-import type { Details, DiscoverMe, DiscoverResult, MediaRequest, MediaType, Page } from './types'
+import { progressKey, type Details, type DiscoverMe, type DiscoverResult, type MediaRequest, type MediaType, type Page, type ProgressReply } from './types'
 
 export const discoverKeys = {
   all: (userId: string) => ['discover', userId] as const,
@@ -11,6 +11,7 @@ export const discoverKeys = {
   details: (userId: string, type: MediaType, id: number) => ['discover', userId, 'details', type, id] as const,
   related: (userId: string, type: MediaType, id: number) => ['discover', userId, 'related', type, id] as const,
   requests: (userId: string) => ['discover', userId, 'requests'] as const,
+  progress: (userId: string, keys: string) => ['discover', userId, 'progress', keys] as const,
 }
 
 /** The Jellyfin token is the whole credential: accounts maps it to Seerr. */
@@ -113,5 +114,31 @@ export function useCancelRequest() {
   return useMutation({
     mutationFn: (requestId: number) => discoverFetch<void>(token, `request/${requestId}`, { method: 'DELETE' }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: discoverKeys.all(userId) }),
+  })
+}
+
+/**
+ * Download and NAS-copy progress for these titles. Polls while anything is moving;
+ * when a title has arrived on the NAS it also refreshes its details, so Seerr's
+ * "available" and the Watch button show up without a reload.
+ */
+export function useProgress(titles: { type: MediaType; id: number }[], enabled = true) {
+  const { token, userId } = useToken()
+  const queryClient = useQueryClient()
+  const keys = [...new Set(titles.map((t) => progressKey(t.type, t.id)))].sort().join(',')
+  return useQuery({
+    queryKey: discoverKeys.progress(userId, keys),
+    queryFn: async () => {
+      const reply = await discoverFetch<ProgressReply>(token, `progress?keys=${encodeURIComponent(keys)}`)
+      for (const [key, p] of Object.entries(reply.titles)) {
+        if (p.stage !== 'arrived') continue
+        const [type, id] = key.split(':')
+        void queryClient.invalidateQueries({ queryKey: discoverKeys.details(userId, type as MediaType, Number(id)) })
+      }
+      return reply
+    },
+    enabled: Boolean(token) && enabled && keys.length > 0,
+    refetchInterval: (q) => (Object.keys(q.state.data?.titles ?? {}).length ? 10_000 : 60_000),
+    refetchIntervalInBackground: false,
   })
 }

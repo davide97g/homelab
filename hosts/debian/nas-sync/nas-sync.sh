@@ -171,15 +171,22 @@ killable() {
 remote_size() { "${SSH[@]}" "$NAS_SSH" "stat -c %s $(printf '%q' "$1") 2>/dev/null || echo 0"; }
 
 # 0 sent and verified, 1 failed, 130 switched off.
+#
+# The copy grows under "<name>.part" and takes its real name only once the md5
+# matches: Jellyfin watches the library in real time and would otherwise list a
+# half-copied film (and Seerr would call it available).
 send_file() {
-  local rel=$1 src="$LIB/$1" remote rq total have attempt rc l r started
-  remote=$(remote_of "$rel")
+  local rel=$1 src="$LIB/$1" final remote rq fq total have attempt rc l r started
+  final=$(remote_of "$rel")
+  remote="$final.part"
   rq=$(printf '%q' "$remote")
+  fq=$(printf '%q' "$final")
   total=$(stat -c %s "$src")
   started=$(date -Is)
 
-  "${SSH[@]}" "$NAS_SSH" "mkdir -p $(printf '%q' "$(dirname "$remote")")" \
-    || { FAIL_MSG="cannot create $(dirname "$remote")"; return 1; }
+  # A copy begun before the .part scheme lives under the final name: adopt it.
+  "${SSH[@]}" "$NAS_SSH" "mkdir -p $(printf '%q' "$(dirname "$final")") && { [ -e $rq ] || [ ! -e $fq ] || mv $fq $rq; }" \
+    || { FAIL_MSG="cannot create $(dirname "$final")"; return 1; }
 
   progress() { printf '%s\t%s\t%s\t%s\t%s\n' "$rel" "$1" "$2" "$total" "$started" | put "$CTL/current.tsv"; }
   on_tick() { progress send "$(remote_size "$remote")"; }
@@ -226,6 +233,7 @@ send_file() {
     FAIL_MSG="checksum mismatch (local=$l remote=$r) -- remote emptied, will resend"
     return 1
   fi
+  "${SSH[@]}" "$NAS_SSH" "mv -f $rq $fq" || { FAIL_MSG="verified, but could not rename $remote"; return 1; }
   return 0
 }
 

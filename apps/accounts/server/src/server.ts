@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { serveStatic } from 'hono/bun'
 import { app } from './app.ts'
 import { env } from './env.ts'
+import { startLibraryRefresh } from './lib/pipeline.ts'
 
 const root = new Hono().route('/', app)
 
@@ -27,6 +28,8 @@ if (web && existsSync(web)) {
     return c.html(index)
   })
 }
+
+startLibraryRefresh()
 
 export default { port: env.PORT, fetch: root.fetch }
 console.log(`accounts on :${env.PORT}`)

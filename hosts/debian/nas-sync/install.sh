@@ -12,8 +12,8 @@ units="$HOME/.config/systemd/user"
 # The hub bind-mounts control/. It must exist, owned by davide, before the hub
 # starts, or Docker creates it as root and neither side can write to it.
 mkdir -p "$dest/control" "$units"
-install -m 0755 "$here/nas-sync.sh" "$here/nas-sync-cleanup.py" "$dest/"
-install -m 0644 "$here/nas-sync.service" "$here/nas-sync.timer" "$here/nas-sync.path" "$units/"
+install -m 0755 "$here/nas-sync.sh" "$here/nas-sync-cleanup.py" "$here/nas-pipeline.py" "$dest/"
+install -m 0644 "$here/nas-sync.service" "$here/nas-sync.timer" "$here/nas-sync.path" "$here/nas-pipeline.service" "$units/"
 
 # The folder-level predecessor would send the whole backlog. It stays disabled.
 systemctl --user disable --now xfer-nas-auto.timer 2>/dev/null || true
@@ -22,6 +22,9 @@ systemctl --user daemon-reload
 # One run now, before anything can turn it on: takes the baseline, writes off.
 "$dest/nas-sync.sh"
 systemctl --user enable --now nas-sync.timer nas-sync.path
+# Progress for cinema's Discover, pushed to the NAS; restarted so an update takes effect.
+systemctl --user enable nas-pipeline.service
+systemctl --user restart nas-pipeline.service
 
 echo "baseline: $(wc -l < "$dest/control/baseline.txt") file(s) never sent"
 echo "switch:   $(cat "$dest/control/enabled")"

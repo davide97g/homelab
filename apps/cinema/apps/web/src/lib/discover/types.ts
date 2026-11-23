@@ -110,3 +110,42 @@ export type DiscoverMe = {
   canRequest: Record<MediaType, boolean>
   autoApprove: Record<MediaType, boolean>
 }
+
+/**
+ * Between the download and the NAS, from the mini PC's report (accounts'
+ * /api/discover/progress). Stages in pipeline order; "stalled" is a download
+ * or import that needs a hand.
+ */
+export type PipelineStage =
+  | 'queued'
+  | 'downloading'
+  | 'stalled'
+  | 'importing'
+  | 'settling'
+  | 'waiting'
+  | 'sending'
+  | 'verifying'
+  | 'arrived'
+
+export type TitleProgress = {
+  title: string | null
+  stage: PipelineStage
+  message: string | null
+  download: { size: number; left: number; eta: string | null; state: PipelineStage } | null
+  transfer: { bytes: number; total: number; startsAt: string | null; eta: string | null; paused: boolean } | null
+  /** When it should be watchable on the NAS. */
+  eta: string | null
+  files: number
+  filesArrived: number
+  arrivedAt: string | null
+}
+
+export type ProgressReply = {
+  available: boolean
+  at: string | null
+  stale: boolean
+  sync: { enabled: boolean; note: string; rateBps: number; measured: boolean } | null
+  titles: Record<string, TitleProgress>
+}
+
+export const progressKey = (type: MediaType, tmdbId: number) => `${type}:${tmdbId}`

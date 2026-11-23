@@ -5,6 +5,7 @@ import { StickerSkeleton, StickerSkeletonText } from '@/components/ui/sticker-sk
 import { useQuackToast } from '@/components/ui/quack-toast'
 import { DotList } from '@/components/media/item-meta'
 import { DiscoverRow, StandingBadge, TypeTag } from '@/components/discover/DiscoverCard'
+import { PipelineProgress } from '@/components/discover/PipelineProgress'
 import { tmdbImage } from '@/lib/discover/client'
 import { discoverTitle, discoverYear } from '@/lib/discover/format'
 import {
@@ -12,10 +13,11 @@ import {
   useDiscoverDetails,
   useDiscoverMe,
   useDiscoverRecommendations,
+  useProgress,
   useRequestTitle,
 } from '@/lib/discover/queries'
 import { seasonStandings, standingOf, type SeasonStanding } from '@/lib/discover/status'
-import { RequestStatus, type Details, type DiscoverMe, type MediaType, type TvDetails } from '@/lib/discover/types'
+import { progressKey, RequestStatus, type Details, type DiscoverMe, type MediaType, type TvDetails } from '@/lib/discover/types'
 import { cn } from '@/lib/utils'
 
 export function DiscoverItemRoute() {
@@ -64,6 +66,11 @@ function DiscoverItem({
   const standing = standingOf(item.mediaInfo)
   const jellyfinId = item.mediaInfo?.jellyfinMediaId
   const watchable = Boolean(jellyfinId) && (standing === 'available' || standing === 'partial')
+  // On its way: requested and not watchable yet, or a series with seasons still coming.
+  const onItsWay = standing === 'pending' || standing === 'processing' || standing === 'partial' || (standing === 'available' && !jellyfinId)
+  const { data: pipeline } = useProgress([{ type, id: item.id }], onItsWay)
+  const progress = pipeline?.titles[progressKey(type, item.id)]
+  const showProgress = (onItsWay && standing !== 'partial') || Boolean(progress)
 
   const seasons = useMemo(() => (item.mediaType === 'tv' ? seasonStandings(item.mediaInfo) : new Map<number, SeasonStanding>()), [item])
   const requestable = item.mediaType === 'tv' ? realSeasons(item).filter((s) => !seasons.has(s.seasonNumber)).map((s) => s.seasonNumber) : []
@@ -173,6 +180,8 @@ function DiscoverItem({
               <p className="text-sm text-muted-foreground">Your account cannot request {type === 'movie' ? 'films' : 'series'}.</p>
             )}
           </div>
+
+          {showProgress && <PipelineProgress standing={standing} progress={progress} className="mt-1" />}
         </div>
       </header>
 
