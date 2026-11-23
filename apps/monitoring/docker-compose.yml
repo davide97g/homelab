@@ -311,7 +311,8 @@ services:
         target: /etc/blackbox/blackbox.yml
     networks:
       - monitoring
-    read_only: true
+    # Not read_only: compose writes inline `configs:` into the container at
+    # create time and refuses to on a read-only root filesystem.
     security_opt:
       - no-new-privileges:true
 
