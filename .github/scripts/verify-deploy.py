@@ -14,7 +14,7 @@ polls it until:
   * every check named on the command line is settled (ok or warn),
 
 then fails the run on anything that is not. Only this app's containers and
-named checks count: a manga deploy does not go red over a Radarr warning.
+named checks count: an adguard deploy does not go red over a Radarr warning.
 
 The hub sits behind Cloudflare Access on the monitoring hostname, so the call
 carries an Access service token plus the hub's own CHECKS_TOKEN. With any of

@@ -18,7 +18,6 @@
 const BOX = process.env.HOMELAB_HOST ?? "homelab-host";
 const PUBLIC_BOX = process.env.HOMELAB_PUBLIC_HOST ?? "debian";
 const CINEMA_PUBLIC_URL = process.env.CINEMA_PUBLIC_URL ?? "https://cinema.davideghiotto.it";
-const MANGA_PUBLIC_URL = process.env.MANGA_PUBLIC_URL ?? "https://manga.davideghiotto.it";
 
 function publicUrl(envKey: string, port: number): string {
   return (process.env[envKey] ?? `http://${PUBLIC_BOX}:${port}`).replace(/\/+$/, "");
@@ -163,13 +162,6 @@ export const config = {
    *  monitoring hostname. Blank means only a signed-in browser can. */
   checksToken: process.env.CHECKS_TOKEN ?? "",
 
-  /** The manga lane, its own compose project in ~/manga. Suwayomi has no auth.
-   *  Kavita's key is the admin's own auth key, read out of kavita.db by
-   *  collect-env.sh. Yomu is asked through its public hostname on purpose, the
-   *  way Jellyfin is through Cinema's: an answer proves the path a reader takes. */
-  suwayomi: { url: boxUrl("SUWAYOMI_URL", 4567) },
-  kavita: { url: boxUrl("KAVITA_URL", 5000), key: process.env.KAVITA_API_KEY ?? "" },
-  yomu: { url: MANGA_PUBLIC_URL.replace(/\/+$/, "") },
 
   /** TypeSafe's Jev, which turns a typed question into a typed answer and is
    *  what /api/ask uses to read a sentence. The only address in this file that
@@ -228,10 +220,6 @@ export const config = {
     qbittorrent: publicUrl("QBITTORRENT_PUBLIC_URL", 8080),
     // Proton's own dashboard: the tunnel has no UI of its own worth opening.
     vpn: process.env.VPN_PUBLIC_URL ?? "https://account.protonvpn.com",
-    // LAN only, both of them: Suwayomi has no login and Kavita's admin UI is not
-    // on the tunnel. Yomu, the public half, links to its own hostname.
-    suwayomi: publicUrl("SUWAYOMI_PUBLIC_URL", 4567),
-    kavita: publicUrl("KAVITA_PUBLIC_URL", 5000),
     // Both of these live on the NAS and are only ever reached by their public
     // hostnames, so there is no port fallback that would work.
     cinema: CINEMA_PUBLIC_URL,

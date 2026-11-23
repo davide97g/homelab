@@ -21,7 +21,7 @@ services:
     image: prom/prometheus:v3.15.1
     container_name: homelab-prometheus
     labels:
-      homelab.configs-hash: "680fb67e0b42"
+      homelab.configs-hash: "a318a0fb3771"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -391,8 +391,6 @@ configs:
               labels: {service: "Memories", group: "Media"}
             - targets: ["https://accounts.davideghiotto.it/"]
               labels: {service: "Accounts", group: "Media"}
-            - targets: ["https://manga.davideghiotto.it/"]
-              labels: {service: "Manga", group: "Media"}
             - targets: ["https://llm.davideghiotto.it/"]
               labels: {service: "LLM API", group: "AI"}
             - targets: ["https://aftergrowth.davideghiotto.it/"]

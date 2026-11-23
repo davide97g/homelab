@@ -234,7 +234,7 @@ em { font-style: normal; }
 .cell--wide h3 { font-size: 1.75rem; }
 .c-jarvis { --tone: #5856d6; --tint: #eeeefd; }
 .c-ai { --tone: #af52de; --tint: #f6ecfc; }
-.c-manga { --tone: #ff2d55; --tint: #ffedf1; }
+.c-backup { --tone: #5e5ce6; --tint: #efeffd; }
 .c-watch { --tone: #0a9aa8; --tint: #e2f5f6; }
 .c-copy { --tone: #e07800; --tint: #fff1e0; }
 .c-web { --tone: #1a8fd6; --tint: #e6f3fc; }

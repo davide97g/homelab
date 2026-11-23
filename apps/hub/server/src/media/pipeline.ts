@@ -8,7 +8,6 @@ import { collectArr, collectProwlarr, radarrLibrary, sonarrLibrary } from "./col
 import { collectBazarr } from "./collect/bazarr.js";
 import { collectJellyfin } from "./collect/jellyfin.js";
 import { collectJellyseerr } from "./collect/jellyseerr.js";
-import { collectKavita, collectSuwayomi, collectYomu } from "./collect/manga.js";
 import { collectQbittorrent } from "./collect/qbittorrent.js";
 import { collectVpn } from "./collect/vpn.js";
 import type { Collected, Flow } from "./collect/shape.js";
@@ -43,12 +42,6 @@ export const POSITIONS: Record<string, { x: number; y: number }> = {
   vpn: { x: 1120, y: -420 },
   bazarr: { x: 1520, y: -150 },
   jellyfin: { x: 1520, y: 320 },
-  // The manga lane, its own row under the film one: a separate stack with
-  // nothing in common except the box, so no edge joins the two. Low enough to
-  // clear the availability edge, which loops under the row above.
-  suwayomi: { x: 0, y: 820 },
-  kavita: { x: 760, y: 820 },
-  yomu: { x: 1520, y: 820 },
 };
 
 type EdgeSpec = {
@@ -159,24 +152,6 @@ const EDGES: EdgeSpec[] = [
     note: "Runs backwards on purpose: the library telling the front door the file exists. Animated while something is playing.",
     busy: (f) => n(f, "jellyfin", "playing") > 0,
   },
-  {
-    id: "suwayomi-kavita",
-    from: "suwayomi",
-    to: "kavita",
-    label: "CBZ files",
-    kind: "forward",
-    note: "A shared folder, not an API: Suwayomi writes CBZs and Kavita's folder watcher indexes them a few minutes later. Busy while chapters are downloading.",
-    busy: (f) => n(f, "suwayomi", "running") > 0 && n(f, "suwayomi", "queue") > 0,
-  },
-  {
-    id: "kavita-yomu",
-    from: "kavita",
-    to: "yomu",
-    label: "reads",
-    kind: "forward",
-    note: "Yomu proxies only the reader's routes to Kavita. Kavita has no live-reader count to animate this by, so it stays still.",
-    busy: () => false,
-  },
 ];
 
 /** Cached apart from everything else and for far longer: the *arr library
@@ -215,9 +190,6 @@ const CONTAINER_BY_NODE: Record<string, string> = {
   qbittorrent: "qbittorrent",
   vpn: "gluetun",
   bazarr: "bazarr",
-  suwayomi: "suwayomi",
-  kavita: "kavita",
-  yomu: "yomu",
 };
 
 async function assemble(): Promise<MediaPipeline> {
@@ -230,9 +202,6 @@ async function assemble(): Promise<MediaPipeline> {
       collectQbittorrent(),
       collectBazarr(),
       collectJellyfin(),
-      collectSuwayomi(),
-      collectKavita(),
-      collectYomu(),
     ]),
     collectVpn(),
     soft(containerLoad()),
@@ -278,7 +247,6 @@ async function assemble(): Promise<MediaPipeline> {
     "qBittorrent has no network of its own: it lives inside gluetun's, and gluetun holds a ProtonVPN WireGuard tunnel. The kill switch takes the tunnel down and leaves gluetun's firewall up, so torrents stop rather than falling back to the home line. A redeploy or a reboot of the box brings the tunnel back up.",
     "Prowlarr's indexer searches leave through gluetun's HTTP proxy too, so the sites see the VPN exit. Nothing seeds: every torrent stops the moment it completes. Jellyfin, Bazarr and the *arrs' metadata lookups stay on the home line.",
     "Everything except Jellyfin runs on the mini PC. Jellyfin is on the NAS, which is why its card has no CPU or memory line — cAdvisor there is a different scrape and the pipeline does not need it twice.",
-    "The bottom row is the manga stack (~/manga): Suwayomi and Kavita are LAN only, and Yomu is the one public door, at manga.davideghiotto.it.",
     "A request is Processing from the moment it imports until the nightly copy lands on the NAS, not Available. The library is copied, not mounted: the NAS is on a different physical network.",
   ];
   if (counts.unconfigured > 0) {

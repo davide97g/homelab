@@ -16,12 +16,12 @@ Hostnames, IPs and record ids below are placeholders like `$LAN_HOST`: the value
 
 **Ollama is LAN and tailnet only.** It has no auth. It is not on the Cloudflare tunnel and
 must not be: anyone who can reach `:11434` can run the model and pull or delete models. The
-chat UI in front of it is public (below). Its login is the only gate.
+only public door is LiteLLM (below), which needs a per-user key. Open WebUI and SearXNG were
+removed for good on 2026-11-23.
 
 ```sh
 # deploy: push to main -- see ../../README.md#deploying (Dokploy app `local-ai`)
 ssh homelab
-docker logs -f searxng                    # web search backend
 docker exec -it ollama ollama run qwen3.6:35b-a3b-q4_K_M
 docker exec ollama ollama ps              # what is loaded, CPU vs GPU
 docker logs -f ollama
@@ -37,103 +37,6 @@ curl http://$LAN_HOST:11434/v1/chat/completions -H 'content-type: application/js
 
 Thinking is on by default. Turn it off per request with `"think": false` (native
 `/api/chat`, `/api/generate`) or `"reasoning_effort": "none"` (`/v1`).
-
-## Chat UI — Open WebUI
-
-**`https://$OPENUI_HOST`**, public since 2026-09-24. On the LAN it is also
-`http://$LAN_HOST:3080` (tailnet: `http://$TAILNET_HOST:3080`). [Open WebUI](https://github.com/open-webui/open-webui)
-`v0.11.4`, pinned, in the same compose file. It gives saved chats with full context, streaming
-with the reasoning collapsed, a model picker, search and a new chat button. Data is in the
-`open-webui` volume (SQLite).
-
-| | |
-|---|---|
-| Login | `OPEN_WEBUI_ADMIN_EMAIL` / `OPEN_WEBUI_ADMIN_PASSWORD` in [`../../.env`](../../.env) |
-| Sign-up | off. New users are added from Admin Panel → Users → **+** |
-| Users | one test user (role `user`, 2026-09-24). Credentials `OPEN_WEBUI_USER_*` in `../../.env` |
-| Picker | **Qwen3.6 35B-A3B** (`qwen3.6-fast`, `think: false`, default) and **Qwen3.6 35B-A3B (thinking)** (`qwen3.6:35b-a3b-q4_K_M`) |
-
-The admin was created on first boot from `WEBUI_ADMIN_*` (now in the Dokploy Environment tab)
-(mode 600, beside `WEBUI_SECRET_KEY`). Those lines do nothing once a user exists. If the
-password changes in the UI, update `../../.env` too.
-
-**Most env vars in `compose.yaml` are first boot only.** Open WebUI copies them into its
-database, and from then on Admin Settings win. Everything below was set through the admin
-API on 2026-09-24, and would need setting again on a fresh volume:
-
-- **Built-in tools cut down to web search and time** on both model entries (Workspace →
-  Models → *Builtin Tools*, stored as `meta.builtinTools`). v0.11 attaches its whole native
-  tool set to every chat request from the UI by default. That made a one-line message a
-  **6,197-token prompt**: 30 s of prefill before the first token. With only `web_search`
-  and `time` on, it is ~680 tokens. Every other category is explicitly `false`: a missing
-  key counts as on. See [Web search](#web-search).
-- **Title generation off.** Each new chat fired a title request first. With thinking on
-  it took ~43 s, and with `OLLAMA_NUM_PARALLEL=1` the reply waited behind it. That path
-  also crashes in v0.11.4 (`KeyError: 'model'` in `background_tasks_handler`). Chats are
-  titled from the first message.
-- Tags, follow-up and autocomplete generation off, arena model off, community sharing off.
-- **Default model is the no-thinking one.** Qwen3.6 overthinks. "Three words about the sea"
-  took 3,065 tokens of reasoning, **2m09s** at 24 tok/s, to answer three words. Without
-  thinking the same prompt answers in about 1 s. The thinking entry is one click away in the
-  picker for problems that need it. A browser that already chatted keeps its last model, so
-  it may still open on the thinking one.
-
-Measured after the first two fixes, thinking on: first message 11 s total (9 s of it thinking), follow-ups use
-Ollama's prompt cache, generation at 24 tok/s.
-
-**Login is by email, not username.** Open WebUI has no username login. A friend's
-account is `<name>@$LAN_HOST`: the address only needs the right shape, and nothing
-ever gets sent to it.
-
-**Model entries need a public read grant**, or non-admin users see an empty picker. Admins
-see every model, so the admin account never shows the problem. Both entries carry
-`{principal_type: "user", principal_id: "*", permission: "read"}` (Workspace → Models →
-Access → Public). An entry created through the API with `access_grants: []` is private.
-
-The two model entries are Open WebUI presets, not Ollama models. Pulling a new model in
-Ollama makes it show up in the picker right away, with **all** built-in tools on. Cut them
-down in Workspace → Models before using it on this box.
-
-## Web search
-
-Added 2026-09-24. The model searches the web through tool calling: Open WebUI's native
-function calling (default in v0.11) hands Qwen `search_web` and `fetch_url`, the model
-decides when to call them, and the chat shows *View Result from search_web*. "What is the
-latest model by Anthropic" takes ~20 s: one call, ~1.2k tokens of prompt after the result.
-
-Backend is **SearXNG** (`searxng` in `compose.yaml`, `searxng/searxng:2026.9.22-2ed96e6fc`),
-a self-hosted metasearch engine: free, no API key, no account. It queries Google, Brave,
-DuckDuckGo, Wikipedia and others from the box's home IP. No published port: only Open WebUI
-reaches it, at `http://searxng:8080`. Config in [`searxng.yml`](searxng.yml) (JSON output
-on, limiter off), secret `SEARXNG_SECRET` in the Dokploy Environment tab.
-
-Set through the admin API, so on a fresh volume set them again:
-
-- Admin Settings → Web Search: on, engine `searxng`, query URL
-  `http://searxng:8080/search?q=<query>`, 5 results, fetch cut at 20,000 characters
-  (`WEB_FETCH_MAX_CONTENT_LENGTH`, ~5k tokens) so one page cannot add minutes of prefill.
-- Both model entries: capabilities *Web Search* and *Builtin Tools* on, `builtinTools`
-  as above, `defaultFeatureIds: ["web_search"]` so the globe toggle starts on.
-- Both model entries: system prompt `Today is {{CURRENT_WEEKDAY}}, {{CURRENT_DATE}}. ...`.
-  Without the date Qwen found Opus 5.5 and still said "today is April 2026".
-
-The tool row in a reply reads **Tool: web search**, small and grey, with no green check.
-It still expands to the query and the results. That is not a setting: stock v0.11.4 says
-"View Result from search_web". [`webui/loader.js`](webui/loader.js) relabels the row, keyed
-on the DOM of `ToolCallDisplay.svelte`, so any UI language works, and
-[`webui/custom.css`](webui/custom.css) styles it. Both are bind-mounted over the empty
-upstream files in `/app/build/static`, which Open WebUI copies to `/static` on boot and
-loads on every page. After an image upgrade, check the row still reads that way. If the
-component's markup changed, the script stops matching and the stock label shows again,
-with nothing broken.
-
-The toggle is the globe in the chat input (Integrations menu). Off means no tools in the
-prompt at all. A browser that was open before the change needs a reload to see it on.
-Non-admin users have `features.web_search` by default.
-
-Tools only reach the model from the UI (requests carrying a websocket `session_id`). The
-LiteLLM API and `/api/chat/completions` without a session get no hidden tools. API
-clients pass their own `tools`, which both LiteLLM entries support.
 
 ## API gateway — LiteLLM
 
@@ -202,7 +105,7 @@ runs `n_seq_max = 1` even with `OLLAMA_NUM_PARALLEL=2`. That is why the per-key 
 is 2: an agent's side request queues instead of failing. Everyone shares one queue, and
 the chat UI waits behind an agent's long prompt as well.
 
-**Published** the same way as `openui`: an ingress rule `$LLM_HOST` ->
+**Published** as an ingress rule `$LLM_HOST` ->
 `http://localhost:4000` before the catch-all, plus a proxied CNAME `llm` (record id
 `$CF_RECORD_ID_LLM`). Checked from outside: `/v1/models`, `/key/generate`,
 `/user/list`, `/health` and `/metrics` all return 401 without a key. `/health/liveliness`
@@ -278,28 +181,6 @@ To try the 27B anyway: `docker exec ollama ollama pull qwen3.8:27b-mtp-q4_K_M` (
 Both Qwen models are vision-language natively. Text prompts work as normal. The vision
 tower is only a small part of the RAM.
 
-### Public hostname
-
-`$OPENUI_HOST` -> `http://localhost:3080`, an ingress rule on the box's own tunnel
-(`CF_TUNNEL_*`), placed before the catch-all, plus a proxied CNAME to `$CF_TUNNEL_CNAME`.
-The steps are [`porting-to-homelab.md`](../../docs/porting-to-homelab.md) §5, minus Dokploy and Traefik:
-cloudflared goes straight to the published port. **Not behind Access**, on purpose. The
-login is the gate, the same arrangement as maestro and riddle. What that login holds back:
-
-- sign-up returns 403. Only the admin adds users.
-- `/api/models` and the `/ollama/*` proxy return 401 without a session. Model pull and
-  delete through the proxy need admin as well.
-- API keys off, community sharing off.
-- `WEBUI_URL` is the https hostname (stored in the DB, set through the admin API), and
-  `CORS_ALLOW_ORIGIN` lists it first.
-
-There is no rate limit on login. The admin password is 24 random characters, which is what
-makes that acceptable. Keep it that way if you change it. Streaming uses a websocket
-through the tunnel, and it works with no extra cloudflared settings.
-
-To take it off the internet: remove the ingress rule (GET, drop the entry, PUT, keeping the
-catch-all last) and delete the DNS record `openui` (id `$CF_RECORD_ID_OPENUI`).
-
 **Debugging trap.** Ollama logs a `POST "/api/chat"` line only when the request *finishes*.
 A reply stuck on "Thinking…" with nothing in the log is usually still generating. Check
 `cat /sys/class/drm/card0/device/gpu_busy_percent` or `docker stats ollama` before deciding
@@ -324,7 +205,7 @@ the rest of the box with it. `OLLAMA_NUM_PARALLEL=1`, so a second request queues
 The KV cache is small: this architecture has only 10 of 40 layers with full attention, so
 the 64k context (`OLLAMA_CONTEXT_LENGTH`, raised from 32k for coding agents) costs ~680 MB
 at q8_0. Resident with everything up: ollama ~23 GB with the model loaded, litellm ~1.4 GB
-(two workers, capped at 3 GB), open-webui ~0.7 GB, litellm-db ~50 MB.
+(two workers, capped at 3 GB), litellm-db ~50 MB.
 
 ## Upgrading
 
@@ -334,7 +215,7 @@ still says `100% GPU`.
 
 ## Config-file edits need a force-recreate — a push is not enough
 
-`litellm.yaml`, `searxng.yml` and the `webui/` files are **bind-mounted** into their
+`litellm.yaml` is **bind-mounted** into their
 containers (e.g. `./litellm.yaml:/app/config.yaml:ro`). A push that changes only one of
 these deploys the new file to the box, but `docker compose up` does **not** recreate the
 container, because the service definition itself is unchanged. Worse, git replaces the file

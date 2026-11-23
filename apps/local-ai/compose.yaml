@@ -1,9 +1,10 @@
-# Ollama, LiteLLM and Open WebUI on the mini PC, deployed by Dokploy on push.
+# Ollama and LiteLLM on the mini PC, deployed by Dokploy on push.
 # Every published port here is bound to 127.0.0.1: Ollama has no auth, and
 # Docker's published ports skip UFW, so a bare "11434:11434" was open to the
 # whole LAN and tailnet. The containers reach each other over the compose
-# network; the outside reaches LiteLLM and Open WebUI only through cloudflared
-# (llm. and openui.davideghiotto.it), which runs on the host and dials localhost.
+# network; the outside reaches LiteLLM only through cloudflared
+# (llm.davideghiotto.it), which runs on the host and dials localhost.
+# Open WebUI and its SearXNG were removed for good on 2026-11-23.
 # Hostnames and IPs come from .env (see .env.example), which compose reads on its own.
 services:
   ollama:
@@ -36,81 +37,6 @@ services:
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_KEEP_ALIVE: 15m
     mem_limit: 30g
-
-  # Chat UI. LAN + tailnet only as well. It has its own login: the admin comes from
-  # WEBUI_ADMIN_* in .env on first boot, which also turns public sign-up off.
-  # Switched off on 2026-11-03: not in use, and v0.11.4 is behind several unpublished
-  # security fixes (0.12.4/0.12.5). The `webui` profile keeps it out of every deploy;
-  # to bring it back, bump the image to the current release and drop the profile.
-  open-webui:
-    profiles: ["webui"]
-    image: ghcr.io/open-webui/open-webui:v0.11.4
-    container_name: open-webui
-    restart: unless-stopped
-    # Stays root, deliberately: on boot Open WebUI copies build/static (including the
-    # custom.css and loader.js mounted below) into /app/backend/open_webui/static,
-    # which is root-owned in the image. As a non-root uid that copy fails with
-    # "Permission denied" and the custom UI silently stops loading -- verified on the
-    # 2026-09-25 deploy. So instead of dropping the uid, drop the danger of running
-    # as root: no capabilities (port 8080 is unprivileged and nothing here needs one)
-    # and no privilege escalation. A root process with no caps and no-new-privileges
-    # cannot do the privileged things a container escape would want.
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    depends_on:
-      - ollama
-    ports:
-      - "127.0.0.1:3080:8080"
-    volumes:
-      - open-webui:/app/backend/data
-      # UI tweaks. Open WebUI copies build/static into its static dir on boot, and every
-      # page loads custom.css and loader.js from there (both empty upstream).
-      - ./webui/custom.css:/app/build/static/custom.css:ro
-      - ./webui/loader.js:/app/build/static/loader.js:ro
-    # Most of these are PersistentConfig: read on the first boot only, after which the
-    # database (Admin Settings) wins. Change them in the UI, not here.
-    #
-    # Secrets come from the Dokploy Environment tab, which Dokploy writes to a single
-    # .env beside this file. Each service names only the variables it needs, so
-    # Open WebUI never sees LiteLLM's master key -- the reason litellm.env and
-    # searxng.env were separate files before this moved to Dokploy.
-    environment:
-      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?}
-      WEBUI_ADMIN_EMAIL: ${WEBUI_ADMIN_EMAIL:-}
-      WEBUI_ADMIN_NAME: ${WEBUI_ADMIN_NAME:-}
-      WEBUI_ADMIN_PASSWORD: ${WEBUI_ADMIN_PASSWORD:-}
-      OLLAMA_BASE_URL: http://ollama:11434
-      ENABLE_OPENAI_API: "false"
-      ENABLE_EVALUATION_ARENA_MODELS: "false"
-      DEFAULT_MODELS: qwen3.6:35b-a3b-q4_K_M
-      ANONYMIZED_TELEMETRY: "false"
-      DO_NOT_TRACK: "true"
-      SCARF_NO_ANALYTICS: "true"
-      DEFAULT_USER_ROLE: pending
-      WEBUI_URL: https://${OPENUI_HOST:?}
-      CORS_ALLOW_ORIGIN: "https://${OPENUI_HOST:?};http://${LAN_HOST:?}:3080;http://${TAILNET_HOST:?}:3080;http://${LAN_IP:?}:3080"
-      # Ollama serves one request at a time, so every side task the UI fires queues
-      # behind the chat. Title generation is off too (set in the UI, 2026-09-24).
-      ENABLE_TITLE_GENERATION: "false"
-      ENABLE_TAGS_GENERATION: "false"
-      ENABLE_FOLLOW_UP_GENERATION: "false"
-      ENABLE_AUTOCOMPLETE_GENERATION: "false"
-    mem_limit: 2g
-
-  # Web search backend for Open WebUI: a metasearch engine, free, no API key. Internal
-  # only, no published port: Open WebUI reaches it at http://searxng:8080 on the compose
-  # network.
-  searxng:
-    image: searxng/searxng:2026.9.25-d8ae3abd5
-    container_name: searxng
-    restart: unless-stopped
-    volumes:
-      - ./searxng.yml:/etc/searxng/settings.yml:ro
-    environment:
-      SEARXNG_SECRET: ${SEARXNG_SECRET:?}
-    mem_limit: 512m
 
   # API gateway: per-user keys, usage, limits. Public at $LLM_HOST — /ui is
   # the dashboard, /v1 the API.
@@ -194,7 +120,5 @@ services:
 volumes:
   ollama:
     name: ollama
-  open-webui:
-    name: open-webui
   litellm-db:
     name: litellm-db

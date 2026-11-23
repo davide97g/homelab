@@ -8,7 +8,7 @@ history from before the merge, under `apps/`.
 
 | Path | What |
 |---|---|
-| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [manga](apps/manga/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/), [site](apps/site/), [status](apps/status/) |
+| [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/), [site](apps/site/), [status](apps/status/) |
 | [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
 | [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md) |
 | [`hosts/`](hosts/) | Per-host notes: [the NAS](hosts/nas.md) |
@@ -22,7 +22,7 @@ On the box, `~` is laid out as:
 | `~/projects/` | Checkouts: this repo, [riddle](../riddle), mediarr-dash |
 | `~/ops/` | Host scripts run by timers, e.g. `ops/xfer-nas/` (script, logs, status) |
 | `~/backups/` | One-off snapshots and rescues, one folder per app |
-| `~/media`, `~/manga/data`, `~/atlante` | Live data, bind-mounted by the Dokploy stacks. Do not move without updating the compose files |
+| `~/media`, `~/atlante` | Live data, bind-mounted by the Dokploy stacks. Do not move without updating the compose files |
 | `~/mediarr/heal.sh`, `~/finance-autodeploy` | Also live: run by a system timer and mounted into a container |
 
 ## Projects
@@ -34,12 +34,11 @@ On the box, `~` is laid out as:
 | Accounts, single sign-on (OTP, invites, TV codes) | `apps/accounts` | NAS | `accounts.davideghiotto.it` | tar over ssh, [`README.md`](apps/accounts/README.md) |
 | Hub, the homelab's front door | `apps/hub` | mini PC, Dokploy | `monitoring.davideghiotto.it` | push to `main` |
 | Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
-| Manga: Suwayomi, Kavita, Yomu | `apps/manga` | mini PC, `~/manga` | `manga.davideghiotto.it` | push to `main` |
 | JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | server: push to `main`. APK: `scripts/deploy-tv.sh` |
 | Status page: public uptime, 90 days | `apps/status` | Cloudflare Worker; probes and publisher on the mini PC | `status.davideghiotto.it` | `apps/status/worker/deploy.sh` |
 | Landing page: the homelab explained simply | `apps/site` | mini PC, `~/homelab-site` | `homelab.davideghiotto.it` | `apps/site/deploy/deploy.sh` |
 | Dirette YouTube: Ciamioncino Ring Road | `apps/youtube-live` | mini PC, Dokploy | none | [local image and OBS recording](apps/youtube-live/) |
-| Local AI: Ollama, LiteLLM (Open WebUI off since 2026-11-03) | `apps/local-ai` | mini PC, Dokploy | `llm.davideghiotto.it` | push to `main` |
+| Local AI: Ollama, LiteLLM | `apps/local-ai` | mini PC, Dokploy | `llm.davideghiotto.it` | push to `main` |
 | AdGuard Home, DNS ad blocking for the house | `apps/adguard` | mini PC, Dokploy; the FRITZ!Box forwards to it | none, UI at `http://debian:3053` | push to `main` |
 | mediarr: the *arr stack, qBittorrent, Jellyseerr | `stacks/mediarr` | mini PC, `~/mediarr` | none, LAN only | push to `main` |
 | Swarm, qBittorrent WebUI | `stacks/swarm` | mini PC, inside qBittorrent | none, `http://debian:8080` | push to `main` |
@@ -63,7 +62,6 @@ history; rolling back is reverting the commit.
 |---|---|---|---|
 | hub | `hub-nppqob` | `apps/hub/docker-compose.yml` | `hub.yml` |
 | monitoring | `monitoring-frontend-fnhjyi` | `apps/monitoring/docker-compose.yml` | `monitoring.yml` |
-| manga | `manga-jwxcm5` | `apps/manga/compose.yml` | `manga.yml` |
 | local-ai | `local-ai-uurnqn` | `apps/local-ai/compose.yaml` | `local-ai.yml` |
 | adguard | `adguard-pmtl66` | `apps/adguard/compose.yaml` | `adguard.yml` |
 | jarvis-server | `jarvis-server-b7bwor` | `apps/tv/jarvis-server/docker-compose.yml` | `jarvis-server.yml` |
@@ -72,7 +70,7 @@ history; rolling back is reverting the commit.
 
 The app name is the compose project name, and Dokploy picks it with a random suffix that cannot
 be changed afterwards. So every named volume that predates Dokploy is pinned with `name:` to the
-name it had under plain compose (`manga_kavita-config`, `mediarr_radarr-config`, `hub_hub-data`, …);
+name it had under plain compose (`mediarr_radarr-config`, `hub_hub-data`, …);
 networks are per-stack and were simply recreated. Secrets live in each app's Environment tab,
 which Dokploy writes to a `.env` beside the compose file. Repository secrets: `DOKPLOY_URL`,
 `DOKPLOY_API_KEY`, and one `DOKPLOY_COMPOSE_ID_<APP>` per app.
@@ -259,11 +257,9 @@ and the NAS Jellyfin shim `:8096`. The mini PC's own Jellyfin (`:8097`) and its 
 [`media-pipeline.md`](docs/media-pipeline.md) covers how those fit together — subtitles,
 availability, Telegram, and the traps found along the way.
 
-[manga](apps/manga/) since 2026-09-23 —
-Suwayomi downloads, Kavita library, Yomu reader. Plain `docker compose` in `~/manga`, not Dokploy, shipped with `git archive`.
-Only Yomu is public, `manga.davideghiotto.it` -> `http://localhost:4571`, not behind Access
-(Kavita's login is the gate, and Yomu's nginx forwards only the reader's API routes). Suwayomi
-`:4567` and Kavita's admin UI `:5000` are LAN only. Its [README](apps/manga/README.md) is the runbook.
+The manga stack (Suwayomi, Kavita, Yomu at `manga.davideghiotto.it`) ran here from 2026-09-23 and was
+removed for good on 2026-11-23: Dokploy app, volumes, `~/manga`, tunnel route and DNS. Its code is in the
+git history before that date.
 
 [riddle](../riddle) runs here too, since 2026-09-21 — the reMarkable diary. Two
 **user** systemd units out of `~/projects/riddle` (`riddle-voice`, `riddle-diary`) with
@@ -286,10 +282,8 @@ so a release is one `compose.deploy` call; its [README](../riddle/apps/site/READ
 has the rest.
 
 [`apps/local-ai/`](apps/local-ai/) — Ollama since 2026-09-24, `:11434`, LAN and tailnet only (no auth,
-never on the tunnel). Qwen3.6-35B-A3B on the 760M through Vulkan, ~24 tok/s. The Open WebUI
-chat was switched off on 2026-11-03: it sits in a `webui` compose profile no deploy starts, and
-`openui.davideghiotto.it` was removed from the tunnel and DNS. To bring it back, bump it past
-0.12.5 first. A LiteLLM gateway gives friends their own API keys for their agents at
+never on the tunnel). Qwen3.6-35B-A3B on the 760M through Vulkan, ~24 tok/s. Open WebUI and
+SearXNG were removed for good on 2026-11-23. A LiteLLM gateway gives friends their own API keys for their agents at
 `llm.davideghiotto.it` (`/ui` to sign in and mint keys, `/v1` OpenAI and Anthropic APIs,
 `LITELLM_*` in `.env`), public, with no Access. LiteLLM is pinned to an exact release, never
 `latest`/`main-*`: those floating tags served the compromised v1.107.0 on 2026-10-21. A Dokploy

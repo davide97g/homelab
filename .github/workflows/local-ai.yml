@@ -32,11 +32,8 @@ jobs:
           LITELLM_MASTER_KEY: ci
           LITELLM_SALT_KEY: ci
           LLM_HOST: ci
-          OPENUI_HOST: ci
           POSTGRES_PASSWORD: ci
-          SEARXNG_SECRET: ci
           TAILNET_HOST: ci
-          WEBUI_SECRET_KEY: ci
         run: docker compose -f apps/local-ai/compose.yaml config --quiet
       - name: Keepalive proxy parses
         run: node --check apps/local-ai/keepalive/server.mjs

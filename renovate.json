@@ -92,16 +92,6 @@
       "allowedVersions": "/^1\\.\\d*[02468](\\.|-|$)/"
     },
     {
-      "description": "searxng tags are <date>-<commit>; compare the date part only",
-      "matchDatasources": [
-        "docker"
-      ],
-      "matchPackageNames": [
-        "searxng/searxng"
-      ],
-      "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d+)\\.(?<patch>\\d+)-[0-9a-f]+$"
-    },
-    {
       "description": "linuxserver also publishes -ls<build> and version- tags; follow the plain upstream version",
       "matchDatasources": [
         "docker"

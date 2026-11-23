@@ -159,9 +159,9 @@ export default function PipelineGraph({
 
     // The box does not take part in the pipeline; it carries it. One faint
     // dashed link per lane says so without implying a request ever flows
-    // through it: the film lane starts at Jellyseerr, the manga one at Suwayomi.
+    // through it: the pipeline starts at Jellyseerr.
     const present = new Set(data.nodes.map((n) => n.id));
-    const carries: FlowEdge[] = ["jellyseerr", "suwayomi"]
+    const carries: FlowEdge[] = ["jellyseerr"]
       .filter((id) => present.has(id))
       .map((target) => ({
         id: `host-carries-${target}`,
