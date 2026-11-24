@@ -43,7 +43,7 @@ services:
     # database -- it queries user_settings.discordId, a column that the
     # AddDiscordIdsColumn migration had already renamed to discordIds, so
     # every Jellyfin sync died with `no such column`.
-    image: ghcr.io/seerr-team/seerr:v3.5.1
+    image: ghcr.io/seerr-team/seerr:v3.5.2
     container_name: jellyseerr
     environment:
       TZ: ${TZ:-Europe/Rome}
