@@ -4,7 +4,7 @@ name: homelab-site
 
 services:
   web:
-    image: nginx:1.30.6-alpine
+    image: nginx:1.30.8-alpine
     container_name: homelab-site-web
     restart: unless-stopped
     # The box's Docker address pools are exhausted ("all predefined address pools have been fully
