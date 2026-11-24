@@ -74,7 +74,7 @@ services:
   # despite advertising a 192.168.15.x one.
   jellyfin-proxy:
     <<: *common
-    image: nginx:1.30-alpine
+    image: nginx:1.30.8-alpine
     container_name: jellyfin-proxy
     # Published on the port the local Jellyfin used to hold: hub, mediarr-dash
     # and jarvis are separate compose projects that cannot resolve a name on
