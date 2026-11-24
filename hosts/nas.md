@@ -44,11 +44,13 @@ needs someone physically at Ilario's house to re-authenticate a container.
 
 ## Its Jellyfin, on the public internet
 
-The NAS runs its own Jellyfin — **`nasilario`, 12.1.0**, a Docker container whose
+The NAS runs its own Jellyfin — **`nasilario`, 12.4.0** (since 2026-11-25), a Docker container whose
 `8096` is published on the host as **`:8899`** (`ss` shows no `8096`; the container sits on
 `172.17.0.2`). It is not the box's `jellyfin` container and shares nothing with it.
 
-Upgraded 2026-09-15 from `ugreen/jellyfin:10.10.7` to the **official `jellyfin/jellyfin:12.1`**:
+Upgraded 2026-09-15 from `ugreen/jellyfin:10.10.7` to the **official `jellyfin/jellyfin:12.1`**
+(12.2 later, 12.4 on 2026-11-25 with Jellyfin stopped for a consistent backup at
+`/volume1/test/jellyfin-config-backup-20261125-12.2.tar.gz`; hwaccel `qsv` survived).
 UGREEN publishes no image past 10.10.7 and `ugreen/jellyfin` is not a public Docker Hub repo,
 so there is nothing newer to pull under that name. The app is still the UGOS app-store one —
 compose file `/volume1/@appstore/com.ugreen.docker.jellyfin/docker-compose.yaml`, previous
@@ -293,7 +295,7 @@ Apps installed via UGOS App Center: Docker, Jellyfin.
 | | |
 |---|---|
 | URL | `http://${NAS_TAILNET_IP}:8899` (Tailscale); public at `https://cinema.davideghiotto.it/jf/web/` |
-| Container | `jellyfin` (jellyfin/jellyfin:12.1, runs as `1000:1000`), maps 8096 -> 8899; compose in `/volume1/docker/jellyfin-app` |
+| Container | `jellyfin` (jellyfin/jellyfin:12.4, runs as `1000:1000`), maps 8096 -> 8899; compose in `/volume1/docker/jellyfin-app` |
 | Config on NAS | `/volume2/docker/jellyfin/config` |
 | Media mounts | `/volume1/media/Movies` -> `/data/Movies`, `/volume1/media/tv` -> `/data/tv`, `/volume1/test` at the same path (empty) |
 | Server | `nasilario`, Id `5507158da22a4b568fec59ecb9887109` |
