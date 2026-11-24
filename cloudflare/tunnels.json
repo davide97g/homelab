@@ -106,11 +106,6 @@
         "originRequest": {}
       },
       {
-        "service": "http://localhost:80",
-        "hostname": "riddle-demo.davideghiotto.it",
-        "originRequest": {}
-      },
-      {
         "path": "^/api/compose\\.(deploy|one)$",
         "service": "http://localhost:3000",
         "hostname": "deploy-homelab.davideghiotto.it",
