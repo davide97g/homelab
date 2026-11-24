@@ -39,7 +39,7 @@ On the box, `~` is laid out as:
 | Status page: public uptime, 90 days | `apps/status` | Cloudflare Worker; probes and publisher on the mini PC | `status.davideghiotto.it` | `apps/status/worker/deploy.sh` |
 | Landing page: the homelab explained simply | `apps/site` | mini PC, `~/homelab-site` | `homelab.davideghiotto.it` | `apps/site/deploy/deploy.sh` |
 | Dirette YouTube: Ciamioncino Ring Road | `apps/youtube-live` | mini PC, Dokploy | none | [local image and OBS recording](apps/youtube-live/) |
-| Local AI: Ollama, LiteLLM | `apps/local-ai` | mini PC, Dokploy | `llm.davideghiotto.it` | push to `main` |
+| Local AI: Ollama | `apps/local-ai` | mini PC, Dokploy | none, LAN and tailnet only | push to `main` |
 | AdGuard Home, DNS ad blocking for the house | `apps/adguard` | mini PC, Dokploy; the FRITZ!Box forwards to it | none, UI at `http://debian:3053` | push to `main` |
 | mediarr: the *arr stack, qBittorrent, Jellyseerr | `stacks/mediarr` | mini PC, `~/mediarr` | none, LAN only | push to `main` |
 | Swarm, qBittorrent WebUI | `stacks/swarm` | mini PC, inside qBittorrent | none, `http://debian:8080` | push to `main` |
@@ -202,11 +202,8 @@ has the rest.
 
 [`apps/local-ai/`](apps/local-ai/) — Ollama since 2026-09-24, `:11434`, LAN and tailnet only (no auth,
 never on the tunnel). Qwen3.6-35B-A3B on the 760M through Vulkan, ~24 tok/s. Open WebUI and
-SearXNG were removed for good on 2026-11-23. A LiteLLM gateway gives friends their own API keys for their agents at
-`llm.davideghiotto.it` (`/ui` to sign in and mint keys, `/v1` OpenAI and Anthropic APIs,
-`LITELLM_*` in `.env`), public, with no Access. LiteLLM is pinned to an exact release, never
-`latest`/`main-*`: those floating tags served the compromised v1.107.0 on 2026-10-21. A Dokploy
-compose app (`local-ai-uurnqn`). Its [README](apps/local-ai/README.md) is the runbook.
+SearXNG were removed for good on 2026-11-23, and the public LiteLLM gateway
+(`llm.davideghiotto.it`) on 2026-11-25. A Dokploy compose app (`local-ai-uurnqn`). Its [README](apps/local-ai/README.md) is the runbook.
 
 mediarr-dash used to draw that chain as a live graph on `:3002`. It is retired, its
 container is gone from the box, and its code was deleted from the repo; it lives on at

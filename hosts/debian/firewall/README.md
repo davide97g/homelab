@@ -17,7 +17,7 @@ to them). See `docs/security/audit-2026-09-25.md`.
 | Any other tailnet peer, anything else | **dropped** | SSH only |
 
 Every public hostname keeps working: cloudflared runs on the host and dials
-`localhost:<port>`, which never crosses `FORWARD`. Ollama, LiteLLM and Open WebUI are
+`localhost:<port>`, which never crosses `FORWARD`. Ollama is
 bound to `127.0.0.1` in `apps/local-ai/compose.yaml` on top of this, so not even the
 LAN reaches them directly.
 

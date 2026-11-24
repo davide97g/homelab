@@ -1,11 +1,9 @@
-# Ollama and LiteLLM on the mini PC, deployed by Dokploy on push.
-# Every published port here is bound to 127.0.0.1: Ollama has no auth, and
-# Docker's published ports skip UFW, so a bare "11434:11434" was open to the
-# whole LAN and tailnet. The containers reach each other over the compose
-# network; the outside reaches LiteLLM only through cloudflared
-# (llm.davideghiotto.it), which runs on the host and dials localhost.
-# Open WebUI and its SearXNG were removed for good on 2026-11-23.
-# Hostnames and IPs come from .env (see .env.example), which compose reads on its own.
+# Ollama on the mini PC, deployed by Dokploy on push.
+# The published port is bound to 127.0.0.1: Ollama has no auth, and Docker's
+# published ports skip UFW, so a bare "11434:11434" was open to the whole LAN
+# and tailnet. Nothing here is on the Cloudflare tunnel.
+# Open WebUI and its SearXNG were removed for good on 2026-11-23, the LiteLLM
+# gateway (litellm, llm-keepalive, litellm-db, llm.davideghiotto.it) on 2026-11-25.
 services:
   ollama:
     image: ollama/ollama:0.34.4
@@ -38,87 +36,6 @@ services:
       OLLAMA_KEEP_ALIVE: 15m
     mem_limit: 30g
 
-  # API gateway: per-user keys, usage, limits. Public at $LLM_HOST — /ui is
-  # the dashboard, /v1 the API.
-  litellm:
-    image: ghcr.io/berriai/litellm:v1.106.6
-    container_name: litellm
-    restart: unless-stopped
-    # Non-root: the proxy only reads its config (mounted ro) and talks to Postgres
-    # over the network, so it never needs to write inside the image. Drop all caps
-    # (port 4000 is unprivileged) and block privilege escalation.
-    user: "1000:1000"
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    depends_on:
-      litellm-db:
-        condition: service_healthy
-      ollama:
-        condition: service_started
-    ports:
-      - "127.0.0.1:4000:4000"
-    volumes:
-      - ./litellm.yaml:/app/config.yaml:ro
-    # One worker: without Redis every worker keeps its own rate-limit counters, so two
-    # workers would double each key's limits. One GPU does not need more.
-    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
-    environment:
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?}
-      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?}
-      DATABASE_URL: ${DATABASE_URL:?}
-      LITELLM_MODE: PRODUCTION
-      PROXY_BASE_URL: https://${LLM_HOST:?}
-      STORE_MODEL_IN_DB: "False"
-      NO_DOCS: "True" # no public Swagger / openapi.json
-      NO_REDOC: "True"
-    mem_limit: 2g # one worker sits at ~0.7 GB idle
-
-  # Sits between the tunnel and LiteLLM for the streaming API paths only (a path rule on
-  # $LLM_HOST's ingress). Cloudflare cuts a request that is silent for 100 s, and LiteLLM
-  # sends nothing until the first token, so a coding agent's big first prompt got a 524.
-  # This answers 200 and writes SSE comments until LiteLLM's stream starts. See
-  # keepalive/server.mjs. Localhost only: cloudflared runs on the host.
-  llm-keepalive:
-    image: node:24.22.2-alpine
-    container_name: llm-keepalive
-    restart: unless-stopped
-    user: "1000:1000"
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    depends_on:
-      - litellm
-    ports:
-      - "127.0.0.1:4001:8080"
-    volumes:
-      - ./keepalive/server.mjs:/app/server.mjs:ro
-    command: ["node", "/app/server.mjs"]
-    environment:
-      UPSTREAM: http://litellm:4000
-    mem_limit: 128m
-
-  litellm-db:
-    image: postgres:17.11-alpine
-    container_name: litellm-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
-      POSTGRES_DB: litellm
-      POSTGRES_USER: litellm
-    volumes:
-      - litellm-db:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
-      interval: 5s
-      retries: 20
-    mem_limit: 512m
-
 volumes:
   ollama:
     name: ollama
-  litellm-db:
-    name: litellm-db

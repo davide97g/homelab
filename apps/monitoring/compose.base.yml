@@ -377,8 +377,6 @@ configs:
               labels: {service: "Memories", group: "Media"}
             - targets: ["https://accounts.davideghiotto.it/"]
               labels: {service: "Accounts", group: "Media"}
-            - targets: ["https://llm.davideghiotto.it/"]
-              labels: {service: "LLM API", group: "AI"}
             - targets: ["https://aftergrowth.davideghiotto.it/"]
               labels: {service: "Aftergrowth", group: "Giochi"}
             - targets: ["https://ciamioncino.davideghiotto.it/"]

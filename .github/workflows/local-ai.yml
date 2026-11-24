@@ -26,17 +26,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Compose file is valid
         env:
-          DATABASE_URL: ci
           LAN_HOST: ci
           LAN_IP: ci
-          LITELLM_MASTER_KEY: ci
-          LITELLM_SALT_KEY: ci
-          LLM_HOST: ci
-          POSTGRES_PASSWORD: ci
           TAILNET_HOST: ci
         run: docker compose -f apps/local-ai/compose.yaml config --quiet
-      - name: Keepalive proxy parses
-        run: node --check apps/local-ai/keepalive/server.mjs
 
   deploy:
     needs: check
