@@ -97,7 +97,8 @@ was lifted on 2026-11-03 for the 28.5 → 29.9 upgrade and not put back, so chec
 manual upgrade. `sudo` asks for a password, so those runs are done by hand over `ssh -t homelab`.
 The last full pass was 2026-11-24, with [`hosts/debian/hardening/apply.sh`](hosts/debian/hardening/)
 (which also made SSH key-only): kernel 6.12.118, Docker 29.10.0, cloudflared 2026.11.2, Tailscale
-1.104.7, Traefik 3.7.17, Dokploy 0.30.10. `RebootRequired` and `AptUpgradesPending` say when the
+1.104.7, Traefik 3.7.17, Dokploy 0.30.10. Dokploy went to 0.31.4 and Traefik to 3.7.20 on
+2026-11-25 (`docker service update`, then `settings.updateTraefik`). `RebootRequired` and `AptUpgradesPending` say when the
 next one is due. A Docker upgrade restarts every container, a running backup included.
 
 Backup: every night at 03:30, restic sends the home directory, the Docker volumes, `/etc/dokploy`
@@ -121,10 +122,11 @@ the NAS to `~/nas-backup` on the box, through an ssh session the box opens
 
 ## Services
 
-Dokploy (`:3000`, v0.30.10) with Traefik v3.7.17 on `:80`/`:443`, Docker 29 with Swarm active.
-Dokploy pins its own Traefik version in code (3.6.x, a branch that no longer gets fixes), so the
-`dokploy` service carries `TRAEFIK_VERSION=3.7.17`: every Traefik recreate from the Dokploy UI
-uses it. Traefik's `CF_DNS_API_TOKEN` (ACME DNS challenge, scoped to `davideghiotto.it`) lives only
+Dokploy (`:3000`, v0.31.4) with Traefik v3.7.20 on `:80`/`:443`, Docker 29 with Swarm active.
+Dokploy pins its own Traefik version in code and can lag behind fixes, so the `dokploy` service
+carries `TRAEFIK_VERSION=3.7.20`: every Traefik recreate from the Dokploy UI uses it. Since 0.31
+the Dokploy API has a safe update (`settings.updateTraefik`) that keeps env and ports and rolls
+back on failure; it upgrades to that version. Traefik's `CF_DNS_API_TOKEN` (ACME DNS challenge, scoped to `davideghiotto.it`) lives only
 in the `dokploy-traefik` container's environment — change it from Dokploy (Web Server → Traefik →
 Environment), never by removing the container.
 Monitoring stack in [`apps/monitoring/`](apps/monitoring/) — Grafana on `:3001`, LAN only since
