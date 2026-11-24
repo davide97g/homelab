@@ -9,7 +9,7 @@ font, brand colours of each app on tinted panels), no build step.
 |---|---|
 | Source | `public/`: `index.html`, `assets/site.css`, `assets/site.js`, fonts, screenshots |
 | Host | mini PC, plain compose in `~/homelab-site` (project `homelab-site`, container `homelab-site-web`) |
-| Server | `nginx:1.30.6-alpine`, read-only, default `bridge`, `127.0.0.1:8803` |
+| Server | `nginx:1.30.8-alpine`, read-only, default `bridge`, `127.0.0.1:8803` |
 | Tunnel | mini PC tunnel, `homelab.davideghiotto.it` -> `http://localhost:8803`. Not behind Access |
 
 Screenshots are real, taken 2026-11-23 with agent-browser signed in through accounts: Cinema web
