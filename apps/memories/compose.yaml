@@ -10,7 +10,7 @@
 # This is only the nginx in front of it. Deploy: see README.md.
 services:
   memories-proxy:
-    image: nginx:1.30-alpine
+    image: nginx:1.30.8-alpine
     container_name: memories-proxy
     restart: unless-stopped
     volumes:
