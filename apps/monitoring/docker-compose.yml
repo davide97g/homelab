@@ -21,7 +21,7 @@ services:
     image: prom/prometheus:v3.15.1
     container_name: homelab-prometheus
     labels:
-      homelab.configs-hash: "7581f0f9491a"
+      homelab.configs-hash: "8ec1ae7ee343"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -255,7 +255,7 @@ services:
     # where it matters -- container logs still arriving in Loki.
 
   grafana:
-    image: grafana/grafana:13.2.5
+    image: grafana/grafana:13.2.7
     container_name: homelab-grafana
     labels:
       homelab.configs-hash: "f095b2262083"
