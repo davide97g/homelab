@@ -179,6 +179,10 @@ keeps 14 of them.
 
 1. **Deployed 2026-11-12** (service + admin pages); cinema web and memories web sign-in through it are
    coded, not redeployed. The upstream keys, `ADMIN_EMAILS` and Resend are filled in by hand in `.env`.
+   Mail: `RESEND_API_KEY` is a sending-only key scoped to `accounts.davideghiotto.it` (the domain
+   verified in Resend), `MAIL_FROM=Homelab <noreply@accounts.davideghiotto.it>`. Set 2026-11-24;
+   until then the key was empty, so no code was ever mailed: `lib/mail.ts` only logged them, and
+   the logs went to Loki.
 2. Devices. **Findroid TV: done in code**, emulator-verified against a throwaway Jellyfin (code + QR,
    approve, home, revoke, back to the code; see `apps/cinema/docs/ROADMAP.md`). **Memories iOS and
    Swiftfin: done in code**: email-code sign-in, "Sign In a TV" sheet, `applinks:accounts.davideghiotto.it`.

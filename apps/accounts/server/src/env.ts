@@ -38,7 +38,8 @@ const schema = z.object({
   /** Development only: every code is this one and nothing is mailed. Ignored in production. */
   DEV_OTP: z.preprocess((v) => v || undefined, z.string().regex(/^\d{6}$/).optional()),
   RESEND_API_KEY: optional,
-  MAIL_FROM: z.string().default('Homelab <accounts@davideghiotto.it>'),
+  // The sender must be on a domain verified in Resend: accounts.davideghiotto.it is, the apex is not.
+  MAIL_FROM: z.string().default('Homelab <noreply@accounts.davideghiotto.it>'),
 
   /** Jellyfin, from inside the docker network (not the public /jf). */
   JELLYFIN_URL: optional,
