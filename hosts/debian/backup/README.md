@@ -82,6 +82,6 @@ Files come back owned by root under `~/restore`. A database comes back from its 
   `/docker/homelab-backup` over sftp and `/volume1/docker/homelab-backup` in a shell. The
   directory is `700 davide` with the share's ACL stripped; `/volume1/docker` itself is `777`.
 - The NAS is Ilario's and in his house: this is off-box, not off-site in the sense of
-  "independent of a person". A second repository (Backblaze B2, `restic copy`) is the next step.
+  "independent of a person". The second copy, on Backblaze B2, is [`../offsite`](../offsite/).
 - A UGOS update wiped the NAS root overlay once (2026-11-08). `/volume1` survived it, which is
   why the repository is there and not under `/home`.
