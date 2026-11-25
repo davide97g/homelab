@@ -128,6 +128,63 @@
         "apps/cinema/apps/ios/**"
       ],
       "enabled": false
+    },
+    {
+      "description": "Patch bumps on apps that have CI merge themselves once it is green, at night. The push to main deploys through Dokploy and verify-deploy.py checks the result. Three days' wait so a bad release is usually pulled first",
+      "matchFileNames": [
+        "apps/monitoring/docker-compose.yml",
+        "apps/monitoring/compose.base.yml",
+        "apps/hub/**",
+        "apps/adguard/**",
+        "apps/local-ai/**",
+        "apps/tv/jarvis-server/**",
+        "stacks/**"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "digest"
+      ],
+      "minimumReleaseAge": "3 days",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false,
+      "automergeSchedule": [
+        "after 3am and before 7am"
+      ]
+    },
+    {
+      "description": "Action minors and patches only touch CI; same night window",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "minimumReleaseAge": "3 days",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false,
+      "automergeSchedule": [
+        "after 3am and before 7am"
+      ]
+    },
+    {
+      "description": "Never automerge what owns data or has done one-way migrations before: a person reads these",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres",
+        "imresamu/postgis",
+        "**/jellyfin",
+        "jellyfin/**",
+        "**/immich**",
+        "adguard/adguardhome",
+        "lscr.io/linuxserver/bazarr"
+      ],
+      "automerge": false
     }
   ],
   "ignorePaths": [
