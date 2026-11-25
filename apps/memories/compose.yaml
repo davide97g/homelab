@@ -77,7 +77,7 @@ services:
   # filters for memories-search. CPU only (i3-1315U); the model stays loaded. Loopback port
   # only for poking at it from the NAS shell.
   memories-llm:
-    image: ollama/ollama:0.40.17
+    image: ollama/ollama:0.40.18
     container_name: memories-llm
     restart: unless-stopped
     volumes:
