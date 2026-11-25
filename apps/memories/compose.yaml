@@ -33,7 +33,7 @@ services:
   # files in pieces to <api>/memories/upload/... and this puts them back together and posts
   # them to Immich. See upload-relay/relay.py. Not published: only the proxy reaches it.
   memories-upload:
-    image: python:3.13-alpine
+    image: python:3.15-alpine
     container_name: memories-upload
     restart: unless-stopped
     command: ["python", "-u", "/app/relay.py"]
@@ -53,7 +53,7 @@ services:
   #                  LLM_JSON=object LLM_EXTRA={}
   # Keys go in ./search.env (not in git), which overrides the defaults below.
   memories-search:
-    image: python:3.13-alpine
+    image: python:3.15-alpine
     container_name: memories-search
     restart: unless-stopped
     command: ["python", "-u", "/app/search.py"]
