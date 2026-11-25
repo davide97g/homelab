@@ -21,7 +21,7 @@ services:
     image: prom/prometheus:v3.16.0
     container_name: homelab-prometheus
     labels:
-      homelab.configs-hash: "1309cdec95ee"
+      homelab.configs-hash: "792ea18471d9"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -721,7 +721,7 @@ configs:
               labels:
                 severity: warning
               annotations:
-                summary: apt upgrades pending for a week (Docker, cloudflared, Tailscale are not unattended) — sudo apt full-upgrade
+                summary: apt upgrades pending for a week (Docker is not unattended) — sudo apt full-upgrade
 
             - alert: HostMetricsMissing
               expr: absent(homelab_apt_upgradable_packages{instance="homelab"})

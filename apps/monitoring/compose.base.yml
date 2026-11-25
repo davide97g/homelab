@@ -707,7 +707,7 @@ configs:
               labels:
                 severity: warning
               annotations:
-                summary: apt upgrades pending for a week (Docker, cloudflared, Tailscale are not unattended) — sudo apt full-upgrade
+                summary: apt upgrades pending for a week (Docker is not unattended) — sudo apt full-upgrade
 
             - alert: HostMetricsMissing
               expr: absent(homelab_apt_upgradable_packages{instance="homelab"})

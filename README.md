@@ -91,9 +91,11 @@ monitoring agents), since Dokploy has no root docker on the NAS. They still depl
 | OS | Debian 13 (kernel 6.12.115+deb13.1-amd64, x86_64) |
 | User | `davide` |
 
-Patching: `unattended-upgrades` installs Debian security updates every morning, but a new kernel
-still needs a reboot (`/var/run/reboot-required`), and the third-party repos (Docker, cloudflared,
-Chrome, Tailscale) are not covered: they come in with a manual `sudo apt full-upgrade`. Dokploy's
+Patching: `unattended-upgrades` runs every night at 02:30, before the backups, and installs Debian
+security updates plus Tailscale, cloudflared and Chrome (since 2026-11-25,
+[`hosts/debian/hardening/unattended.sh`](hosts/debian/hardening/unattended.sh)). A new kernel still
+needs a reboot (`/var/run/reboot-required`), and Docker is left out on purpose (its upgrade restarts
+every container): it comes in with a manual `sudo apt full-upgrade`. Dokploy's
 installer `apt-mark hold`s `docker-ce`, `docker-ce-cli` and `docker-ce-rootless-extras`. The hold
 was lifted on 2026-11-03 for the 28.5 → 29.9 upgrade and not put back, so check Docker on every
 manual upgrade. `sudo` asks for a password, so those runs are done by hand over `ssh -t homelab`.
