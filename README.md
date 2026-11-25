@@ -11,7 +11,7 @@ history from before the merge, under `apps/`.
 | [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/), [site](apps/site/), [status](apps/status/) |
 | [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
 | [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md), [web apps](docs/web-apps.md), [where every secret lives](docs/secrets.md) |
-| [`hosts/`](hosts/) | Per-host notes and installers: [the NAS](hosts/nas.md); for the box, [firewall](hosts/debian/firewall/), [backup](hosts/debian/backup/), [nas-backup](hosts/debian/nas-backup/), [offsite](hosts/debian/offsite/), [restore-drill](hosts/debian/restore-drill/), [nas-deploy](hosts/debian/nas-deploy/), [nas-sync](hosts/debian/nas-sync/), [host-metrics](hosts/debian/host-metrics/) |
+| [`hosts/`](hosts/) | Per-host notes and installers: [the NAS](hosts/nas.md); for the box, [firewall](hosts/debian/firewall/), [backup](hosts/debian/backup/), [nas-backup](hosts/debian/nas-backup/), [restore-drill](hosts/debian/restore-drill/), [nas-deploy](hosts/debian/nas-deploy/), [nas-sync](hosts/debian/nas-sync/), [host-metrics](hosts/debian/host-metrics/) |
 | [`cloudflare/`](cloudflare/) | Tunnel ingress for both tunnels, applied with [`tools/cloudflare`](tools/cloudflare/) |
 | [`hardware/`](hardware/) | The 3D-printed [M6 stand](hardware/m6-stand/) |
 | `.env` | Credentials, gitignored. [`.env.example`](.env.example) lists the keys |
@@ -111,8 +111,6 @@ before that `~/backups/` sat on the same single NVMe as everything it backed up.
 The other direction runs at 04:30: Immich's photos, accounts' dumps and Jellyfin's config go from
 the NAS to `~/nas-backup` on the box, through an ssh session the box opens
 ([`hosts/debian/nas-backup`](hosts/debian/nas-backup/), since 2026-11-24).
-At 06:00 both repositories are copied to Backblaze B2 with a key that cannot delete
-([`hosts/debian/offsite`](hosts/debian/offsite/)): the one copy a compromised box cannot wipe.
 Every Wednesday a [restore drill](hosts/debian/restore-drill/) loads every database dump and a
 few photos back out of both repositories into throwaway containers.
 

@@ -15,9 +15,6 @@ touched: everything happens in throwaway containers labelled `homelab.restore-dr
 
 First run 2026-11-25: 12/12 in about a minute (9 box databases, Immich 9588 assets, accounts, 5 photos).
 
-The B2 copies ([`../offsite`](../offsite/)) are not drilled here: they hold the same snapshots,
-byte for byte, and restoring from them costs egress. Their monthly `check` covers their structure.
-
 ## Pieces
 
 | File | Where | Role |

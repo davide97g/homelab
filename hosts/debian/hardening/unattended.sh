@@ -7,9 +7,9 @@
 # shipped fixes waited for a manual `apt full-upgrade` (AptUpgradesPending). Docker stays
 # manual on purpose: its upgrade restarts every container, a running backup included.
 #
-# apt-daily-upgrade.timer defaults to 06:00 + up to 60 min, which is when the B2 copy
-# (06:00) is reading the box's repo from the NAS over Tailscale -- a tailscaled restart
-# there fails the night's copy. 02:30 is before every backup (03:30, 04:30, 06:00).
+# apt-daily-upgrade.timer defaults to 06:00 + up to 60 min. A long NAS backup (04:30, over
+# Tailscale) can still be running then, and a tailscaled restart would fail it. 02:30 is
+# before both backups (03:30, 04:30).
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
 

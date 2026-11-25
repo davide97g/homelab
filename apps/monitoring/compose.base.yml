@@ -757,23 +757,6 @@ configs:
               annotations:
                 summary: backup.prom or nas-backup.prom is not being read — are both backup timers installed?
 
-            - alert: OffsiteBackupFailed
-              expr: homelab_offsite_last_exit_code{instance="homelab"} != 0
-              for: 5m
-              labels:
-                severity: warning
-              annotations:
-                summary: the nightly copy to Backblaze B2 failed — journalctl --user -u homelab-offsite
-
-            - alert: OffsiteBackupStale
-              expr: time() - homelab_offsite_last_success_timestamp_seconds{instance="homelab"} > 30 * 3600
-              for: 30m
-              labels:
-                severity: warning
-              annotations:
-                summary: no successful copy to Backblaze B2 in over 30 hours (the first upload of ~70 GB may take longer)
-
-
             - alert: RestoreDrillFailed
               expr: homelab_restore_drill_last_exit_code{instance="homelab"} != 0
               for: 5m

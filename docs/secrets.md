@@ -17,13 +17,11 @@ When rotating one, change **every** copy in its row, then redeploy what reads it
 
 | Secret | Copies | Notes |
 |---|---|---|
-| restic password, box repo | box `restic-password`, `restic.env` · KC `homelab-restic` · .env `RESTIC_PASSWORD` | also opens `b2:<bucket>/box` |
-| restic password, NAS repo | box `nas-restic.env` · KC `homelab-nas-restic` · .env `NAS_RESTIC_PASSWORD` | also opens `b2:<bucket>/nas` |
-| B2 restricted key (no deleteFiles) | box `b2.env` · KC `homelab-b2` | [`hosts/debian/offsite`](../hosts/debian/offsite/) |
-| B2 account login / master key | **password manager only** | the only way to unhide or delete in B2 |
+| restic password, box repo | box `restic-password`, `restic.env` · KC `homelab-restic` · .env `RESTIC_PASSWORD` | |
+| restic password, NAS repo | box `nas-restic.env` · KC `homelab-nas-restic` · .env `NAS_RESTIC_PASSWORD` | |
 
-Every copy of the two restic passwords sits on the box or the Mac. The B2 copy exists for the day
-both are gone, so **keep both passwords and the B2 login in a password manager** as well.
+Every copy of the two restic passwords sits on the box or the Mac. If both go, so do the
+backups: **keep both passwords in a password manager** as well.
 
 ## Infrastructure
 
