@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly restore drill, Wednesday late morning: clear of the night's backups and Sunday's prune
+
+[Timer]
+OnCalendar=Wed *-*-* 11:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

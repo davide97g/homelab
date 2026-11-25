@@ -781,6 +781,22 @@ configs:
               annotations:
                 summary: offsite.prom is not being read — is the homelab-offsite timer installed?
 
+            - alert: RestoreDrillFailed
+              expr: homelab_restore_drill_last_exit_code{instance="homelab"} != 0
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: the weekly restore drill failed — a backup did not restore (homelab_restore_drill_target_ok == 0 says which); errors in ~/ops/restore-drill/errors
+
+            - alert: RestoreDrillStale
+              expr: time() - homelab_restore_drill_last_success_timestamp_seconds{instance="homelab"} > 8 * 86400
+              for: 1h
+              labels:
+                severity: warning
+              annotations:
+                summary: no fully successful restore drill in over 8 days — is the homelab-restore-drill timer running?
+
   blackbox_yml:
     content: |
       modules:

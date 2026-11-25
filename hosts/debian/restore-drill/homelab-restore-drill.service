@@ -1,0 +1,10 @@
+[Unit]
+Description=Restore drill: both restic repositories back into throwaway Postgres servers and files
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/ops/restore-drill/drill.sh
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
