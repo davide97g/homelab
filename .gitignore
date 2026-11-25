@@ -20,3 +20,4 @@ hosts/mini-pc/security/docker-user-hardening.conf
 
 # Cloudflare tunnel config dumps taken before edits; local only.
 tunnel-backup-*.json
+cloudflare/backups/

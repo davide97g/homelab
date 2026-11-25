@@ -7,7 +7,7 @@
     tools/cloudflare/tunnels.py audit   # DNS vs ingress: missing CNAMEs, orphan CNAMEs
 
 Edit the JSON (add or drop an ingress rule, keep the catch-all last), run diff, then
-apply. apply writes tunnel-backup-<date>-<tunnel>.json first (gitignored), PUTs the
+apply. apply writes cloudflare/backups/tunnel-backup-<date>-<tunnel>.json first (gitignored), PUTs the
 config, and creates the proxied CNAME for any new davideghiotto.it hostname.
 
 Credentials from the repo .env: CF_API_TOKEN, CF_ACCOUNT_ID, CF_ZONE_ID,
@@ -124,7 +124,8 @@ def apply():
         if not changes(name, spec[name], have):
             print(f"{name}: unchanged")
             continue
-        backup = ROOT / f"tunnel-backup-{stamp}-{name}.json"
+        backup = ROOT / "cloudflare" / "backups" / f"tunnel-backup-{stamp}-{name}.json"
+        backup.parent.mkdir(exist_ok=True)
         backup.write_text(json.dumps({"config": have}, indent=2))
         api("PUT", f"accounts/{os.environ['CF_ACCOUNT_ID']}/cfd_tunnel/{tid}/configurations", {"config": spec[name]})
         print(f"{name}: applied (previous config in {backup.name})")
