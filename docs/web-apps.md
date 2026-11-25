@@ -108,6 +108,18 @@ tunnel straight to it, not behind Access. No data. A release is that repo's `dep
 compose in `~/homelab-site` (project `homelab-site`, container `homelab-site-web`, `nginx:1.30.8-alpine`,
 read-only, default `bridge`) bound to `127.0.0.1:8803`, tunnel straight to it, not behind Access. No data,
 no build. A release is `apps/site/deploy/deploy.sh` (rsync, nginx reload). No CI.
+`chatspace.davideghiotto.it` is [Chatspace](https://github.com/davide97g/chatspace) (private), chat-only
+workspaces whose data model the assistant designs, added 2026-11-25: compose app `chatspace-mvsfdp`
+(composeId `dQikKwwEDuMfUwn4nblQE`) in project `chatspace`, compose path `./deploy/compose.yml`, branch
+`main`. One Bun container (Hono API + the built React app, headless Claude Code via the Agent SDK with
+`CLAUDE_CODE_OAUTH_TOKEN`, built-in tools limited to web search/fetch) bound to `127.0.0.1:8804`, tunnel
+straight to it, no Traefik domain, not behind Access. Postgres 17 beside it (volume `chatspace-pg`, one
+schema per workspace, picked up by the nightly `pg_dumpall`); uploads and agent sessions on the
+`chatspace-data` volume. Personal deployment: `AUTH_MODE=code`, `OPEN_SIGNUP=true` — anyone signs in with
+any email and the fixed code `000000`, no mail is sent; change `AUTH_CODE` or switch back to magic links
+(`AUTH_MODE=magic-link` + SMTP) before sharing it. Secrets in its Dokploy Environment tab. Geocoding goes
+to the public Nominatim (1 req/s, cached); map tiles are OpenStreetMap's. No CI; a release is one
+`compose.deploy` call (`DOKPLOY_COMPOSE_ID_CHATSPACE` in `.env`).
 `lumii.davideghiotto.it` is LUMII Montecchio's restaurant app (`apps/lumii-*` in
 [zeroshot](https://github.com/davide97g/zeroshot)), added 2026-11-06: compose app `lumii-grjqvu`
 (composeId `uarKwudQqkZPe_cue7rqe`) in project `lumii`, compose path `./docker-compose.lumii.yml`,

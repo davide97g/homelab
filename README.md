@@ -167,6 +167,7 @@ is [`cloudflare/tunnels.json`](cloudflare/tunnels.json); what is up right now is
 | `ciamioncino` | Ciamioncino, Godot web build and multiplayer relay | plain compose `~/ciamioncino`, `:8800` | no | `deploy/deploy.sh` |
 | `videogiochi` | Game remakes landing | plain compose `~/videogiochi`, `:8802` | no | `deploy/deploy.sh` |
 | `homelab` | This homelab, explained simply ([`apps/site`](apps/site/)) | plain compose `~/homelab-site`, `:8803` | no | `apps/site/deploy/deploy.sh` |
+| `chatspace` | [Chatspace](https://github.com/davide97g/chatspace), chat-only workspaces with a generative data model (Claude Agent SDK) | Dokploy compose `:8804`, Postgres + `chatspace-data` volume | no, fixed sign-in code | `compose.deploy` |
 
 `compose.deploy` means one Dokploy API call after a push to that repo's `main`, since the app has
 no CI of its own; the ids are in `.env` (`DOKPLOY_COMPOSE_ID_*`).

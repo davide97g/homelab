@@ -283,6 +283,11 @@
         "originRequest": {}
       },
       {
+        "service": "http://localhost:8804",
+        "hostname": "chatspace.davideghiotto.it",
+        "originRequest": {}
+      },
+      {
         "service": "http_status:404"
       }
     ],
