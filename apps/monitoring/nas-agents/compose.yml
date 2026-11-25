@@ -72,7 +72,7 @@ services:
       - /dev/disk/:/dev/disk:ro
 
   jellyfin-exporter:
-    image: python:3.13-alpine
+    image: python:3.15-alpine
     container_name: nas-jellyfin-exporter
     restart: unless-stopped
     # Who is watching what, from the same GET /Sessions the Cinema web app

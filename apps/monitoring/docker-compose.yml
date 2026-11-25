@@ -255,7 +255,7 @@ services:
     # where it matters -- container logs still arriving in Loki.
 
   grafana:
-    image: grafana/grafana:13.2.7
+    image: grafana/grafana:13.3.2
     container_name: homelab-grafana
     labels:
       homelab.configs-hash: "f095b2262083"
