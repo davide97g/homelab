@@ -18,7 +18,7 @@
 
 services:
   prometheus:
-    image: prom/prometheus:v3.15.1
+    image: prom/prometheus:v3.16.0
     container_name: homelab-prometheus
     labels:
       homelab.configs-hash: "8ec1ae7ee343"
@@ -49,7 +49,7 @@ services:
       start_period: 30s
 
   node-exporter:
-    image: quay.io/prometheus/node-exporter:v1.12.1
+    image: quay.io/prometheus/node-exporter:v1.13.1
     container_name: homelab-node-exporter
     restart: unless-stopped
     # Host network + host PID so interface, process and sensor metrics are the
@@ -97,7 +97,7 @@ services:
       - /:/host:ro,rslave
 
   cadvisor:
-    image: ghcr.io/google/cadvisor:v0.60.6
+    image: ghcr.io/google/cadvisor:v0.61.1
     container_name: homelab-cadvisor
     restart: unless-stopped
     privileged: true
@@ -162,7 +162,7 @@ services:
       - monitoring
 
   loki:
-    image: grafana/loki:3.7.8
+    image: grafana/loki:3.7.10
     container_name: homelab-loki
     labels:
       homelab.configs-hash: "7549b9ec8974"
@@ -193,7 +193,7 @@ services:
     # dashboard.
 
   alloy:
-    image: grafana/alloy:v1.20.0
+    image: grafana/alloy:v1.22.0
     container_name: homelab-alloy
     labels:
       homelab.configs-hash: "0e4722591d96"
@@ -231,7 +231,7 @@ services:
   # docker group -- DOCKER_GID is that gid (`getent group docker | cut -d: -f3`,
   # 989 on this box); set it in the Dokploy Environment tab if it ever differs.
   docker-proxy:
-    image: wollomatic/socket-proxy:1.13.1
+    image: wollomatic/socket-proxy:1.14.0
     container_name: homelab-docker-proxy
     restart: unless-stopped
     user: "65534:${DOCKER_GID:-989}"
@@ -299,7 +299,7 @@ services:
 
   # Probes the public hostnames for the status page (job blackbox-public).
   blackbox:
-    image: prom/blackbox-exporter:v0.27.0
+    image: prom/blackbox-exporter:v0.29.1
     container_name: homelab-blackbox
     labels:
       homelab.configs-hash: "83affb8fb807"
