@@ -26,7 +26,7 @@ jobs:
       run:
         working-directory: apps/monitoring
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Dokploy deploys the committed docker-compose.yml, not compose.base.yml, so
       # a dashboard edit without a rebuild would silently never ship.

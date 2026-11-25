@@ -23,10 +23,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
       - name: Sources parse
         run: find apps/tv/jarvis-server/src -name '*.js' -exec node --check {} \;
       # The real .env is written by Dokploy on the box; compose only needs one to exist.
