@@ -36,12 +36,11 @@ under the same prefix.
 
 ## Deploying a change
 
-```sh
-cd ~/personal/projects/homelab/apps/memories
-(cd web && bun run build)
-COPYFILE_DISABLE=1 tar czf - compose.yaml nginx.conf upload-relay/relay.py search/search.py web/dist | ssh nas 'mkdir -p ~/memories && tar xzf - -C ~/memories'
-ssh nas 'cd ~/memories && docker compose up -d --force-recreate'
-```
+**Push to `main`.** The mini PC's NAS deploy loop ([`hosts/debian/nas-deploy`](../../hosts/debian/nas-deploy/))
+builds `web/` with bun on the box, sends `compose.yaml`, `nginx.conf`, `upload-relay/relay.py`,
+`search/search.py` and `web/dist` to `/volume1/docker/memories` on the NAS, strips the share's ACL
+(nginx's worker cannot read through it) and runs `docker compose up -d --force-recreate`.
+Redeploy by hand: `ssh homelab '~/ops/nas-deploy/nas-deploy.sh --force memories'`.
 
 Verify on the box, then from outside:
 

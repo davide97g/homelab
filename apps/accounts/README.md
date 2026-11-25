@@ -170,7 +170,9 @@ First time:
 password stops working. Keep a separate local Jellyfin admin and Immich admin for the day accounts
 is down. Cinema and memories still show a small "local account" sign-in.
 
-After that, an update is step 4 again.
+After that, an update is a push to `main`: the mini PC's NAS deploy loop
+([`hosts/debian/nas-deploy`](../../hosts/debian/nas-deploy/)) ships `apps/accounts` and runs step 4's
+`docker compose up -d --build` within 5 minutes.
 
 Backups: `accounts-backup` writes a nightly `pg_dump` to `/volume1/docker/accounts/backups` and
 keeps 14 of them.

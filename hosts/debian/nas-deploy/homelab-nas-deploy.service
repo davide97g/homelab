@@ -1,0 +1,9 @@
+[Unit]
+Description=Deploy the NAS apps (cinema, memories, accounts, nas-agents) that changed on main
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/ops/nas-deploy/nas-deploy.sh
+# A cinema image build on the NAS takes a few minutes; four of them in a row, more.
+TimeoutStartSec=45min

@@ -797,6 +797,22 @@ configs:
               annotations:
                 summary: no fully successful restore drill in over 8 days — is the homelab-restore-drill timer running?
 
+            - alert: NasDeployFailed
+              expr: homelab_nas_deploy_last_exit_code{instance="homelab"} != 0
+              for: 1m
+              labels:
+                severity: warning
+              annotations:
+                summary: a NAS app deploy failed (label app says which); it stays on its previous commit — journalctl --user -u homelab-nas-deploy
+
+            - alert: NasDeployLoopStale
+              expr: time() - homelab_nas_deploy_last_check_timestamp_seconds{instance="homelab"} > 3600
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: the NAS deploy loop has not looked at main for an hour — pushes to cinema, memories, accounts, nas-agents are not shipping
+
   blackbox_yml:
     content: |
       modules:

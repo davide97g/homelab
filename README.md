@@ -11,7 +11,7 @@ history from before the merge, under `apps/`.
 | [`apps/`](apps/) | The projects: [cinema](apps/cinema/), [hub](apps/hub/), [monitoring](apps/monitoring/), [tv](apps/tv/), [local-ai](apps/local-ai/), [adguard](apps/adguard/), [memories](apps/memories/), [accounts](apps/accounts/), [site](apps/site/), [status](apps/status/) |
 | [`stacks/`](stacks/) | Plain compose and config stacks: [mediarr](stacks/mediarr/), [swarm](stacks/swarm/) |
 | [`docs/`](docs/) | Runbooks: [porting to the homelab](docs/porting-to-homelab.md), [media pipeline](docs/media-pipeline.md), [observability plan](docs/observability-plan.md), [web apps](docs/web-apps.md) |
-| [`hosts/`](hosts/) | Per-host notes and installers: [the NAS](hosts/nas.md); for the box, [firewall](hosts/debian/firewall/), [backup](hosts/debian/backup/), [nas-backup](hosts/debian/nas-backup/), [offsite](hosts/debian/offsite/), [restore-drill](hosts/debian/restore-drill/), [nas-sync](hosts/debian/nas-sync/), [host-metrics](hosts/debian/host-metrics/) |
+| [`hosts/`](hosts/) | Per-host notes and installers: [the NAS](hosts/nas.md); for the box, [firewall](hosts/debian/firewall/), [backup](hosts/debian/backup/), [nas-backup](hosts/debian/nas-backup/), [offsite](hosts/debian/offsite/), [restore-drill](hosts/debian/restore-drill/), [nas-deploy](hosts/debian/nas-deploy/), [nas-sync](hosts/debian/nas-sync/), [host-metrics](hosts/debian/host-metrics/) |
 | [`cloudflare/`](cloudflare/) | Tunnel ingress for both tunnels, applied with [`tools/cloudflare`](tools/cloudflare/) |
 | [`hardware/`](hardware/) | The 3D-printed [M6 stand](hardware/m6-stand/) |
 | `.env` | Credentials, gitignored. [`.env.example`](.env.example) lists the keys |
@@ -30,11 +30,11 @@ On the box, `~` is laid out as:
 
 | Project | Path | Runs on | Public URL | Deploy |
 |---|---|---|---|---|
-| Cinema, Jellyfin front end | `apps/cinema` | NAS | `cinema.davideghiotto.it` | tar over ssh, [`DEPLOY.md`](apps/cinema/docs/DEPLOY.md) |
-| Memories, Immich's public door | `apps/memories` | NAS | `memories.davideghiotto.it` | tar over ssh, [`README.md`](apps/memories/README.md) |
-| Accounts, single sign-on (OTP, invites, TV codes) | `apps/accounts` | NAS | `accounts.davideghiotto.it` | tar over ssh, [`README.md`](apps/accounts/README.md) |
+| Cinema, Jellyfin front end | `apps/cinema` | NAS | `cinema.davideghiotto.it` | push to `main` ([nas-deploy](hosts/debian/nas-deploy/)) |
+| Memories, Immich's public door | `apps/memories` | NAS | `memories.davideghiotto.it` | push to `main` ([nas-deploy](hosts/debian/nas-deploy/)) |
+| Accounts, single sign-on (OTP, invites, TV codes) | `apps/accounts` | NAS | `accounts.davideghiotto.it` | push to `main` ([nas-deploy](hosts/debian/nas-deploy/)) |
 | Hub, the homelab's front door | `apps/hub` | mini PC, Dokploy | `monitoring.davideghiotto.it` | push to `main` |
-| Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents by hand |
+| Monitoring: Prometheus, Grafana, Loki | `apps/monitoring` | mini PC, Dokploy; agents on the NAS | none, Grafana at `http://debian:3001` | push to `main`; NAS agents too, via [nas-deploy](hosts/debian/nas-deploy/) |
 | JARVIS on the TV | `apps/tv` | Philips TV and mini PC | via Access | server: push to `main`. APK: `scripts/deploy-tv.sh` |
 | Status page: public uptime, 90 days | `apps/status` | Cloudflare Worker; probes and publisher on the mini PC | `status.davideghiotto.it` | `apps/status/worker/deploy.sh` |
 | Landing page: the homelab explained simply | `apps/site` | mini PC, `~/homelab-site` | `homelab.davideghiotto.it` | `apps/site/deploy/deploy.sh` |
@@ -76,8 +76,10 @@ networks are per-stack and were simply recreated. Secrets live in each app's Env
 which Dokploy writes to a `.env` beside the compose file. Repository secrets: `DOKPLOY_URL`,
 `DOKPLOY_API_KEY`, and one `DOKPLOY_COMPOSE_ID_<APP>` per app.
 
-Not in Dokploy, because it cannot reach them: the NAS copy of Cinema and the NAS monitoring
-agents (Dokploy has no root docker on the NAS), and the TV launcher APK (installed over ADB).
+Not in Dokploy, because it cannot reach them: the NAS apps (Cinema, memories, accounts, the
+monitoring agents), since Dokploy has no root docker on the NAS. They still deploy on push to
+`main`: the box pulls every 5 minutes and ships what changed
+([`hosts/debian/nas-deploy`](hosts/debian/nas-deploy/)). The TV launcher APK is installed over ADB.
 
 ## Host
 

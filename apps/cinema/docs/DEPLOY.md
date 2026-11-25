@@ -40,15 +40,13 @@ it by name; it goes through the bridge gateway, `http://172.17.0.1:8899`.
 
 ## Deploying a change
 
-The NAS builds its own image — it is x86_64 and the Mac is not — from a copy of the source:
+**Push to `main`.** Since 2026-11-25 the mini PC's NAS deploy loop
+([`hosts/debian/nas-deploy`](../../../hosts/debian/nas-deploy/)) notices the change within 5 minutes,
+sends `git archive` of `apps/cinema` (without the iOS and Android apps) to `/volume1/docker/cinema`
+on the NAS, and runs `docker compose up -d --build` in `services/web`. The NAS builds its own image —
+it is x86_64 and the Mac is not. Redeploy by hand: `ssh homelab '~/ops/nas-deploy/nas-deploy.sh --force cinema'`.
 
-```sh
-cd ~/personal/projects/homelab/apps/cinema
-tar czf - --exclude node_modules --exclude .git --exclude dist --exclude .env \
-          --exclude 'apps/ios' --exclude 'apps/android' . \
-  | ssh nas 'tar xzf - -C ~/cinema'
-ssh nas 'cd ~/cinema/services/web && docker compose up -d --build'
-```
+Until that date Cinema lived in `~/cinema` (`/home/davide`), which a UGOS update can wipe.
 
 `JELLYFIN_UPSTREAM` and `CINEMA_PORT` used to ride on that command. They are properties of the
 NAS, not of the deploy, and a typo in either shipped a container that built, started, and proxied
