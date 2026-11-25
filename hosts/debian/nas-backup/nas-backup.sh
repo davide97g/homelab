@@ -52,6 +52,10 @@ coproc RCLONE { docker run --rm -i --user "$(id -u):$(id -g)" -v "$REPO:/data" "
   serve restic --stdio --append-only /data/repo 2>>"$STATE/rclone.log"; }
 ssh -T -o BatchMode=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=6 nas \
   'bash /volume1/docker/nas-backup/run.sh' <&"${RCLONE[0]}" >&"${RCLONE[1]}" 2>"$STATE/last-run.log"
+# This shell still holds the write end of rclone's stdin. Close it, or `rclone serve
+# --stdio` never sees EOF and the wait below hangs until TimeoutStartSec kills the
+# run -- which is what kept every run from 2026-11-24 on from ever reporting success.
+rclone_in=${RCLONE[1]}; exec {rclone_in}>&-
 wait "$RCLONE_PID" 2>/dev/null || true
 
 summary=$(grep '"message_type":"summary"' "$STATE/last-run.log" | tail -n 1)
@@ -59,6 +63,11 @@ summary=$(grep '"message_type":"summary"' "$STATE/last-run.log" | tail -n 1)
 added=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("data_added",0))' "$summary")
 echo "NAS snapshot done, $added bytes added"
 
+# A run killed mid-backup (reboot, Docker upgrade) leaves its lock behind. backup only
+# takes a shared lock and carries on, but forget needs an exclusive one and fails
+# forever. unlock removes only stale locks, and the flock above means no other run
+# is live.
+local_restic unlock
 local_restic forget --tag nightly --keep-daily 7 --keep-weekly 5 --keep-monthly 12
 if [ "$(date +%u)" = 7 ]; then
   local_restic prune
