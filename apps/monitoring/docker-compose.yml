@@ -21,7 +21,7 @@ services:
     image: prom/prometheus:v3.16.0
     container_name: homelab-prometheus
     labels:
-      homelab.configs-hash: "c3232eaa64bf"
+      homelab.configs-hash: "7e42418cb17d"
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -787,13 +787,6 @@ configs:
               annotations:
                 summary: no successful copy to Backblaze B2 in over 30 hours (the first upload of ~70 GB may take longer)
 
-            - alert: OffsiteMetricsMissing
-              expr: absent(homelab_offsite_last_run_timestamp_seconds{instance="homelab"})
-              for: 2h
-              labels:
-                severity: warning
-              annotations:
-                summary: offsite.prom is not being read — is the homelab-offsite timer installed?
 
             - alert: RestoreDrillFailed
               expr: homelab_restore_drill_last_exit_code{instance="homelab"} != 0

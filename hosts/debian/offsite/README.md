@@ -26,7 +26,7 @@ the key one can make the repository look empty, but every file is still there fo
 the master key (not on any machine) can unhide it. `forget`/`prune` work the same way: what they
 remove is billed for 30 more days, which is why prune is monthly.
 
-`OffsiteBackupFailed`, `OffsiteBackupStale` (30 h) and the snapshot count in
+`OffsiteBackupFailed`, `OffsiteBackupStale` (30 h; `OffsiteMetricsMissing` goes in once installed) and the snapshot count in
 `homelab_offsite_snapshots` are what tells you within that month.
 
 ## How it runs
