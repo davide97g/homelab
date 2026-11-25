@@ -37,6 +37,7 @@ final class MockMediaService: MediaService {
         var favorites: [String: Bool] = [:]
         var trashed: Set<String> = []
         var thumbhashes: [String: String] = [:]
+        var resolvedGroups: Set<String> = []
     }
 
     /// - Parameters:
@@ -307,6 +308,46 @@ final class MockMediaService: MediaService {
     func restore(_ ids: [String]) async throws {
         try await pause(80...150)
         mutable.withLock { $0.trashed.subtract(ids) }
+    }
+
+    // MARK: Similar photos
+
+    /// Fake sets from the fixture roll: a few consecutive stills every so often. They don't look
+    /// alike (each fixture image has its own seed); enough to exercise the game.
+    func similarGroups() async throws -> [SimilarGroup] {
+        try await pause(200...500)
+        let state = mutable.withLock { $0 }
+        let stills = all.filter(\.isImage)
+        var groups: [SimilarGroup] = []
+        var i = stills.count - 1
+        var n = 0
+        while i > 4, groups.count < 24 {
+            let size = 2 + n % 4
+            let members = stills[(i - size + 1)...i].map { current($0, state) }.filter { !$0.isTrashed }
+            let gid = String(format: "00000000-0000-4000-9000-%012x", n)
+            if members.count >= 2, !state.resolvedGroups.contains(gid) {
+                let items = members.enumerated().map { k, a in
+                    SimilarItem(asset: a, bytes: Int64(2_400_000) + Int64(seed(a.id) % 1_800_000),
+                                width: 4032, height: 3024, isSuggested: k == 0)
+                }
+                groups.append(SimilarGroup(id: gid, items: items))
+            }
+            i -= 37
+            n += 1
+        }
+        return groups
+    }
+
+    func resolveSimilar(_ groupId: String, keep: [String], discard: [String]) async throws {
+        try await pause(150...300)
+        mutable.withLock {
+            $0.resolvedGroups.insert(groupId)
+            $0.trashed.formUnion(discard)
+        }
+    }
+
+    func scanSimilar(wholeLibrary: Bool) async throws {
+        try await pause(1_200...2_000)
     }
 
     func image(_ request: ImageRequest) async throws -> ImagePayload {

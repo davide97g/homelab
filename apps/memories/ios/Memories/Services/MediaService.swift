@@ -59,6 +59,15 @@ protocol MediaService: Sendable {
     func trash(_ ids: [String]) async throws
     func restore(_ ids: [String]) async throws
 
+    /// Sets of similar photos found by Immich's duplicate detection, newest first.
+    func similarGroups() async throws -> [SimilarGroup]
+    /// Ends a set: `discard` is deleted for good (no trash), after Immich copies albums and
+    /// favourites onto `keep`. An empty `discard` just tells Immich they are not duplicates.
+    func resolveSimilar(_ groupId: String, keep: [String], discard: [String]) async throws
+    /// Runs Immich's duplicate detection now and returns when the queue is idle (admin only).
+    /// `wholeLibrary` re-checks every asset, needed after changing the threshold.
+    func scanSimilar(wholeLibrary: Bool) async throws
+
     func image(_ request: ImageRequest) async throws -> ImagePayload
     func playback(for assetId: String) -> PlaybackSource?
     /// Downloads the original into a temporary file named like the original.

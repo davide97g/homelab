@@ -16,6 +16,8 @@ final class AppModel {
     private(set) var user: UserSummary?
     var selectedTab: AppTab
     var showSettings = false
+    /// Similar Photos game (Collections > Utilities, or the reminder notification).
+    var showSimilar = false
     var toast: String?
     /// Bumped when a person is named, merged or hidden: people lists reload.
     var peopleVersion = 0
@@ -37,6 +39,7 @@ final class AppModel {
     @ObservationIgnored let accounts: AccountsClient
     let backup: BackupManager
     let spaceSaver: SpaceSaver
+    let similar: SimilarCleaner
 
     private enum Keys {
         static let server = "serverURL", publicAPI = "publicAPI", lan = "lanURL", lanAPI = "lanAPI"
@@ -62,7 +65,9 @@ final class AppModel {
         selectedTab = launch.initialTab
         let backup = BackupManager(api: api, endpoints: endpoints)
         self.backup = backup
-        spaceSaver = SpaceSaver(api: api, backup: backup)
+        let spaceSaver = SpaceSaver(api: api, backup: backup)
+        self.spaceSaver = spaceSaver
+        similar = SimilarCleaner(space: spaceSaver)
 
         let service: any MediaService = launch.mock
             ? MockMediaService(count: launch.mockCount)
@@ -72,6 +77,7 @@ final class AppModel {
         library = TimelineStore(query: .library, service: service)
         spaceSaver.service = service
         spaceSaver.pipeline = pipeline
+        similar.service = service
 
         if launch.mock {
             phase = .ready
@@ -95,6 +101,7 @@ final class AppModel {
         if phase == .ready { Task { await refreshUser() } }
         if launch.openSettings { showSettings = true }
         if let code = launch.approveCode { deviceApproval = DeviceApproval(code: code) }
+        if launch.openSimilar { showSimilar = true }
     }
 
     // MARK: Session
@@ -229,6 +236,7 @@ final class AppModel {
         library = TimelineStore(query: .library, service: service)
         spaceSaver.service = service
         spaceSaver.pipeline = pipeline
+        similar.service = service
     }
 
     /// "Save to iPhone" from the viewer or a selection.

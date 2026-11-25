@@ -83,11 +83,15 @@ struct CollectionsScreen: View {
             .navigationDestination(for: Person.self) { person in
                 PersonScreen(person: person)
             }
-            .refreshable { await model.load(app.service) }
+            .refreshable {
+                await model.load(app.service)
+                await app.similar.load(force: true)
+            }
         }
         .task {
             guard !model.loaded else { return }
             await model.load(app.service)
+            await app.similar.load()
             if app.launch.openMemory, let m = model.memories.first { playingMemory = m }
         }
         .onChange(of: app.peopleVersion) {
@@ -122,6 +126,14 @@ struct CollectionsScreen: View {
             SectionHeader(title: "Pinned", route: nil)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
+                    // First while there is something to clean: the game is otherwise far down in Utilities.
+                    if let first = app.similar.groups.first {
+                        Button { app.showSimilar = true } label: {
+                            PinnedTile(title: "Similar Photos", systemImage: "square.on.square",
+                                       asset: first.items.first?.asset,
+                                       badge: app.similar.groups.count.formatted())
+                        }
+                    }
                     NavigationLink(value: CollectionRoute.timeline(title: "Favorites", query: .favorites)) {
                         PinnedTile(title: "Favorites", systemImage: "heart.fill", asset: model.favoritesCover)
                     }
@@ -252,6 +264,11 @@ struct CollectionsScreen: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Utilities", route: nil)
             ListCard {
+                Button { app.showSimilar = true } label: {
+                    ListRow(title: "Similar Photos", systemImage: "square.on.square",
+                            detail: app.similar.groups.isEmpty ? nil : app.similar.groups.count.formatted())
+                }
+                Divider().padding(.leading, 52)
                 NavigationLink(value: CollectionRoute.metadata(.recentlyAdded)) { ListRow(title: "Imports", systemImage: "square.and.arrow.down") }
                 Divider().padding(.leading, 52)
                 NavigationLink(value: CollectionRoute.timeline(title: "Archive", query: .archive)) { ListRow(title: "Archive", systemImage: "archivebox") }
@@ -315,6 +332,7 @@ struct PinnedTile: View {
     let title: String
     let systemImage: String
     let asset: Asset?
+    var badge: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -327,6 +345,16 @@ struct PinnedTile: View {
                         .foregroundStyle(.white)
                         .shadow(radius: 3)
                         .padding(10)
+                }
+                .overlay(alignment: .topTrailing) {
+                    if let badge {
+                        Text(badge)
+                            .font(.caption.weight(.bold).monospacedDigit())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7).frame(minWidth: 22, minHeight: 22)
+                            .background(Theme.accent, in: .capsule)
+                            .padding(8)
+                    }
                 }
             Text(title).font(.subheadline.weight(.medium))
         }
@@ -425,6 +453,7 @@ struct ListCard<Content: View>: View {
 struct ListRow: View {
     let title: String
     let systemImage: String
+    var detail: String? = nil
 
     var body: some View {
         HStack(spacing: 14) {
@@ -434,6 +463,9 @@ struct ListRow: View {
                 .frame(width: 24)
             Text(title)
             Spacer()
+            if let detail {
+                Text(detail).foregroundStyle(.secondary).monospacedDigit()
+            }
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.tertiary)

@@ -90,6 +90,34 @@ Other local models: `ssh nas docker exec memories-llm ollama pull <model>` and s
 Qwen3 needs `LLM_EXTRA={"reasoning_effort": "none"}` (the default), or it spends the whole
 answer thinking.
 
+## Similar Photos (iPhone)
+
+Collections > Utilities > **Similar Photos**: a card stack per set of look-alike photos. Swipe
+right keeps, left deletes; hold the compare button to flip the card to the photo you're keeping.
+Code in `ios/Memories/Cleanup/`.
+
+- **Immich does the finding.** Sets come from `GET /duplicates` (CLIP distance under
+  `machineLearning.duplicateDetection.maxDistance`), ordered with Immich's `suggestedKeepAssetIds`
+  first. Ending a set calls `POST /duplicates/resolve` (copies albums, favourite, rating onto the
+  kept ones), then `DELETE /assets` with `force: true`: no Immich trash. "Not similar" is
+  `DELETE /duplicates/{id}`.
+- **Threshold.** Immich's default 0.01 catches only near-identical files. Measured 2026-11-25 on
+  the main library (7,877 assets), photos with a neighbour within: 0.02 = 350, 0.03 = 773,
+  0.05 = 1,686. Chosen: **0.03** (bursts, same pose). It is server-wide (both users); after changing
+  it, run *Recheck Whole Library* in the app (or the Duplicate Detection job on *All*).
+- **Search by hand**: the game's "…" menu, the session summary and Settings > Similar Photos start
+  Immich's duplicate detection (`PUT /jobs/duplicateDetection`, admin token) and wait for the queue
+  to drain (`GET /queues/duplicateDetection`). *Search New Photos* checks only unchecked assets;
+  *Recheck Whole Library* is `force: true`, the one to use after changing the threshold.
+  Non-admins get the latest results only.
+- **Undo** lasts 4 s after a set's last swipe; then the delete is final.
+- **iPhone copies** of deleted photos are listed and removed at the end of the session with one iOS
+  prompt (Recently Deleted keeps them 30 days). Until then Free Up Space won't treat them as
+  "missing on the server" and re-upload them.
+- **Gamification**: a daily ring (goal 3/5/10/20 sets, Settings), space freed, a day streak. One
+  local notification a day at most, from the background refresh, only for new sets or after two
+  idle days.
+
 ## Things to know
 
 - **100 MB per request.** Cloudflare's free plan rejects any single upload above 100 MB with a

@@ -2,7 +2,7 @@ import BackgroundTasks
 import Foundation
 
 /// BGProcessingTask (long, network, can run overnight on power) and BGAppRefreshTask (short)
-/// both run a backup pass. Identifiers are listed in Info.plist under
+/// both run a backup pass, after a quick look for new similar photos (the reminder). Identifiers are listed in Info.plist under
 /// BGTaskSchedulerPermittedIdentifiers.
 enum BackupScheduler {
     static let processingID = "it.davideghiotto.memories.backup"
@@ -10,24 +10,26 @@ enum BackupScheduler {
 
     /// Call from `didFinishLaunching` (registration must happen before launch completes).
     @MainActor
-    static func register(manager: @escaping @MainActor () -> BackupManager?) {
+    static func register(manager: @escaping @MainActor () -> BackupManager?,
+                         similar: @escaping @MainActor () -> SimilarCleaner?) {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: processingID, using: .main) { task in
-            MainActor.assumeIsolated { run(task, manager(), budget: 25 * 60) }
+            MainActor.assumeIsolated { run(task, manager(), similar(), budget: 25 * 60) }
         }
         BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshID, using: .main) { task in
-            MainActor.assumeIsolated { run(task, manager(), budget: 20) }
+            MainActor.assumeIsolated { run(task, manager(), similar(), budget: 20) }
         }
     }
 
     @MainActor
-    private static func run(_ task: BGTask, _ manager: BackupManager?, budget: TimeInterval) {
+    private static func run(_ task: BGTask, _ manager: BackupManager?, _ similar: SimilarCleaner?, budget: TimeInterval) {
         schedule()
-        guard let manager, manager.isEnabled else {
-            task.setTaskCompleted(success: true)
-            return
-        }
+        let start = Date()
         let work = Task { @MainActor in
-            await manager.runPass(deadline: Date().addingTimeInterval(budget))
+            // Rate-limited inside (every few hours, one reminder a day).
+            await similar?.backgroundCheck()
+            if let manager, manager.isEnabled, !Task.isCancelled {
+                await manager.runPass(deadline: start.addingTimeInterval(budget))
+            }
             task.setTaskCompleted(success: true)
         }
         task.expirationHandler = { work.cancel() }

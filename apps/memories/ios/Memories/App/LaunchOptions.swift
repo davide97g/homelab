@@ -27,6 +27,7 @@ enum LibraryMode: String, CaseIterable, Hashable {
 ///     -openInfo                 ...and its info sheet
 ///     -openSettings             open Settings & Backup
 ///     -openMemory               play the first memory
+///     -openSimilar              open the Similar Photos game
 ///     -searchQuery sunset       run a search on the Search tab
 ///     -selectMode               start the Library in select mode
 ///     -accountsURL http://…     a local accounts service instead of accounts.davideghiotto.it
@@ -41,6 +42,7 @@ struct LaunchOptions: Sendable {
     var openInfo = false
     var openSettings = false
     var openMemory = false
+    var openSimilar = false
     var searchQuery: String?
     var selectMode = false
     var accountsURL: URL?
@@ -64,6 +66,7 @@ struct LaunchOptions: Sendable {
         if openInfo { openViewer = true }
         openSettings = arguments.contains("-openSettings")
         openMemory = arguments.contains("-openMemory")
+        openSimilar = arguments.contains("-openSimilar")
         searchQuery = value("-searchQuery")
         selectMode = arguments.contains("-selectMode")
         accountsURL = value("-accountsURL").flatMap(URL.init(string:))

@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var lanInput = ""
     @State private var lanMessage: String?
     @State private var lanBusy = false
+    @State private var similarMessage: String?
 
     var body: some View {
         @Bindable var backup = app.backup
@@ -76,6 +77,8 @@ struct SettingsView: View {
 
                 storageSection(space)
 
+                similarSection(app.similar)
+
                 Section {
                     TextField("http://192.168.1.20:2283", text: $lanInput)
                         .keyboardType(.URL)
@@ -122,8 +125,63 @@ struct SettingsView: View {
                 }
             }
             .onAppear { lanInput = app.lanURL }
-            .task { await app.spaceSaver.refreshEstimate() }
+            .task {
+                await app.spaceSaver.refreshEstimate()
+                await app.similar.load()
+            }
         }
+    }
+
+    // MARK: Similar Photos
+
+    @ViewBuilder
+    private func similarSection(_ similar: SimilarCleaner) -> some View {
+        @Bindable var similar = similar
+        Section {
+            if !similar.groups.isEmpty {
+                Button {
+                    // One presentation at a time: close Settings, then open the game.
+                    app.showSettings = false
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(450))
+                        app.showSimilar = true
+                    }
+                } label: {
+                    Label(similar.groups.count == 1 ? "Clean Up 1 Set" : "Clean Up \(similar.groups.count.formatted()) Sets",
+                          systemImage: "square.on.square")
+                        .font(.body.weight(.semibold))
+                }
+            }
+            Picker("Daily Goal", selection: $similar.dailyGoal) {
+                ForEach(SimilarCleaner.goalChoices, id: \.self) { Text("\($0) sets").tag($0) }
+            }
+            Toggle("Remind Me", isOn: $similar.remindersOn)
+            Button(similar.scanning ? "Searching…" : "Search Now") { scanSimilar(similar, wholeLibrary: false) }
+                .disabled(similar.scanning)
+            Button("Recheck Whole Library") { scanSimilar(similar, wholeLibrary: true) }
+                .disabled(similar.scanning)
+            if let similarMessage {
+                Text(similarMessage).font(.footnote).foregroundStyle(.secondary)
+            }
+            if similar.remindersOn, similar.notificationStatus == .denied {
+                Label("Notifications are off for Memories in Settings.", systemImage: "bell.slash")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+            }
+            if similar.stats.setsTotal > 0 {
+                LabeledContent("Cleaned So Far",
+                               value: "\(similar.stats.deletedTotal.formatted()) photos, \(ByteCountFormatter.string(fromByteCount: similar.stats.bytesTotal, countStyle: .file))")
+            }
+        } header: {
+            Text("Similar Photos")
+        } footer: {
+            Text("Immich groups photos that look alike, on its own after new uploads, or now with Search Now. Recheck Whole Library after changing the similarity threshold in Immich. Keep the best of each set; the others are deleted from your library for good, and from this iPhone after one confirmation. At most one reminder a day, only when there's something new.")
+        }
+    }
+
+    private func scanSimilar(_ similar: SimilarCleaner, wholeLibrary: Bool) {
+        similarMessage = nil
+        Task { similarMessage = await similar.scan(wholeLibrary: wholeLibrary) }
     }
 
     // MARK: iPhone storage

@@ -156,6 +156,43 @@ final class RemoteMediaService: MediaService {
         let _: TrashResponseDto = try await api.send("POST", "trash/restore/assets", body: BulkIdsDto(ids: ids))
     }
 
+    // MARK: Similar photos
+
+    func similarGroups() async throws -> [SimilarGroup] {
+        let dtos: [DuplicateResponseDto] = try await api.get("duplicates")
+        return dtos.compactMap(SimilarGroup.init(dto:)).sorted { $0.newest > $1.newest }
+    }
+
+    func resolveSimilar(_ groupId: String, keep: [String], discard: [String]) async throws {
+        guard !discard.isEmpty else {
+            try await api.perform(api.request("DELETE", "duplicates/\(groupId)"))
+            return
+        }
+        let body = DuplicateResolveDto(groups: [.init(duplicateId: groupId, keepAssetIds: keep, trashAssetIds: discard)])
+        let res: [BulkIdResponseDto] = try await api.send("POST", "duplicates/resolve", body: body)
+        if let failed = res.first(where: { !$0.success }) {
+            throw APIError.http(400, failed.error ?? "Couldn't resolve the set.")
+        }
+        // resolve only trashes (when the server's trash is on): finish the job.
+        try await api.sendNoContent("DELETE", "assets", body: AssetBulkDeleteDto(ids: discard, force: true))
+    }
+
+    func scanSimilar(wholeLibrary: Bool) async throws {
+        // Response body not needed (and its legacy shape may change): only the status matters.
+        try await api.perform(api.request("PUT", "jobs/duplicateDetection",
+                                          body: APIClient.encoder.encode(QueueCommandDto(command: "start", force: wholeLibrary))))
+        // Jobs are queued asynchronously: give them a moment, then wait for the queue to drain.
+        try await Task.sleep(for: .seconds(2))
+        let deadline = Date().addingTimeInterval(15 * 60)
+        while Date() < deadline {
+            let q: QueueResponseDto = try await api.get("queues/duplicateDetection")
+            let s = q.statistics
+            if q.isPaused { throw APIError.http(409, "Immich's duplicate detection queue is paused.") }
+            if s.active + s.waiting + s.delayed == 0 { return }
+            try await Task.sleep(for: .seconds(3))
+        }
+    }
+
     // MARK: Media
 
     func image(_ request: ImageRequest) async throws -> ImagePayload {

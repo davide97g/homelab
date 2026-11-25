@@ -118,4 +118,21 @@ struct DTODecodingTests {
         #expect(APIClient.message(from: Data(#"{"message":["email must be an email"],"error":"Bad Request","statusCode":400}"#.utf8)) == "email must be an email")
         #expect(APIClient.message(from: Data(#"{"message":"Incorrect email or password","statusCode":401}"#.utf8)) == "Incorrect email or password")
     }
+
+    /// `GET /duplicates`: Immich's pick first, then the bigger file; trashed members dropped,
+    /// and a set left with one photo is no set at all.
+    @Test func similarGroups() throws {
+        func asset(_ id: String, size: Int, trashed: Bool = false) -> String {
+            #"{"id":"\#(id)","type":"IMAGE","originalFileName":"\#(id).jpg","fileCreatedAt":"2024-05-12T16:42:00.000Z","fileModifiedAt":"2024-05-12T16:42:00.000Z","localDateTime":"2024-05-12T18:42:00.000Z","isFavorite":false,"isTrashed":\#(trashed),"isArchived":false,"checksum":"x","exifInfo":{"fileSizeInByte":\#(size),"exifImageWidth":4032,"exifImageHeight":3024}}"#
+        }
+        let json = """
+        [{"duplicateId":"g1","suggestedKeepAssetIds":["b"],"assets":[\(asset("a", size: 9)),\(asset("b", size: 5)),\(asset("c", size: 7)),\(asset("d", size: 8, trashed: true))]},
+         {"duplicateId":"g2","suggestedKeepAssetIds":[],"assets":[\(asset("e", size: 1)),\(asset("f", size: 2, trashed: true))]}]
+        """
+        let groups = try decode([DuplicateResponseDto].self, json).compactMap(SimilarGroup.init(dto:))
+        #expect(groups.count == 1)
+        #expect(groups[0].items.map(\.id) == ["b", "a", "c"])
+        #expect(groups[0].items[0].isSuggested)
+        #expect(groups[0].items[1].bytes == 9)
+    }
 }

@@ -22,6 +22,10 @@ struct RootView: View {
             SettingsView()
                 .environment(app)
         }
+        .fullScreenCover(isPresented: $app.showSimilar) {
+            SimilarGameView()
+                .environment(app)
+        }
         .sheet(item: $app.deviceApproval) { approval in
             DeviceApprovalView(code: approval.code)
                 .environment(app)

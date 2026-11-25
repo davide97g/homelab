@@ -301,3 +301,43 @@ struct ErrorResponseDto: Codable, Sendable {
     let error: String?
     let statusCode: Int?
 }
+
+// MARK: Similar photos (Immich duplicate detection)
+
+/// `GET /duplicates`: one group of visually similar assets (CLIP distance under the server's
+/// `machineLearning.duplicateDetection.maxDistance`).
+struct DuplicateResponseDto: Codable, Sendable {
+    let duplicateId: String
+    let assets: [AssetResponseDto]
+    /// Immich's pick, from file size and EXIF richness.
+    var suggestedKeepAssetIds: [String]? = nil
+}
+
+struct DuplicateResolveGroupDto: Codable, Sendable {
+    let duplicateId: String
+    let keepAssetIds: [String]
+    let trashAssetIds: [String]
+}
+
+/// `POST /duplicates/resolve`: copies albums, favourite, rating and description onto the kept
+/// assets, then trashes the rest.
+struct DuplicateResolveDto: Codable, Sendable {
+    let groups: [DuplicateResolveGroupDto]
+}
+
+/// `PUT /jobs/{name}` (admin): `start`; `force` re-checks every asset instead of only new ones.
+struct QueueCommandDto: Codable, Sendable {
+    let command: String
+    var force: Bool? = nil
+}
+
+struct QueueStatisticsDto: Codable, Sendable {
+    var active: Int
+    var waiting: Int
+    var delayed: Int
+}
+
+struct QueueResponseDto: Codable, Sendable {
+    let isPaused: Bool
+    let statistics: QueueStatisticsDto
+}

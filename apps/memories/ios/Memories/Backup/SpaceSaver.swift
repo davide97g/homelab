@@ -62,6 +62,9 @@ final class SpaceSaver {
         }
     }
 
+    /// True for a PhotoKit id whose server copy was deleted on purpose (Similar Photos) and
+    /// waits to be removed from this iPhone: never "missing, back it up again".
+    @ObservationIgnored var isDiscarded: (String) -> Bool = { _ in false }
     @ObservationIgnored var pipeline: ImagePipeline?
     @ObservationIgnored var service: (any MediaService)?
     @ObservationIgnored private let api: APIClient
@@ -205,7 +208,8 @@ final class SpaceSaver {
         }
         let batch = Array(all.prefix(Self.batchLimit))
         phase = .verifying(0, batch.count)
-        let (verified, missing) = await verify(batch)
+        let (verified, stale) = await verify(batch)
+        let missing = stale.filter { !isDiscarded($0) }
         if !missing.isEmpty { backup.forget(missing) }
         guard !verified.isEmpty else {
             phase = .failed(missing.isEmpty ? "Couldn't confirm the server copies. Try again later."
@@ -245,6 +249,31 @@ final class SpaceSaver {
         let size = ByteCountFormatter.string(fromByteCount: freed.reduce(0) { $0 + $1.bytes }, countStyle: .file)
         phase = .done("Removed \(freed.count.formatted()) items (\(size)) from this iPhone.")
         await refreshEstimate()
+    }
+
+    /// Removes the iPhone copies of server assets (Similar Photos discards). One system prompt;
+    /// returns the PhotoKit ids really gone (empty when the user cancels).
+    func deleteFromDevice(localIds ids: [String]) async throws -> Set<String> {
+        guard !ids.isEmpty, authorized else { return [] }
+        let present = Array(Self.existing(ids))
+        guard !present.isEmpty else { return Set(ids) }
+        do {
+            try await PHPhotoLibrary.shared().performChanges(PhotoChanges.delete(present))
+        } catch {
+            let ns = error as NSError
+            if ns.domain == PHPhotosErrorDomain, ns.code == PHPhotosError.userCancelled.rawValue { return [] }
+            throw error
+        }
+        let gone = Set(ids).subtracting(Self.existing(present))
+        backup.forget(Array(gone))
+        deviceRevision += 1
+        return gone
+    }
+
+    /// PhotoKit id of a server asset's original on this iPhone, if it is still there.
+    func localId(onDevice remoteId: String) -> String? {
+        guard authorized, let localId = backup.index.localId(for: remoteId), LocalPhotos.asset(localId) != nil else { return nil }
+        return localId
     }
 
     nonisolated private static func existing(_ ids: [String]) -> Set<String> {
