@@ -307,7 +307,7 @@ services:
   # Turns firing Prometheus rules into Telegram messages. No port: only
   # Prometheus talks to it, over the stack network.
   alertmanager:
-    image: prom/alertmanager:v0.31.0
+    image: prom/alertmanager:v0.35.1
     container_name: homelab-alertmanager
     restart: unless-stopped
     command:
