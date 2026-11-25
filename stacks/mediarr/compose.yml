@@ -234,7 +234,7 @@ services:
   # Not `<<: *common`: the anchor carries `networks`, compose refuses it next to
   # network_mode, and `!reset` does not undo a merge key. Restart policy by hand.
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:5.3.0
+    image: lscr.io/linuxserver/qbittorrent:5.3.1
     container_name: qbittorrent
     restart: unless-stopped
     # Joins gluetun's network namespace, so it has no interface except the
