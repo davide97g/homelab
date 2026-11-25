@@ -148,7 +148,7 @@ services:
   # them in. Same /data mount as the *arrs so the paths it is told about match.
   bazarr:
     <<: *common
-    image: lscr.io/linuxserver/bazarr:1.6.2
+    image: lscr.io/linuxserver/bazarr:development-v1.6.3-beta.40-ls39
     container_name: bazarr
     ports:
       - "6767:6767"
