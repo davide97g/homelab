@@ -18,7 +18,7 @@
 
 services:
   node-exporter:
-    image: quay.io/prometheus/node-exporter:v1.12.1
+    image: quay.io/prometheus/node-exporter:v1.13.1
     container_name: nas-node-exporter
     restart: unless-stopped
     # Host network + host PID so the metrics are the box's own. Root is needed
@@ -51,7 +51,7 @@ services:
       - /:/host:ro,rslave
 
   cadvisor:
-    image: ghcr.io/google/cadvisor:v0.60.6
+    image: ghcr.io/google/cadvisor:v0.61.1
     container_name: nas-cadvisor
     restart: unless-stopped
     privileged: true
@@ -99,7 +99,7 @@ services:
       - ./jellyfin_exporter.py:/app/jellyfin_exporter.py:ro
 
   alloy:
-    image: grafana/alloy:v1.20.0
+    image: grafana/alloy:v1.22.0
     container_name: nas-alloy
     restart: unless-stopped
     # Behind a profile, so `docker compose up -d` brings up only the two
@@ -114,6 +114,10 @@ services:
       - run
       - --server.http.listen-addr=127.0.0.1:12345
       - --storage.path=/var/lib/alloy/data
+      # Since Alloy 1.21 loki.write's wal block only loads at experimental
+      # stability; config.alloy keeps the WAL because the NAS pushes over the
+      # public internet and a blip must not drop lines.
+      - --stability.level=experimental
       - /etc/alloy/config.alloy
     environment:
       # Soft defaults on purpose: `${VAR:?}` is interpolated for every service in
