@@ -8,7 +8,7 @@ Ollama on the mini PC, set up 2026-09-24. Since 2026-09-25 it is a Dokploy compo
 | API | `http://$LAN_HOST:11434` (LAN), `http://$TAILNET_HOST:11434` (tailnet) |
 | OpenAI-compatible | `http://$LAN_HOST:11434/v1` — any string as API key |
 | Model | `qwen3.6:35b-a3b-q4_K_M` — [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B), Apache-2.0 |
-| Image | `ollama/ollama:0.34.4`, pinned |
+| Image | `ollama/ollama:0.40.18`, pinned |
 | Models volume | `ollama` (Docker named volume, root fs) |
 
 Hostnames, IPs and record ids below are placeholders like `$LAN_HOST`: the values live in
