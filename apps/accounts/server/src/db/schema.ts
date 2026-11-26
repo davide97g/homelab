@@ -101,6 +101,31 @@ export const verification = pgTable(
   (t) => [index('verification_identifier_idx').on(t.identifier)],
 )
 
+/**
+ * WebAuthn credentials (the passkey plugin). Only someone already signed in can
+ * add one, so invite-only still holds: a passkey is a faster door into an
+ * account that exists, never a way to make one. rpID is accounts' own host.
+ */
+export const passkey = pgTable(
+  'passkey',
+  {
+    id: text('id').primaryKey(),
+    name: text('name'),
+    publicKey: text('public_key').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    credentialID: text('credential_id').notNull(),
+    counter: integer('counter').notNull(),
+    deviceType: text('device_type').notNull(),
+    backedUp: boolean('backed_up').notNull(),
+    transports: text('transports'),
+    createdAt: at('created_at'),
+    aaguid: text('aaguid'),
+  },
+  (t) => [index('passkey_user_idx').on(t.userId), index('passkey_credential_id_idx').on(t.credentialID)],
+)
+
 /** RFC 8628 codes: the TV shows `userCode`, polls with `deviceCode`. */
 export const deviceCode = pgTable(
   'device_code',

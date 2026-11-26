@@ -1,5 +1,6 @@
 import { APIError, betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { passkey } from '@better-auth/passkey'
 import { admin, bearer, deviceAuthorization, emailOTP, jwt } from 'better-auth/plugins'
 import { and, eq, gt, isNull } from 'drizzle-orm'
 import { db } from './db/client.ts'
@@ -84,6 +85,13 @@ export const auth = betterAuth({
     cookieCache: { enabled: true, maxAge: 60 },
   },
   advanced: {
+    // Our own cookie name. The default (__Secure-better-auth.session_token) is
+    // shared by every Better Auth app under davideghiotto.it (lumii, chatspace,
+    // aftergrowth): ours sits on the parent domain, so they received it next to
+    // theirs, read it first and treated their own users as signed out. Clearing
+    // site data to unstick those logins then took this session down too (Chrome
+    // clears a whole eTLD+1), which is what logged cassette out.
+    cookiePrefix: 'homelab',
     ipAddress: { ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for'] },
     crossSubDomainCookies: env.COOKIE_DOMAIN ? { enabled: true, domain: env.COOKIE_DOMAIN } : undefined,
     useSecureCookies: isProd,
@@ -126,6 +134,18 @@ export const auth = betterAuth({
         }),
       },
     }),
+    // Passkeys (WebAuthn): Face ID / Touch ID / a security key instead of the
+    // email code. Added from the home page by someone already signed in (the
+    // plugin's default requireSession), so invite-only holds. The rpID is this
+    // host, not the apex: every web login happens here anyway, and native apps
+    // can share the credentials later through the webcredentials entry in the
+    // AASA that /.well-known already serves. Changing rpID orphans every passkey.
+    passkey({
+      rpID: new URL(env.APP_URL).hostname,
+      rpName: 'Homelab',
+      origin: env.APP_URL,
+      authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
+    }),
     deviceAuthorization({
       expiresIn: '10m',
       interval: '5s',
@@ -140,6 +160,7 @@ export const auth = betterAuth({
       '/email-otp/send-verification-otp': { window: 600, max: 5 },
       '/sign-in/email-otp': { window: 600, max: 10 },
       '/device/code': { window: 60, max: 10 },
+      '/passkey/verify-authentication': { window: 600, max: 20 },
     },
   },
   databaseHooks: {

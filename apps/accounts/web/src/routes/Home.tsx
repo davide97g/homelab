@@ -1,5 +1,6 @@
 import { ArrowUpRight, LogOut, Shield, Tv } from 'lucide-react'
 import { Link, Navigate } from 'react-router-dom'
+import { Passkeys } from '@/components/Passkeys.tsx'
 import { Avatar, Button, Card, Pill, Shell } from '@/components/ui.tsx'
 import { APP_META } from '@/lib/admin.ts'
 import { ago, api, type AppId } from '@/lib/api.ts'
@@ -85,6 +86,7 @@ export function Home() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <Passkeys />
         <Card>
           <h2 className="mb-1 flex items-center gap-2 font-semibold">
             <Tv className="size-4 text-muted" /> Collega una TV

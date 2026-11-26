@@ -48,7 +48,7 @@ export function EmailCode({ email: fixed, onDone }: { email?: string; onDone: ()
         {fixed ? (
           <p className="rounded-xl bg-surface px-4 py-3 text-sm">{fixed}</p>
         ) : (
-          <Input type="email" autoComplete="email" placeholder="La tua email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
+          <Input type="email" autoComplete="email webauthn" placeholder="La tua email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
         )}
         <Button disabled={busy || !email}>Mandami il codice</Button>
         <ErrorText>{error}</ErrorText>

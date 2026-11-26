@@ -31,10 +31,18 @@ Live at **`https://accounts.davideghiotto.it`** since 2026-11-12, on the NAS nex
   and revocations stop.
 - **Shared cookie.** In production the session cookie is set on `.davideghiotto.it`. A browser
   signed in here is signed in to cinema and memories with no further click.
+  Its name is `__Secure-homelab.session_token` (`cookiePrefix: 'homelab'`), not Better Auth's
+  default: lumii, chatspace and aftergrowth are Better Auth apps on sibling subdomains, and a
+  parent-domain cookie with their name made them read ours and drop their own users.
 - **Revocation goes all the way.** Unlinking a device deletes its Better Auth session plus its
   Jellyfin device (`DELETE /Devices`) or its Immich session (`/auth/logout` with its own token).
   Disabling a user does the same for every device of theirs. Removing an app disables the Jellyfin
   user, or rotates the Immich password.
+- **Passkeys.** Once signed in (code, Google or Apple), the home page adds a passkey for that
+  device; the login page then offers "Entra con una passkey" and the email field's autofill.
+  Discoverable credentials, so no email is typed first. `rpID` is `accounts.davideghiotto.it`
+  (from `APP_URL`): changing it orphans every passkey. Adding one needs a session, so a passkey
+  never creates an account. Table `passkey`, migration `0002_passkey`.
 - **No open sign-up.** A user row is only created for an email with a live invite, or one listed in
   `ADMIN_EMAILS` (the bootstrap). A code is only mailed to known, invited or admin emails.
 

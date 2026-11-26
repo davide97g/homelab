@@ -15,6 +15,13 @@
       "when": 1795434676675,
       "tag": "0001_slow_punisher",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795701518596,
+      "tag": "0002_passkey",
+      "breakpoints": true
     }
   ]
 }

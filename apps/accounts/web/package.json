@@ -10,6 +10,7 @@
     "lint": "oxlint src"
   },
   "dependencies": {
+    "@better-auth/passkey": "1.7.20",
     "better-auth": "^1.7.17",
     "clsx": "^2.1.1",
     "lucide-react": "^1.28.0",
