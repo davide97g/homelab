@@ -7,7 +7,7 @@
     android:background="@color/bg"
     android:clipChildren="false">
 
-    <it.davideghiotto.jarvistv.WallpaperView
+    <it.davideghiotto.jarvistv.PixelWallpaperView
         android:id="@+id/wallpaper"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

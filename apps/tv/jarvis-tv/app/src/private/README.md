@@ -10,3 +10,9 @@ public repo. Everything here except this file is git-ignored.
   under the water, generated with Codex image generation from a reference painting,
   upscaled to 3840×2160 with Real-ESRGAN (x4plus). Decoded at screen size on the set.
   Missing is fine: the desktop falls back to meadow.jpg, then cream.
+- `assets/wallpaper/scene.html` — the desktop wallpaper now (PixelWallpaperView): a
+  pixel-art castle night with chibi characters, drawn in code on a 480×270 canvas and
+  run in the WebView at 15 fps. Edit `tv-preview/assets/private/desktop-hp.html` (the
+  browser preview with the menu bar and dock), then `scripts/wallpaper-extract.py`.
+  Missing is fine: the desktop is plain night blue. `wallpaper.jpg` above is no longer
+  shown; WallpaperView stays in the code for going back.
