@@ -36,7 +36,7 @@ describe('parseQuiz', () => {
   })
   test('every published quiz file parses', () => {
     const dir = new URL('../../../public/quizzes/', import.meta.url)
-    for (const name of ['tmdb-672.json', 'tmdb-673.json']) {
+    for (const name of ['tmdb-672.json', 'tmdb-673.json', 'tmdb-674.json']) {
       expect(() => parseQuiz(JSON.parse(readFileSync(new URL(name, dir), 'utf8')))).not.toThrow()
     }
   })

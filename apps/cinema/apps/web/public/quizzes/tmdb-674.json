@@ -1,0 +1,189 @@
+{
+  "title": "Harry Potter e il Calice di Fuoco",
+  "questions": [
+    {
+      "at": 216,
+      "type": "choice",
+      "question": "Nagini avverte Voldemort: il vecchio custode Babbano è dietro la porta. Come si chiama, e di chi era la casa che custodiva?",
+      "options": [
+        "Mundungus Fletcher, custode della casa dei Black a Grimmauld Place",
+        "Frank Bryce, giardiniere della casa dei Riddle a Little Hangleton",
+        "Bob Ogden, custode della casa dei Gaunt",
+        "Arabella Figg, custode della casa di Magnolia Crescent"
+      ],
+      "answer": 1,
+      "explain": "Il film non dice mai il suo nome. Nel libro Frank Bryce era stato accusato, cinquant'anni prima, di aver ucciso i Riddle: il padre e i nonni di Voldemort."
+    },
+    {
+      "at": 553.5,
+      "type": "choice",
+      "question": "Finale della 422ª Coppa del Mondo: Irlanda contro Bulgaria. Il film salta la partita. Com'è finita, nel libro?",
+      "options": [
+        "Bulgaria 160 a 150: Krum prende il Boccino e regala la Coppa alla Bulgaria",
+        "Partita sospesa prima del fischio finale per l'attacco dei Mangiamorte",
+        "Irlanda 170 a 160: Krum prende il Boccino, ma la Bulgaria perde lo stesso",
+        "Irlanda 240 a 10: Lynch prende il Boccino dopo la Finta Wronski"
+      ],
+      "answer": 2,
+      "explain": "Krum sapeva di non poter recuperare e ha chiuso la partita alle sue condizioni. Fred e George ci avevano scommesso sopra con Bagman: Irlanda vince, ma Krum prende il Boccino."
+    },
+    {
+      "at": 713.5,
+      "type": "text",
+      "question": "Il campo è deserto, un uomo alza la bacchetta verso il cielo. Qual è la formula esatta che evoca il Marchio Nero?",
+      "accept": ["morsmordre"],
+      "explain": "«Morsmordre!». L'uomo è Barty Crouch junior: Harry lo vede, ma non sa ancora chi sia."
+    },
+    {
+      "at": 1600,
+      "type": "choice",
+      "question": "Moody tortura il ragno con la Cruciatus e Neville è pietrificato. Perché proprio quella maledizione lo sconvolge così?",
+      "options": [
+        "Gliel'hanno lanciata da bambino, ed è per questo che ha una memoria così debole",
+        "Suo nonno è morto ad Azkaban dopo essere stato torturato dai Dissennatori",
+        "I suoi genitori, Frank e Alice, due Auror, sono stati torturati con la Cruciatus fino a perdere la ragione",
+        "Bellatrix l'ha usata su sua nonna Augusta davanti ai suoi occhi"
+      ],
+      "answer": 2,
+      "explain": "Sono ricoverati al San Mungo e non riconoscono il figlio. Chi li ha torturati lo sentiremo dire più avanti, davanti a un tribunale."
+    },
+    {
+      "at": 2133.3,
+      "type": "choice",
+      "question": "Il Calice è un oggetto magico potentissimo: ci voleva un Confundus fortissimo. Nel libro, in che cosa fu confuso esattamente?",
+      "options": [
+        "Credere che Harry avesse diciassette anni",
+        "Credere che le scuole in gara fossero quattro, con Harry unico iscritto della quarta",
+        "Credere che il nome di Harry fosse quello di Cedric",
+        "Credere che fosse ancora giovedì sera, dopo la chiusura delle iscrizioni"
+      ],
+      "answer": 1,
+      "explain": "Il nome è entrato sotto una scuola inesistente: unico candidato, il Calice non poteva che sceglierlo. Ecco perché i campioni sono quattro."
+    },
+    {
+      "at": 2420.5,
+      "type": "choice",
+      "question": "Rita Skeeter sa sempre cose che non potrebbe sapere. Qual è il segreto che Hermione scoprirà su di lei, nel libro?",
+      "options": [
+        "È un'Animaga non registrata: si trasforma in uno scarabeo e si nasconde nelle stanze",
+        "Usa orecchie oblunghe comprate da Fred e George",
+        "Paga Colin Canon per spiare i campioni con la sua macchina fotografica",
+        "Ha un Avversaspecchio collegato a quello di Moody"
+      ],
+      "answer": 0,
+      "explain": "Hermione la cattura in un barattolo e la tiene chiusa fino a Londra, in cambio di un anno senza articoli."
+    },
+    {
+      "at": 3245.8,
+      "type": "text",
+      "question": "«Ti è concessa una bacchetta.» Con quale incantesimo (la formula) Harry porterà la sua scopa nell'arena del drago?",
+      "accept": ["accio", "accio firebolt", "accio firebolt!"],
+      "explain": "«Accio Firebolt!». L'Incantesimo di Appello: nel libro Hermione lo fa esercitare fino a notte fonda."
+    },
+    {
+      "at": 3371,
+      "type": "choice",
+      "question": "Quattro draghi in miniatura nel sacchetto di Crouch. Chi pesca quale?",
+      "options": [
+        "Fleur il Petardo Cinese, Krum il Gallese Verde, Cedric l'Ungaro Spinato, Harry il Grugnocorto Svedese",
+        "Fleur il Grugnocorto Svedese, Krum l'Ungaro Spinato, Cedric il Gallese Verde, Harry il Petardo Cinese",
+        "Fleur il Gallese Verde, Krum il Grugnocorto Svedese, Cedric il Petardo Cinese, Harry l'Ungaro Spinato",
+        "Fleur il Gallese Verde, Krum il Petardo Cinese, Cedric il Grugnocorto Svedese, Harry l'Ungaro Spinato"
+      ],
+      "answer": 3,
+      "explain": "A Harry tocca il peggiore, lo Spinato che Hagrid gli aveva mostrato di notte: «un magnifico cattivone»."
+    },
+    {
+      "at": 4248,
+      "type": "choice",
+      "question": "«Neville ha già una ragazza.» Chi accompagna Neville al Ballo del Ceppo?",
+      "options": [
+        "Luna Lovegood",
+        "Hannah Abbott",
+        "Ginny Weasley",
+        "Padma Patil"
+      ],
+      "answer": 2,
+      "explain": "Ginny. Nel libro Neville aveva chiesto prima a Hermione, che era già impegnata con Krum."
+    },
+    {
+      "at": 5429.5,
+      "type": "text",
+      "question": "Harry vorrebbe una «rapa che lo faccia respirare sott'acqua per un'ora». Quale pianta gli suggerisce Neville?",
+      "accept": ["algabranchia", "alga branchia", "gillyweed"],
+      "explain": "L'algabranchia. Nel libro gliela porta Dobby; e in entrambi i casi l'idea parte da Moody."
+    },
+    {
+      "at": 5650,
+      "type": "choice",
+      "question": "Sul fondo del Lago Nero sono legati quattro «tesori». A quale campione appartiene ciascuno?",
+      "options": [
+        "Krum: Hermione · Cedric: Cho · Fleur: Gabrielle · Harry: Ron",
+        "Krum: Cho · Cedric: Hermione · Fleur: Gabrielle · Harry: Ron",
+        "Krum: Hermione · Cedric: Cho · Fleur: Ron · Harry: Gabrielle",
+        "Krum: Gabrielle · Cedric: Cho · Fleur: Hermione · Harry: Ron"
+      ],
+      "answer": 0,
+      "explain": "Harry si attarda per salvare anche Gabrielle, la sorella di Fleur: «fibra morale», e il secondo posto."
+    },
+    {
+      "at": 6362.4,
+      "type": "choice",
+      "question": "Nel Pensatoio Karkaroff ha un ultimo nome: chi ha torturato con la Cruciatus Frank Paciok e sua moglie. Chi?",
+      "options": [
+        "Antonin Dolohov",
+        "Barty Crouch junior",
+        "Lucius Malfoy",
+        "Peter Minus"
+      ],
+      "answer": 1,
+      "explain": "Il figlio del giudice. Nel libro però Karkaroff non lo nomina: è un ricordo separato, il processo in cui Crouch condanna il figlio insieme ai Lestrange."
+    },
+    {
+      "at": 6579.3,
+      "type": "text",
+      "question": "Piton agita una fialetta trasparente davanti a Harry: «Tre gocce e Tu-Sai-Chi rivelerebbe i suoi segreti». Che pozione è?",
+      "accept": ["veritaserum", "siero della verita", "siero della verità"],
+      "explain": "Il Veritaserum. E la pelle di Girilacco rubata dalle sue scorte serve alla Polisucco: Piton non sbaglia ladro, sbaglia persona."
+    },
+    {
+      "at": 7243,
+      "type": "choice",
+      "question": "Codaliscia sta per iniziare il rito che ridà un corpo a Voldemort. Quali sono le tre parti, nell'ordine?",
+      "options": [
+        "Sangue del padre donato con consenso, osso del servo preso con la forza, carne del nemico sacrificata",
+        "Osso del padre donato senza consenso, carne del servo sacrificata con consenso, sangue del nemico prelevato con la forza",
+        "Carne del padre prelevata con la forza, osso del servo donato senza consenso, sangue del nemico sacrificato con consenso",
+        "Osso del nemico prelevato con la forza, sangue del servo donato con consenso, carne del padre sacrificata senza consenso"
+      ],
+      "answer": 1,
+      "explain": "L'osso di Tom Riddle senior, la mano di Codaliscia, il sangue di Harry. Quel sangue porta con sé la protezione di Lily, ed è anche per questo che Voldemort ora può toccarlo."
+    },
+    {
+      "at": 7725,
+      "type": "choice",
+      "question": "Expelliarmus contro Avada Kedavra: le due bacchette restano legate da un filo d'oro. Perché?",
+      "options": [
+        "Perché sono state fatte dallo stesso albero da Olivander nello stesso giorno",
+        "Perché il sangue di Harry ora scorre in Voldemort",
+        "Perché tutte e due contengono una piuma della stessa fenice, Fanny: nuclei gemelli",
+        "Perché Harry ha usato l'incantesimo Prior Incantatio senza saperlo"
+      ],
+      "answer": 2,
+      "explain": "Bacchette sorelle non possono combattersi davvero: scatta il Priori Incantatem e la bacchetta di Voldemort rigurgita gli ultimi incantesimi, cioè le ombre delle sue vittime."
+    },
+    {
+      "at": 8121.5,
+      "type": "choice",
+      "question": "Silente fa bere il Veritaserum all'uomo che si fa chiamare Moody. Dove è stato per tutto l'anno il vero Alastor Moody?",
+      "options": [
+        "Ad Azkaban, scambiato con Barty Crouch junior",
+        "Pietrificato nella Stamberga Strillante",
+        "Al San Mungo, sotto Maledizione Imperius",
+        "Chiuso nel suo stesso baule magico a sette serrature, nell'ufficio"
+      ],
+      "answer": 3,
+      "explain": "Tenuto vivo per avere capelli freschi da mettere nella Polisucco, presa ogni ora dalla fiaschetta: ecco cosa beveva al banchetto."
+    }
+  ]
+}
