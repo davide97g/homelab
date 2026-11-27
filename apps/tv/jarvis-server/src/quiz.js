@@ -31,7 +31,7 @@ const BASE = 100;
 const SPEED = 50;
 const SPEED_WINDOW_MS = 30_000;
 /** The question is read alone first: the options (and the answer box) come this much later. */
-const OPTIONS_AFTER_MS = 5_000;
+const OPTIONS_AFTER_MS = 10_000;
 /** The answer shows itself this long after the options appear, unless revealed sooner. */
 const REVEAL_AFTER_MS = 30_000;
 /** Players who also run the show from their phone: reveal and resume the film. */
