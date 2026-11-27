@@ -36,6 +36,7 @@ export const queryKeys = {
   items: (userId: string, params: unknown) => ['items', userId, params] as const,
   suggestions: (userId: string) => ['suggestions', userId] as const,
   item: (userId: string, itemId: string) => ['item', userId, itemId] as const,
+  trailers: (userId: string, itemId: string) => ['trailers', userId, itemId] as const,
   playTarget: (userId: string, itemId: string) => ['playTarget', userId, itemId] as const,
   seasons: (userId: string, seriesId: string) => ['seasons', userId, seriesId] as const,
   episodes: (userId: string, seriesId: string, seasonId: string) =>
@@ -187,6 +188,23 @@ export function useItem(itemId: string | undefined) {
         userId,
         itemId: itemId as string,
       })
+      return data
+    },
+  })
+}
+
+/**
+ * Trailers that sit next to the file on the server (a `trailers/` folder or a
+ * `-trailer` suffix). Only asked for when the item says it has some.
+ */
+export function useLocalTrailers(item: BaseItemDto | undefined) {
+  const { api, userId } = useSession()
+  const itemId = item?.Id ?? ''
+  return useQuery({
+    queryKey: queryKeys.trailers(userId, itemId),
+    enabled: Boolean(itemId) && (item?.LocalTrailerCount ?? 0) > 0,
+    queryFn: async (): Promise<BaseItemDto[]> => {
+      const { data } = await getUserLibraryApi(api).getLocalTrailers({ userId, itemId })
       return data
     },
   })

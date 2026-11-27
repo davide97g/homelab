@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, HardDriveDownload, Info, Play, RotateCcw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clapperboard, HardDriveDownload, Info, Play, RotateCcw } from 'lucide-react'
 import { MediaStreamType } from '@jellyfin/sdk/lib/generated-client/models/media-stream-type'
 import { StickerSkeleton, StickerSkeletonText } from '@/components/ui/sticker-skeleton'
 import { EpisodeList } from '@/components/media/EpisodeList'
@@ -8,7 +8,7 @@ import { DotList, KindTag } from '@/components/media/item-meta'
 import { useAuth } from '@/lib/jellyfin/auth'
 import { useAvailability } from '@/lib/jellyfin/availability'
 import { ImageType, itemBackdropUrl, itemImageUrl } from '@/lib/jellyfin/images'
-import { useAdjacentEpisodes, useItem, usePlayTarget } from '@/lib/jellyfin/queries'
+import { useAdjacentEpisodes, useItem, useLocalTrailers, usePlayTarget } from '@/lib/jellyfin/queries'
 import { formatRuntime, formatTimecode, ticksToSeconds } from '@/lib/jellyfin/ticks'
 
 export function ItemRoute() {
@@ -22,6 +22,7 @@ export function ItemRoute() {
   // Called before the loading return, so it keeps its hook slot; it stays
   // disabled until there is an item to probe.
   const { data: availability, refetch: recheck, isFetching: rechecking } = useAvailability(item)
+  const { data: trailers } = useLocalTrailers(item)
 
   if (isLoading || !item) {
     return (
@@ -130,6 +131,12 @@ export function ItemRoute() {
                 {episodeLabel ? `Play ${episodeLabel}` : 'Play'}
               </PrimaryAction>
             )}
+            {!offline && trailers?.[0]?.Id && (
+              <SecondaryAction to={`/play/${trailers[0].Id}`}>
+                <Clapperboard className="size-4" />
+                Trailer
+              </SecondaryAction>
+            )}
             {previous && (
               <SecondaryAction to={`/item/${previous.Id}`} label={`Previous: ${previous.Name ?? ''}`}>
                 <ChevronLeft className="size-4" />
@@ -158,6 +165,36 @@ export function ItemRoute() {
         <div className="flex min-w-0 max-w-3xl flex-col gap-6">
           {item.Overview && (
             <p className="text-sm leading-relaxed text-foreground/80">{item.Overview}</p>
+          )}
+
+          {Boolean(trailers?.length) && (
+            <Section title={trailers!.length > 1 ? 'Trailers' : 'Trailer'}>
+              <div className="flex flex-wrap gap-3">
+                {trailers!.map((t) => (
+                  <Link
+                    key={t.Id}
+                    to={`/play/${t.Id}`}
+                    className="group relative block w-64 overflow-hidden rounded-lg bg-surface shadow-card"
+                  >
+                    <img
+                      src={itemImageUrl(api, t, ImageType.Primary, { maxWidth: 480 }) ?? backdrop ?? poster}
+                      alt=""
+                      className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="hero-scrim absolute inset-0" />
+                    <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-3">
+                      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Play className="size-4 fill-current" />
+                      </span>
+                      <span className="min-w-0 truncate text-sm font-semibold">{t.Name}</span>
+                      {t.RunTimeTicks ? (
+                        <span className="ml-auto text-xs text-foreground/70">{formatRuntime(t.RunTimeTicks)}</span>
+                      ) : null}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </Section>
           )}
 
           {Boolean(item.People?.length) && (
