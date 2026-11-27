@@ -44,6 +44,8 @@ export const PLAYERS = [
   { id: 'sebastiano', name: 'Sebastiano', title: 'THE NAVIGATOR' },
   { id: 'marcello', name: 'Marcello', title: 'THE DRAGONKEEPER' },
   { id: 'chiara', name: 'Chiara', title: 'THE CANDLEWITCH' },
+  { id: 'matteo', name: 'Matteo', title: 'THE GREENBEARD' },
+  { id: 'martina', name: 'Martina', title: 'THE STARCATCHER' },
 ];
 const byId = new Map(PLAYERS.map((p) => [p.id, p]));
 
